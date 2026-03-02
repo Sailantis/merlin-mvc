@@ -93,6 +93,28 @@ class ResultSet implements \Iterator, \Countable
 	}
 
 	/**
+	 * Return all rows as associative array.
+	 * @return array<int, array<string, mixed>> An array of all remaining rows, each as an associative array.
+	 */
+	public function fetchAllArray(): array
+	{
+		$result = $this->statement->fetchAll(PDO::FETCH_ASSOC);
+		$this->position += \count($result);
+		return $result;
+	}
+
+	/**
+	 * Return all rows as object.
+	 * @return array<int, object> An array of all remaining rows, each as an object.
+	 */
+	public function fetchAllObject(): array
+	{
+		$result = $this->statement->fetchAll(PDO::FETCH_OBJ);
+		$this->position += \count($result);
+		return $result;
+	}
+
+	/**
 	 * Fetch all values from a single column.
 	 * @param int $column Zero-based column index to fetch, or 0 for the first column.
 	 * @return array The values of the specified column in all remaining rows.
@@ -123,28 +145,6 @@ class ResultSet implements \Iterator, \Countable
 	public function setFetchMode(int $fetchMode): void
 	{
 		$this->fetchMode = $fetchMode;
-	}
-
-	/**
-	 * Return all rows as associative arrays.
-	 * @return array<int, array<string, mixed>> An array of all remaining rows, each as an associative array.
-	 */
-	public function allArrays(): array
-	{
-		$result = $this->statement->fetchAll(PDO::FETCH_ASSOC);
-		$this->position += \count($result);
-		return $result;
-	}
-
-	/**
-	 * Return all rows as objects.
-	 * @return array<int, object> An array of all remaining rows, each as an object.
-	 */
-	public function allObjects(): array
-	{
-		$result = $this->statement->fetchAll(PDO::FETCH_OBJ);
-		$this->position += \count($result);
-		return $result;
 	}
 
 	/**

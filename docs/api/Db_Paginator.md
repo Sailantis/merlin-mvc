@@ -6,7 +6,7 @@ Paginator class for paginating database query results.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Db/Paginator.php#L27)
+### __construct() · [source](../../src/Db/Paginator.php#L29)
 
 `public function __construct(Merlin\Db\Query $builder, int $page = 1, int $pageSize = 30, bool $reverse = false): mixed`
 
@@ -28,7 +28,7 @@ Create a new Paginator instance.
 
 ---
 
-### getPageSize() · [source](../../src/Db/Paginator.php#L44)
+### getPageSize() · [source](../../src/Db/Paginator.php#L46)
 
 `public function getPageSize(): int`
 
@@ -42,7 +42,7 @@ Get the page size (number of items per page).
 
 ---
 
-### getTotalItems() · [source](../../src/Db/Paginator.php#L54)
+### getTotalItems() · [source](../../src/Db/Paginator.php#L56)
 
 `public function getTotalItems(): int`
 
@@ -56,21 +56,21 @@ Get the total number of items across all pages.
 
 ---
 
-### getTotalPages() · [source](../../src/Db/Paginator.php#L64)
+### getLastPage() · [source](../../src/Db/Paginator.php#L66)
 
-`public function getTotalPages(): int`
+`public function getLastPage(): int`
 
-Get the total number of pages.
+Get the last page number.
 
 **➡️ Return value**
 
 - Type: int
-- Description: The total number of pages.
+- Description: The last page number.
 
 
 ---
 
-### getCurrentPage() · [source](../../src/Db/Paginator.php#L74)
+### getCurrentPage() · [source](../../src/Db/Paginator.php#L76)
 
 `public function getCurrentPage(): int`
 
@@ -84,9 +84,9 @@ Get the current page number.
 
 ---
 
-### getFirstItemPos() · [source](../../src/Db/Paginator.php#L84)
+### getFirstItem() · [source](../../src/Db/Paginator.php#L86)
 
-`public function getFirstItemPos(): int`
+`public function getFirstItem(): int`
 
 Get the position of the first item in the current page (1-based index).
 
@@ -98,9 +98,9 @@ Get the position of the first item in the current page (1-based index).
 
 ---
 
-### getLastItemPos() · [source](../../src/Db/Paginator.php#L94)
+### getLastItem() · [source](../../src/Db/Paginator.php#L96)
 
-`public function getLastItemPos(): int`
+`public function getLastItem(): int`
 
 Get the position of the last item in the current page (1-based index).
 
@@ -112,7 +112,7 @@ Get the position of the last item in the current page (1-based index).
 
 ---
 
-### execute() · [source](../../src/Db/Paginator.php#L105)
+### execute() · [source](../../src/Db/Paginator.php#L107)
 
 `public function execute(mixed $fetchMode = 0): array`
 
@@ -122,12 +122,26 @@ Execute the paginated query and return the items for the current page.
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$fetchMode` | mixed | `0` | The PDO fetch mode to use (default: \PDO::FETCH_DEFAULT). |
+| `$fetchMode` | mixed | `0` | The \PDO fetch mode to use (default: \PDO::FETCH_DEFAULT). |
 
 **➡️ Return value**
 
 - Type: array
 - Description: The items for the current page.
+
+
+---
+
+### get() · [source](../../src/Db/Paginator.php#L149)
+
+`public function get(): array|null`
+
+Get the items for the current page. Return null if the query has not been executed yet.
+
+**➡️ Return value**
+
+- Type: array|null
+- Description: The items for the current page, or null if the query has not been executed yet.
 
 
 

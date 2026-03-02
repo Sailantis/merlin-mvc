@@ -89,7 +89,35 @@ Fetch next row as a single column value.
 
 ---
 
-### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L100)
+### fetchAllArray() · [source](../../src/Db/ResultSet.php#L99)
+
+`public function fetchAllArray(): array`
+
+Return all rows as associative array.
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of all remaining rows, each as an associative array.
+
+
+---
+
+### fetchAllObject() · [source](../../src/Db/ResultSet.php#L110)
+
+`public function fetchAllObject(): array`
+
+Return all rows as object.
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of all remaining rows, each as an object.
+
+
+---
+
+### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L122)
 
 `public function fetchAllColumn(int $column = 0): array`
 
@@ -109,7 +137,7 @@ Fetch all values from a single column.
 
 ---
 
-### fetchAll() · [source](../../src/Db/ResultSet.php#L112)
+### fetchAll() · [source](../../src/Db/ResultSet.php#L134)
 
 `public function fetchAll(int $fetchMode = 0): array`
 
@@ -129,7 +157,7 @@ Fetch all rows as objects or arrays depending on fetch mode.
 
 ---
 
-### setFetchMode() · [source](../../src/Db/ResultSet.php#L123)
+### setFetchMode() · [source](../../src/Db/ResultSet.php#L145)
 
 `public function setFetchMode(int $fetchMode): void`
 
@@ -144,34 +172,6 @@ Set the default fetch mode for this result set.
 **➡️ Return value**
 
 - Type: void
-
-
----
-
-### allArrays() · [source](../../src/Db/ResultSet.php#L132)
-
-`public function allArrays(): array`
-
-Return all rows as associative arrays.
-
-**➡️ Return value**
-
-- Type: array
-- Description: An array of all remaining rows, each as an associative array.
-
-
----
-
-### allObjects() · [source](../../src/Db/ResultSet.php#L143)
-
-`public function allObjects(): array`
-
-Return all rows as objects.
-
-**➡️ Return value**
-
-- Type: array
-- Description: An array of all remaining rows, each as an object.
 
 
 ---

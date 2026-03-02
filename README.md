@@ -269,7 +269,7 @@ $paginator = new Paginator(
 $users = $paginator->execute();  // array of items for the current page
 
 $totalItems  = $paginator->getTotalItems();
-$totalPages  = $paginator->getTotalPages();
+$lastPage    = $paginator->getLastPage();
 $currentPage = $paginator->getCurrentPage();
 ```
 

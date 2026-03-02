@@ -12,9 +12,11 @@ class Paginator
     protected bool $reverse;
 
     protected int $totalItems = 0;
-    protected int $totalPages = 1;
-    protected int $firstItemPos = 0;
-    protected int $lastItemPos = 0;
+    protected int $lastPage = 1;
+    protected int $firstItem = 0;
+    protected int $lastItem = 0;
+    protected ?array $items = null;
+    protected int $fetchModeCache = 0;
 
     /** 
      * Create a new Paginator instance.
@@ -57,13 +59,13 @@ class Paginator
     }
 
     /**
-     * Get the total number of pages.
+     * Get the last page number.
      *
-     * @return int The total number of pages.
+     * @return int The last page number.
      */
-    public function getTotalPages(): int
+    public function getLastPage(): int
     {
-        return $this->totalPages;
+        return $this->lastPage;
     }
 
     /**
@@ -81,9 +83,9 @@ class Paginator
      *
      * @return int The position of the first item in the current page.
      */
-    public function getFirstItemPos(): int
+    public function getFirstItem(): int
     {
-        return $this->firstItemPos;
+        return $this->firstItem;
     }
 
     /**
@@ -91,22 +93,22 @@ class Paginator
      *
      * @return int The position of the last item in the current page.
      */
-    public function getLastItemPos(): int
+    public function getLastItem(): int
     {
-        return $this->lastItemPos;
+        return $this->lastItem;
     }
 
     /**
      * Execute the paginated query and return the items for the current page.
      *
-     * @param int $fetchMode The PDO fetch mode to use (default: \PDO::FETCH_DEFAULT).
+     * @param int $fetchMode The \PDO fetch mode to use (default: \PDO::FETCH_DEFAULT).
      * @return array The items for the current page.
      */
-    public function execute($fetchMode = \PDO::FETCH_DEFAULT): array
+    public function execute($fetchMode = 0): array
     {
         // Count query
         $this->totalItems = $this->builder->count();
-        $this->totalPages = $this->pageSize ? (int) ceil($this->totalItems / $this->pageSize) : 1;
+        $this->lastPage = $this->pageSize ? (int) ceil($this->totalItems / $this->pageSize) : 1;
 
         $offset = ($this->page - 1) * $this->pageSize;
         $queryLimit = $this->pageSize;
@@ -120,22 +122,32 @@ class Paginator
             }
         }
 
-        $items = [];
+        $this->items = [];
 
-        if ($this->page <= $this->totalPages) {
-            $items = $this->builder
+        if ($this->page <= $this->lastPage) {
+            $this->items = $this->builder
                 ->limit($queryLimit, $queryOffset)
                 ->select()
                 ->fetchAll($fetchMode);
 
             if ($this->reverse) {
-                $items = array_reverse($items);
+                $this->items = array_reverse($this->items);
             }
         }
 
-        $this->firstItemPos = $offset + 1;
-        $this->lastItemPos = $offset + \count($items);
+        $this->firstItem = $offset + 1;
+        $this->lastItem = $offset + \count($this->items);
 
-        return $items;
+        return $this->items;
+    }
+
+    /**
+     * Get the items for the current page. Return null if the query has not been executed yet.
+     *
+     * @return ?array The items for the current page, or null if the query has not been executed yet.
+     */
+    public function get(): ?array
+    {
+        return $this->items;
     }
 }

@@ -14,16 +14,18 @@ $paginator = User::query()
     ->orderBy('created_at DESC')
     ->paginate(page: 2, pageSize: 20);
 
-$items = $paginator->execute();
+$paginator->execute();
 
 $meta = [
     'currentPage' => $paginator->getCurrentPage(),
-    'totalPages' => $paginator->getTotalPages(),
-    'totalItems' => $paginator->getTotalItems(),
-    'firstItem' => $paginator->getFirstItemPos(),
-    'lastItem' => $paginator->getLastItemPos(),
+    'lastPage' => $paginator->getLastPage(),
     'pageSize' => $paginator->getPageSize(),
+    'totalItems' => $paginator->getTotalItems(),
+    'firstItem' => $paginator->getFirstItem(),
+    'lastItem' => $paginator->getLastItem(),
 ];
+
+$items = $paginator->get(); // array of User models for page 2
 ```
 
 ## 2) Find or Create
