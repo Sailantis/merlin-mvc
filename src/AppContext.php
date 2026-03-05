@@ -1,12 +1,14 @@
 <?php
 namespace Merlin;
 
+use Merlin\Mvc\Engines\ClarityEngine;
 use Merlin\Mvc\Router;
 use RuntimeException;
 use Merlin\Db\DatabaseManager;
 use Merlin\Http\Cookies;
 use Merlin\Http\Request as HttpRequest;
 use Merlin\Http\Session;
+use Merlin\Mvc\Engines\NativeEngine;
 use Merlin\Mvc\ViewEngine;
 
 class AppContext
@@ -19,11 +21,11 @@ class AppContext
     protected function registerDefaultServices(): void
     {
         $this->services = [
-            Session::class => fn() => $this->session(),
-            Cookies::class => fn() => $this->cookies(),
-            HttpRequest::class => fn() => $this->request(),
-            ViewEngine::class => fn() => $this->view(),
-            DatabaseManager::class => fn() => $this->dbManager(),
+            Session::class => [$this, 'session'],
+            Cookies::class => [$this, 'cookies'],
+            HttpRequest::class => [$this, 'request'],
+            ViewEngine::class => [$this, 'view'],
+            DatabaseManager::class => [$this, 'dbManager'],
             AppContext::class => fn() => $this,
         ];
     }
@@ -79,13 +81,25 @@ class AppContext
     }
 
     /**
-     * Get the ViewEngine instance. If it doesn't exist, it will be created.
+     * Get the active view engine instance. Defaults to ClarityEngine.
      *
-     * @return ViewEngine The ViewEngine instance.
+     * @return ViewEngine The active view engine instance.
      */
     public function view(): ViewEngine
     {
-        return $this->view ??= new ViewEngine();
+        return $this->view ??= new ClarityEngine();
+    }
+
+    /**
+     * Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
+     *
+     * @param ViewEngine $engine The engine to use from this point on.
+     * @return static
+     */
+    public function setView(ViewEngine $engine): static
+    {
+        $this->view = $engine;
+        return $this;
     }
 
     /**
@@ -319,13 +333,13 @@ class ResolvedRoute
      * @param array       $override Associative array of route overrides (e.g. ['controller' => 'OtherController', 'action' => 'otherAction']).
      */
     public function __construct(
-        public ?string $namespace,
-        public string $controller,
-        public string $action,
-        public array $params,
-        public array $vars,
-        public array $groups,
-        public array $override
+        public readonly ?string $namespace,
+        public readonly string $controller,
+        public readonly string $action,
+        public readonly array $params,
+        public readonly array $vars,
+        public readonly array $groups,
+        public readonly array $override
     ) {
     }
 }

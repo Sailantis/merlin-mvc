@@ -1,0 +1,687 @@
+<?php
+namespace Merlin\Mvc\Clarity;
+
+/**
+ * Splits a Clarity template source into typed segments and processes
+ * DSL expressions into PHP-ready strings.
+ *
+ * Segment types (constants on this class)
+ * ----------------------------------------
+ * TEXT        – raw HTML/text passed through verbatim
+ * OUTPUT_TAG  – {{ expression }} – rendered (auto-escaped by default)
+ * BLOCK_TAG   – {% directive %}  – control structures / directives
+ *
+ * Expression processing
+ * ---------------------
+ * The tokenizer converts Clarity expression syntax to valid PHP so the
+ * Compiler can embed it directly.  PHP itself validates the resulting
+ * syntax when the compiled class file is first loaded, so we intentionally
+ * do not perform a full grammar check here.
+ *
+ * Conversions performed
+ * • var-chains (foo.bar[x].baz) → $vars['foo']['bar'][$vars['x']]['baz']
+ * • logical operators:  and → &&,  or → ||,  not → !
+ * • concat operator:    ~   → .
+ * • all other tokens pass through unchanged (PHP validates them)
+ *
+ * Pipeline (|>)
+ * • Each step after |> is a filter: name  or  name(arg1, arg2)
+ * • Arguments are themselves processed as expressions
+ * • Result: nested $__f['name']($__f['name']($expr, arg), …)
+ */
+class Tokenizer
+{
+    public const TEXT = 1;
+    public const OUTPUT_TAG = 2;
+    public const BLOCK_TAG = 3;
+
+    public const KEY_TYPE = 0;
+    public const KEY_CONTENT = 1;
+    public const KEY_LINE = 2;
+
+
+    // -------------------------------------------------------------------------
+    // Segment splitting
+    // -------------------------------------------------------------------------
+
+    /**
+     * Split a raw template source into an ordered array of segments.
+     *
+     * Each element is:  ['type' => TEXT|OUTPUT|BLOCK, 'content' => string, 'line' => int]
+     *
+     * @param string $source Raw template source.
+     * @return array<int, array{int, string, int}>
+     */
+    public function tokenize(string $source): array
+    {
+        $segments = [];
+        $pattern = '/\{\{.*?\}\}|\{%.*?%\}/s';
+        if (!\preg_match_all($pattern, $source, $matches, PREG_OFFSET_CAPTURE)) {
+            return [
+                [
+                    self::KEY_TYPE => self::TEXT,
+                    self::KEY_CONTENT => \trim($source),
+                    self::KEY_LINE => 1
+                ]
+            ];
+        }
+
+        $line = 1;
+        $pos = 0;
+        foreach ($matches[0] as [$match, $offset]) {
+            if ($offset > $pos) {
+                $text = \substr($source, $pos, $offset - $pos);
+                if (\trim($text) !== '') {
+                    $segments[] = [
+                        self::KEY_TYPE => self::TEXT,
+                        self::KEY_CONTENT => $text,
+                        self::KEY_LINE => $line
+                    ];
+                }
+                $line += \substr_count($text, "\n");
+            }
+
+            $len = \strlen($match);
+            $inner = \trim(\substr($match, 2, $len - 4));
+            $type = $match[1] === '%' ? self::BLOCK_TAG : self::OUTPUT_TAG;
+            $segments[] = [
+                self::KEY_TYPE => $type,
+                self::KEY_CONTENT => $inner,
+                self::KEY_LINE => $line
+            ];
+
+            $line += \substr_count($match, "\n");
+            $pos = $offset + $len;
+        }
+
+        if ($pos < \strlen($source)) {
+            $rest = \substr($source, $pos);
+            if (\trim($rest) !== '') {
+                $segments[] = [
+                    self::KEY_TYPE => self::TEXT,
+                    self::KEY_CONTENT => $rest,
+                    self::KEY_LINE => $line
+                ];
+            }
+        }
+
+        return $segments;
+    }
+
+
+    // -------------------------------------------------------------------------
+    // Expression processing
+    // -------------------------------------------------------------------------
+
+    /**
+     * Convert a Clarity expression string to a PHP expression string.
+     *
+     * The pipeline (|>) is processed first; the leftmost segment is the
+     * expression and each subsequent segment is a filter call.
+     *
+     * @param string $expression Raw expression from inside {{ ... }} or the
+     *                           right-hand side of {% set var = ... %}.
+     * @param bool   $autoEscape When true and there is no |> raw at the end,
+     *                           wraps the whole result in htmlspecialchars().
+     * @return string PHP expression (no leading <?= or trailing ?>).
+     */
+    public function processExpression(string $expression, bool $autoEscape = true): string
+    {
+        [$expr, $filters] = $this->splitPipeline($expression);
+
+        $phpExpr = $this->convertVarsAndOps($expr);
+
+        // Determine whether auto-escape should be applied.
+        // If the last filter is 'raw' we strip it and skip escaping.
+        $applyEscape = $autoEscape;
+        if ($applyEscape && !empty($filters)) {
+            $lastFilter = $filters[count($filters) - 1];
+            if ($this->filterName($lastFilter) === 'raw') {
+                array_pop($filters);
+                $applyEscape = false;
+            }
+        }
+
+        // Wrap in filter calls (innermost first → outermost last)
+        foreach ($filters as $filterSegment) {
+            $phpExpr = $this->buildFilterCall($filterSegment, $phpExpr);
+        }
+
+        if ($applyEscape) {
+            $phpExpr = "\\htmlspecialchars((string)({$phpExpr}), \\ENT_QUOTES, 'UTF-8')";
+        }
+
+        return $phpExpr;
+    }
+
+    /**
+     * Convert a Clarity expression without pipeline — used for control
+     * structure conditions (if, for, set) where auto-escape is meaningless.
+     *
+     * @param string $expression Raw Clarity expression.
+     * @return string PHP expression.
+     */
+    public function processCondition(string $expression): string
+    {
+        [$expr, $filters] = $this->splitPipeline($expression);
+        $phpExpr = $this->convertVarsAndOps($expr);
+
+        foreach ($filters as $filterSegment) {
+            $phpExpr = $this->buildFilterCall($filterSegment, $phpExpr);
+        }
+
+        return $phpExpr;
+    }
+
+    /**
+     * Convert a Clarity variable chain to its PHP $vars[...] equivalent.
+     * Used for the left-hand side of {% set var = ... %}.
+     *
+     * @param string $var Clarity variable name (e.g. 'user.name', 'items[0]').
+     * @return string PHP lvalue (e.g. '$vars[\'user\'][\'name\']').
+     */
+    public function processLvalue(string $var): string
+    {
+        return $this->varChainToPhp(\trim($var));
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
+    /**
+     * Split an expression string on the |> pipeline operator.
+     *
+     * Returns [expressionString, [filterSegment, ...]].
+     * The expression string may still contain quoted strings, so we cannot
+     * simply explode — we split only on |> that are not inside quotes.
+     *
+     * @return array{0: string, 1: string[]}
+     */
+    private function splitPipeline(string $expression): array
+    {
+        $parts = $this->splitRespectingStrings($expression, '|>');
+
+        $expr = \trim(\array_shift($parts));
+        foreach ($parts as &$part) {
+            $part = \trim($part);
+        }
+
+        return [$expr, $parts];
+    }
+
+    /**
+     * Split $subject on $delimiter while respecting single- and double-quoted
+     * string literals (i.e. do not split on delimiters inside quotes).
+     *
+     * @return string[]
+     */
+    private function splitRespectingStrings(string $subject, string $delimiter): array
+    {
+        $parts = [];
+        $current = '';
+        $len = \strlen($subject);
+        $dlen = \strlen($delimiter);
+        $i = 0;
+        $inSingle = false;
+        $inDouble = false;
+
+        while ($i < $len) {
+            $ch = $subject[$i];
+
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $current .= $ch . $subject[$i + 1];
+                $i += 2;
+                continue;
+            }
+
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+                $current .= $ch;
+                $i++;
+            } elseif ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+                $current .= $ch;
+                $i++;
+            } elseif (!$inSingle && !$inDouble && \substr($subject, $i, $dlen) === $delimiter) {
+                $parts[] = $current;
+                $current = '';
+                $i += $dlen;
+            } else {
+                $current .= $ch;
+                $i++;
+            }
+        }
+
+        $parts[] = $current;
+        return $parts;
+    }
+
+    /**
+     * Convert a Clarity expression (no pipeline) to PHP by:
+     * 1. Replacing var-chains with $vars[...] accesses
+     * 2. Replacing logical/string operators with PHP equivalents
+     * 3. Rejecting function-call syntax: any identifier followed by '(' throws
+     *    a ClarityException at compile time — use the |> filter pipeline instead.
+     *
+     * Strategy: tokenize the expression into atoms (quoted strings, numbers,
+     * identifiers/var-chains, operators, punctuation) and process each atom.
+     */
+    public function convertVarsAndOps(string $expr): string
+    {
+        static $keywordMap = [
+        'and' => '&&',
+        'or' => '||',
+        'not' => '!',
+        'true' => 'true',
+        'false' => 'false',
+        'null' => 'null',
+        ];
+
+        $len = \strlen($expr);
+        $i = 0;
+        $out = '';
+        $inSingle = false;
+        $inDouble = false;
+
+        while ($i < $len) {
+            $ch = $expr[$i];
+
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $out .= $ch . $expr[$i + 1];
+                $i += 2;
+                continue;
+            }
+
+            // Quote handling
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+                $out .= $ch;
+                $i++;
+                continue;
+            }
+            if ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+                $out .= $ch;
+                $i++;
+                continue;
+            }
+            if ($inSingle || $inDouble) {
+                $out .= $ch;
+                $i++;
+                continue;
+            }
+
+            // Map single-char operator ~ outside strings
+            if ($ch === '~') {
+                $out .= '.';
+                $i++;
+                continue;
+            }
+
+            // Disallow statement delimiters and backticks anywhere outside of strings
+            if ($ch === ';' || $ch === '`' || ($ch === '?' && ($expr[$i + 1] ?? '') === '>') || ($ch === '<' && ($expr[$i + 1] ?? '') === '?')) {
+                throw new ClarityException('Expressions must not contain statement delimiters or backticks.');
+            }
+
+            // Disallow heredoc/nowdoc openers: <<< would compile to a PHP heredoc
+            // inside the generated echo statement, enabling code injection.
+            if ($ch === '<' && substr($expr, $i, 3) === '<<<') {
+                throw new ClarityException('Heredoc/nowdoc syntax (<<<) is not allowed in Clarity expressions.');
+            }
+
+            // Disallow bare PHP dollar-sign: $var or $$var inside an expression
+            // would compile to direct PHP variable access, bypassing the sandbox.
+            // All variables must be accessed via the dot-chain syntax (foo.bar).
+            if ($ch === '$') {
+                throw new ClarityException("Direct PHP variable access ('\$') is not allowed in Clarity expressions; use dot-notation instead.");
+            }
+
+            // Identifier / var-chain detection
+            if (\ctype_alpha($ch) || $ch === '_') {
+                $start = $i;
+
+                // --- Performance: try the cache with just the raw identifier first.
+                // For simple single-word names (the dominant case) this avoids calling
+                // parseVarChainAt() at all.  We peek ahead to find the identifier end,
+                // check the cache, and only fall through to full parsing on a miss or
+                // when the identifier is followed by '.' or '['.
+                $idEnd = $i + 1;
+                while ($idEnd < $len && (\ctype_alnum($expr[$idEnd]) || $expr[$idEnd] === '_')) {
+                    $idEnd++;
+                }
+                $nextAfterIdent = $expr[$idEnd] ?? '';
+                if ($nextAfterIdent !== '.' && $nextAfterIdent !== '[') {
+                    // Plain identifier — may be a keyword or a cacheable single-segment chain
+                    $token = \substr($expr, $start, $idEnd - $start);
+                    $i = $idEnd;
+
+                    $prevChar = ($start - 1 >= 0) ? $expr[$start - 1] : null;
+                    $nextChar = $nextAfterIdent !== '' ? $nextAfterIdent : null;
+                    $prevIsId = $prevChar !== null && (\ctype_alnum($prevChar) || $prevChar === '_');
+                    $nextIsId = $nextChar !== null && (\ctype_alnum($nextChar) || $nextChar === '_');
+                    $lower = \strtolower($token);
+
+                    if (!$prevIsId && !$nextIsId && isset($keywordMap[$lower])) {
+                        $out .= $keywordMap[$lower];
+                        continue;
+                    }
+
+                    // Guard against function-call syntax
+                    $j = $i;
+                    while ($j < $len && \ctype_space($expr[$j])) {
+                        $j++;
+                    }
+                    if ($j < $len && $expr[$j] === '(') {
+                        $context = \substr($expr, \max(0, $start - 10), \min(60, $len - $start + 10));
+                        throw new ClarityException("Function calls are not allowed in expressions: '{$token}(...)' in context '{$context}'");
+                    }
+
+                    if (isset($this->varChainCache[$token])) {
+                        $out .= $this->varChainCache[$token];
+                    } else {
+                        $parsed = $this->parseVarChainAt($expr, $start);
+                        $php = $parsed !== null
+                            ? $this->varChainToPhpWithSegments($token, $parsed['segments'])
+                            : $token;
+                        $out .= $php;
+                    }
+                    continue;
+                }
+
+                // Identifier followed by '.' or '[' — full chain parsing required
+                $parsed = $this->parseVarChainAt($expr, $start);
+                if ($parsed === null) {
+                    $out .= $ch;
+                    $i++;
+                    continue;
+                }
+
+                $i = $parsed['end'];
+                $segments = $parsed['segments'];
+                $token = \substr($expr, $start, $i - $start);
+
+                // For dot/bracket chains a keyword match is impossible, so skip that
+                // check and go straight to function-call guard + var-chain conversion.
+                $j = $i;
+                while ($j < $len && \ctype_space($expr[$j])) {
+                    $j++;
+                }
+                if ($j < $len && $expr[$j] === '(') {
+                    $context = \substr($expr, \max(0, $start - 10), \min(60, $len - $start + 10));
+                    throw new ClarityException("Function calls are not allowed in expressions: '{$token}(...)' in context '{$context}'");
+                }
+                $out .= $this->varChainToPhpWithSegments($token, $segments);
+                continue;
+            }
+
+            // default: copy
+            $out .= $ch;
+            $i++;
+        }
+
+        return $out;
+    }
+
+
+    private array $varChainCache = [];
+    private const IDENT_RE = '/^[A-Za-z_][A-Za-z0-9_]*$/';
+    private const CHAIN_RE = '/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/';
+
+    /**
+     * Parse a var-chain from $subject starting at $start.
+     *
+     * Returns null if no valid identifier starts at $start.
+     *
+     * @return array{end:int, segments:array<int,array{type:string,value:string}>}|null
+     */
+    private function parseVarChainAt(string $subject, int $start): ?array
+    {
+        $len = \strlen($subject);
+        if ($start >= $len) {
+            return null;
+        }
+
+        $first = $subject[$start];
+        if (!(\ctype_alpha($first) || $first === '_')) {
+            return null;
+        }
+
+        $i = $start + 1;
+        while ($i < $len && (\ctype_alnum($subject[$i]) || $subject[$i] === '_')) {
+            $i++;
+        }
+
+        $segments = [
+            ['type' => 'key', 'value' => \substr($subject, $start, $i - $start)]
+        ];
+
+        while ($i < $len) {
+            $ch = $subject[$i];
+
+            if ($ch === '.') {
+                $dotPos = $i;
+                $i++;
+                if ($i < $len && (\ctype_alpha($subject[$i]) || $subject[$i] === '_')) {
+                    $idStart = $i;
+                    $i++;
+                    while ($i < $len && (\ctype_alnum($subject[$i]) || $subject[$i] === '_')) {
+                        $i++;
+                    }
+                    $segments[] = ['type' => 'key', 'value' => \substr($subject, $idStart, $i - $idStart)];
+                    continue;
+                }
+
+                // Not a valid dot-access continuation; keep '.' outside token.
+                $i = $dotPos;
+                break;
+            }
+
+            if ($ch === '[') {
+                $i++; // skip '['
+                $innerStart = $i;
+                $depth = 1;
+
+                while ($i < $len) {
+                    $cc = $subject[$i];
+
+                    if (($cc === "'" || $cc === '"')) {
+                        $quote = $cc;
+                        $i++;
+                        while ($i < $len) {
+                            if ($subject[$i] === '\\' && ($i + 1) < $len) {
+                                $i += 2;
+                                continue;
+                            }
+                            if ($subject[$i] === $quote) {
+                                $i++;
+                                break;
+                            }
+                            $i++;
+                        }
+                        continue;
+                    }
+
+                    if ($cc === '[') {
+                        $depth++;
+                        $i++;
+                        continue;
+                    }
+
+                    if ($cc === ']') {
+                        $depth--;
+                        if ($depth === 0) {
+                            $inner = \substr($subject, $innerStart, $i - $innerStart);
+                            $segments[] = ['type' => 'index', 'value' => $inner];
+                            $i++; // consume closing ']'
+                            break;
+                        }
+                        $i++;
+                        continue;
+                    }
+
+                    $i++;
+                }
+
+                if ($depth > 0) {
+                    // Unterminated index expression: consume to end as one index segment.
+                    $segments[] = ['type' => 'index', 'value' => substr($subject, $innerStart)];
+                    $i = $len;
+                }
+
+                continue;
+            }
+
+            break;
+        }
+
+        return ['end' => $i, 'segments' => $segments];
+    }
+
+    /**
+     * Convert parsed var-chain segments to PHP.
+     *
+     * @param array<int,array{type:string,value:string}> $segments
+     */
+    private function buildVarChainPhp(array $segments): string
+    {
+        if (empty($segments)) {
+            return '';
+        }
+
+        $first = $segments[0]['value'];
+        if (!\preg_match(self::IDENT_RE, $first)) {
+            throw new ClarityException("Invalid identifier in var chain: {$first}");
+        }
+
+        $php = '$vars[\'' . $first . '\']';
+        $n = \count($segments);
+
+        for ($k = 1; $k < $n; $k++) {
+            $seg = $segments[$k];
+            $value = $seg['value'];
+
+            if ($seg['type'] === 'key') {
+                if (!\preg_match(self::IDENT_RE, $value)) {
+                    throw new ClarityException("Invalid identifier in var chain: {$value}");
+                }
+                $php .= '[\'' . $value . '\']';
+                continue;
+            }
+
+            // index segment
+            $inner = $value;
+            if ($inner !== '' && \ctype_digit($inner)) {
+                $php .= '[' . $inner . ']';
+                continue;
+            }
+
+            if ($inner !== '' && \preg_match(self::CHAIN_RE, $inner)) {
+                $php .= '[' . $this->varChainToPhp($inner) . ']';
+                continue;
+            }
+
+            $php .= '[' . $this->convertVarsAndOps($inner) . ']';
+        }
+
+        return $php;
+    }
+
+    /**
+     * Convert a parsed var-chain and memoize by raw chain string.
+     *
+     * @param array<int,array{type:string,value:string}> $segments
+     */
+    private function varChainToPhpWithSegments(string $chain, array $segments): string
+    {
+        if (isset($this->varChainCache[$chain])) {
+            return $this->varChainCache[$chain];
+        }
+
+        $php = $this->buildVarChainPhp($segments);
+        $this->varChainCache[$chain] = $php;
+        return $php;
+    }
+
+    /**
+     * Convert a Clarity var-chain string to a PHP $vars[...] expression.
+     *
+     * Supports:
+     *   foo           → $vars['foo']
+     *   foo.bar       → $vars['foo']['bar']
+     *   items[0]      → $vars['items'][0]
+     *   items[index]  → $vars['items'][$vars['index']]
+     *   a.b[c.d].e    → $vars['a']['b'][$vars['c']['d']]['e']
+     */
+    public function varChainToPhp(string $chain): string
+    {
+        if ($chain === '') {
+            return '';
+        }
+
+        // Memoization
+        if (isset($this->varChainCache[$chain])) {
+            return $this->varChainCache[$chain];
+        }
+
+        $parsed = $this->parseVarChainAt($chain, 0);
+        if ($parsed === null) {
+            return $chain;
+        }
+
+        // Keep legacy behavior for malformed tails by returning original chain
+        // when parsing does not consume the full input.
+        if ($parsed['end'] !== \strlen($chain)) {
+            return $chain;
+        }
+
+        return $this->varChainToPhpWithSegments($chain, $parsed['segments']);
+    }
+
+    private const RE_FILTER = '/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\(\s*(.*)\s*\))?\s*$/s';
+
+    /**
+     * Build a PHP filter call:  $__f['name']($value, arg1, arg2)
+     *
+     * @param string $filterSegment Clarity filter segment e.g. 'number(2)' or 'upper'
+     * @param string $phpValue      Already-converted PHP expression for the input value.
+     * @return string PHP call expression.
+     */
+    public function buildFilterCall(string $filterSegment, string $phpValue): string
+    {
+        if (\preg_match(self::RE_FILTER, $filterSegment, $m)) {
+            $name = $m[1];
+            $args = $m[2] ?? '';
+        } else {
+            throw new ClarityException("Invalid filter segment: '{$filterSegment}'");
+        }
+
+        $safeName = "'" . \addslashes($name) . "'";
+        $call = "\$__f[{$safeName}]({$phpValue}";
+
+        if ($args !== '') {
+            // Process each argument as a Clarity expression (no auto-escape)
+            $argList = $this->splitRespectingStrings($args, ',');
+            foreach ($argList as $arg) {
+                $arg = trim($arg);
+                $call .= ', ' . $this->convertVarsAndOps($arg);
+            }
+        }
+
+        $call .= ')';
+        return $call;
+    }
+
+    private const RE_FILTER_NAME = '/^([a-zA-Z_][a-zA-Z0-9_]*)/';
+
+    /**
+     * Extract just the filter name from a filter segment string (e.g. 'number(2)' → 'number').
+     */
+    public function filterName(string $filterSegment): string
+    {
+        if (preg_match(self::RE_FILTER_NAME, trim($filterSegment), $m)) {
+            return $m[1];
+        }
+        return '';
+    }
+}

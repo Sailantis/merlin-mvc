@@ -2,9 +2,16 @@
 
 **Full name:** [Merlin\Mvc\ViewEngine](../../src/Mvc/ViewEngine.php)
 
+Abstract base for all view engine implementations.
+
+Holds shared configuration state (path, layout, extension, namespaces,
+global variables, render depth) and the path-resolution logic.
+Concrete engines (NativeEngine, ClarityEngine, …) extend this class and
+implement the three abstract rendering methods.
+
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Mvc/ViewEngine.php#L18)
+### __construct() · [source](../../src/Mvc/ViewEngine.php#L26)
 
 `public function __construct(array $vars = []): mixed`
 
@@ -23,7 +30,7 @@ Create a new ViewEngine instance.
 
 ---
 
-### setExtension() · [source](../../src/Mvc/ViewEngine.php#L29)
+### setExtension() · [source](../../src/Mvc/ViewEngine.php#L37)
 
 `public function setExtension(string $ext): static`
 
@@ -42,7 +49,7 @@ Set the view file extension for this instance.
 
 ---
 
-### getExtension() · [source](../../src/Mvc/ViewEngine.php#L43)
+### getExtension() · [source](../../src/Mvc/ViewEngine.php#L51)
 
 `public function getExtension(): string`
 
@@ -56,7 +63,7 @@ Get the effective file extension used when resolving templates.
 
 ---
 
-### addNamespace() · [source](../../src/Mvc/ViewEngine.php#L57)
+### addNamespace() · [source](../../src/Mvc/ViewEngine.php#L65)
 
 `public function addNamespace(string $name, string $path): static`
 
@@ -78,7 +85,7 @@ Views can be referenced using the syntax "namespace::view.name".
 
 ---
 
-### getNamespaces() · [source](../../src/Mvc/ViewEngine.php#L68)
+### getNamespaces() · [source](../../src/Mvc/ViewEngine.php#L76)
 
 `public function getNamespaces(): array`
 
@@ -92,9 +99,9 @@ Get the currently registered view namespaces.
 
 ---
 
-### setPath() · [source](../../src/Mvc/ViewEngine.php#L80)
+### setViewPath() · [source](../../src/Mvc/ViewEngine.php#L88)
 
-`public function setPath(string $path): static`
+`public function setViewPath(string $path): static`
 
 Set the base path for resolving relative view names.
 
@@ -111,9 +118,9 @@ Set the base path for resolving relative view names.
 
 ---
 
-### getPath() · [source](../../src/Mvc/ViewEngine.php#L91)
+### getViewPath() · [source](../../src/Mvc/ViewEngine.php#L99)
 
-`public function getPath(): string`
+`public function getViewPath(): string`
 
 Get the currently configured base path for view resolution.
 
@@ -125,7 +132,7 @@ Get the currently configured base path for view resolution.
 
 ---
 
-### setLayout() · [source](../../src/Mvc/ViewEngine.php#L105)
+### setLayout() · [source](../../src/Mvc/ViewEngine.php#L113)
 
 `public function setLayout(string|null $layout): static`
 
@@ -147,7 +154,7 @@ rendered view output.
 
 ---
 
-### getLayout() · [source](../../src/Mvc/ViewEngine.php#L116)
+### getLayout() · [source](../../src/Mvc/ViewEngine.php#L124)
 
 `public function getLayout(): string|null`
 
@@ -161,7 +168,7 @@ Get the currently configured layout view name.
 
 ---
 
-### setVar() · [source](../../src/Mvc/ViewEngine.php#L128)
+### setVar() · [source](../../src/Mvc/ViewEngine.php#L136)
 
 `public function setVar(string $name, mixed $value): static`
 
@@ -181,7 +188,7 @@ Set a single view variable.
 
 ---
 
-### setVars() · [source](../../src/Mvc/ViewEngine.php#L142)
+### setVars() · [source](../../src/Mvc/ViewEngine.php#L150)
 
 `public function setVars(array $vars): static`
 
@@ -202,7 +209,7 @@ Later values override earlier ones for the same keys.
 
 ---
 
-### render() · [source](../../src/Mvc/ViewEngine.php#L155)
+### render() · [source](../../src/Mvc/ViewEngine.php#L163)
 
 `public function render(string $view, array $vars = []): string`
 
@@ -223,14 +230,11 @@ Render a view (and optional layout) and return the result.
 
 ---
 
-### renderPartial() · [source](../../src/Mvc/ViewEngine.php#L177)
+### renderPartial() · [source](../../src/Mvc/ViewEngine.php#L172)
 
 `public function renderPartial(string $view, array $vars = []): string`
 
-Render a partial view template and return the generated output.
-
-This method extracts variables into the local scope of the template
-and captures the output buffer.
+Render a partial view (without applying a layout) and return the output.
 
 **🧭 Parameters**
 
@@ -244,20 +248,16 @@ and captures the output buffer.
 - Type: string
 - Description: Rendered HTML/output.
 
-**⚠️ Throws**
-
-- Exception  If the view file cannot be resolved.
-
 
 ---
 
-### renderLayout() · [source](../../src/Mvc/ViewEngine.php#L205)
+### renderLayout() · [source](../../src/Mvc/ViewEngine.php#L184)
 
 `public function renderLayout(string $layout, string $content, array $vars = []): string`
 
 Render a layout template wrapping provided content.
 
-The layout receives the content in the `content` variable.
+The layout receives the rendered view in the `content` variable.
 
 **🧭 Parameters**
 
@@ -275,7 +275,7 @@ The layout receives the content in the `content` variable.
 
 ---
 
-### getRenderDepth() · [source](../../src/Mvc/ViewEngine.php#L217)
+### getRenderDepth() · [source](../../src/Mvc/ViewEngine.php#L192)
 
 `public function getRenderDepth(): int`
 
@@ -286,6 +286,71 @@ Get current render nesting depth. Useful to detect top-level renders
 
 - Type: int
 - Description: Current render depth (0 = top-level).
+
+
+---
+
+### addFilter() · [source](../../src/Mvc/ViewEngine.php#L263)
+
+`public function addFilter(string $name, callable $fn): static`
+
+Register a custom filter callable.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - | Filter name used in templates (e.g. 'currency'). |
+| `$fn` | callable | - | fn($value, ...$args): mixed |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### setCachePath() · [source](../../src/Mvc/ViewEngine.php#L271)
+
+`public function setCachePath(string $path): static`
+
+Override the cache directory.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$path` | string | - |  |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### getCachePath() · [source](../../src/Mvc/ViewEngine.php#L279)
+
+`public function getCachePath(): string`
+
+Get the currently configured cache directory.
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### flushCache() · [source](../../src/Mvc/ViewEngine.php#L287)
+
+`public function flushCache(): static`
+
+Flush all cached compiled templates.
+
+**➡️ Return value**
+
+- Type: static
 
 
 

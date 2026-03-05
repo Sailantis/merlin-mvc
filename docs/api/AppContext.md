@@ -4,7 +4,7 @@
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/AppContext.php#L14)
+### __construct() · [source](../../src/AppContext.php#L16)
 
 `public function __construct(): mixed`
 
@@ -15,7 +15,7 @@
 
 ---
 
-### instance() · [source](../../src/AppContext.php#L55)
+### instance() · [source](../../src/AppContext.php#L57)
 
 `public static function instance(): static`
 
@@ -28,7 +28,7 @@ Get/create shared singleton instance
 
 ---
 
-### setInstance() · [source](../../src/AppContext.php#L64)
+### setInstance() · [source](../../src/AppContext.php#L66)
 
 `public static function setInstance(Merlin\AppContext $instance): void`
 
@@ -47,7 +47,7 @@ Set shared instance (affects ALL subclasses)
 
 ---
 
-### request() · [source](../../src/AppContext.php#L76)
+### request() · [source](../../src/AppContext.php#L78)
 
 `public function request(): Merlin\Http\Request`
 
@@ -61,21 +61,40 @@ Get the HttpRequest instance. If it doesn't exist, it will be created.
 
 ---
 
-### view() · [source](../../src/AppContext.php#L86)
+### view() · [source](../../src/AppContext.php#L88)
 
 `public function view(): Merlin\Mvc\ViewEngine`
 
-Get the ViewEngine instance. If it doesn't exist, it will be created.
+Get the active view engine instance. Defaults to ClarityEngine.
 
 **➡️ Return value**
 
 - Type: [ViewEngine](Mvc_ViewEngine.md)
-- Description: The ViewEngine instance.
+- Description: The active view engine instance.
 
 
 ---
 
-### cookies() · [source](../../src/AppContext.php#L96)
+### setView() · [source](../../src/AppContext.php#L99)
+
+`public function setView(Merlin\Mvc\ViewEngine $engine): static`
+
+Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$engine` | [ViewEngine](Mvc_ViewEngine.md) | - | The engine to use from this point on. |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### cookies() · [source](../../src/AppContext.php#L110)
 
 `public function cookies(): Merlin\Http\Cookies`
 
@@ -89,7 +108,7 @@ Get the Cookies instance. If it doesn't exist, it will be created.
 
 ---
 
-### dbManager() · [source](../../src/AppContext.php#L107)
+### dbManager() · [source](../../src/AppContext.php#L121)
 
 `public function dbManager(): Merlin\Db\DatabaseManager`
 
@@ -103,7 +122,7 @@ Get the DatabaseManager instance. If it doesn't exist, it will be created.
 
 ---
 
-### router() · [source](../../src/AppContext.php#L117)
+### router() · [source](../../src/AppContext.php#L131)
 
 `public function router(): Merlin\Mvc\Router`
 
@@ -117,7 +136,7 @@ Get the Router instance. If it doesn't exist, it will be created.
 
 ---
 
-### session() · [source](../../src/AppContext.php#L127)
+### session() · [source](../../src/AppContext.php#L141)
 
 `public function session(): Merlin\Http\Session|null`
 
@@ -130,7 +149,7 @@ Get the Session instance.
 
 ---
 
-### setSession() · [source](../../src/AppContext.php#L137)
+### setSession() · [source](../../src/AppContext.php#L151)
 
 `public function setSession(Merlin\Http\Session $session): void`
 
@@ -149,7 +168,7 @@ Set the Session instance.
 
 ---
 
-### route() · [source](../../src/AppContext.php#L145)
+### route() · [source](../../src/AppContext.php#L159)
 
 `public function route(): Merlin\ResolvedRoute|null`
 
@@ -162,7 +181,7 @@ Get the current resolved route information.
 
 ---
 
-### setRoute() · [source](../../src/AppContext.php#L155)
+### setRoute() · [source](../../src/AppContext.php#L169)
 
 `public function setRoute(Merlin\ResolvedRoute $route): void`
 
@@ -181,7 +200,7 @@ Set the current resolved route information.
 
 ---
 
-### set() · [source](../../src/AppContext.php#L168)
+### set() · [source](../../src/AppContext.php#L182)
 
 `public function set(string $id, object $service): void`
 
@@ -201,7 +220,7 @@ Register a service instance in the context.
 
 ---
 
-### has() · [source](../../src/AppContext.php#L179)
+### has() · [source](../../src/AppContext.php#L193)
 
 `public function has(string $id): bool`
 
@@ -221,7 +240,7 @@ Check if a service is registered in the context.
 
 ---
 
-### get() · [source](../../src/AppContext.php#L191)
+### get() · [source](../../src/AppContext.php#L205)
 
 `public function get(string $id): object`
 
@@ -245,7 +264,7 @@ Get a service instance from the context. If the service is not registered but th
 
 ---
 
-### tryGet() · [source](../../src/AppContext.php#L210)
+### tryGet() · [source](../../src/AppContext.php#L224)
 
 `public function tryGet(string $id): object|null`
 
@@ -265,7 +284,7 @@ Try to get a service instance from the context. If the service is not registered
 
 ---
 
-### getOrNull() · [source](../../src/AppContext.php#L229)
+### getOrNull() · [source](../../src/AppContext.php#L243)
 
 `public function getOrNull(string $id): object|null`
 

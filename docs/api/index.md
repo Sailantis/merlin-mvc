@@ -44,6 +44,15 @@
 - [SessionMiddleware](Http_SessionMiddleware.md) `Merlin\Http\SessionMiddleware`
 - [UploadedFile](Http_UploadedFile.md) `Merlin\Http\UploadedFile`
 
+### `Merlin\Mvc\Clarity`
+
+- [Cache](Mvc_Clarity_Cache.md) `Merlin\Mvc\Clarity\Cache`
+- [ClarityException](Mvc_Clarity_ClarityException.md) `Merlin\Mvc\Clarity\ClarityException`
+- [CompiledTemplate](Mvc_Clarity_CompiledTemplate.md) `Merlin\Mvc\Clarity\CompiledTemplate`
+- [Compiler](Mvc_Clarity_Compiler.md) `Merlin\Mvc\Clarity\Compiler`
+- [FilterRegistry](Mvc_Clarity_FilterRegistry.md) `Merlin\Mvc\Clarity\FilterRegistry`
+- [Tokenizer](Mvc_Clarity_Tokenizer.md) `Merlin\Mvc\Clarity\Tokenizer`
+
 ### `Merlin\Mvc`
 
 - [Controller](Mvc_Controller.md) `Merlin\Mvc\Controller`
@@ -54,6 +63,11 @@
 - [ModelMapping](Mvc_ModelMapping.md) `Merlin\Mvc\ModelMapping`
 - [Router](Mvc_Router.md) `Merlin\Mvc\Router`
 - [ViewEngine](Mvc_ViewEngine.md) `Merlin\Mvc\ViewEngine`
+
+### `Merlin\Mvc\Engines`
+
+- [ClarityEngine](Mvc_Engines_ClarityEngine.md) `Merlin\Mvc\Engines\ClarityEngine`
+- [NativeEngine](Mvc_Engines_NativeEngine.md) `Merlin\Mvc\Engines\NativeEngine`
 
 ### `Merlin\Mvc\Exceptions`
 

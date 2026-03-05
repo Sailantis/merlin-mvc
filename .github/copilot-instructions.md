@@ -1,6 +1,6 @@
 # Merlin Framework – Copilot Instructions
 
-Merlin is a lightweight PHP MVC framework (PHP >= 8.0). Use these instructions when generating code or answering questions about this project.
+Merlin is a lightweight PHP MVC framework (PHP >= 8.1). Use these instructions when generating code or answering questions about this project.
 
 ---
 
@@ -58,11 +58,20 @@ Auto-wiring: if `get($id)` receives a class name that is not registered but exis
 
 ### Configuring the View Engine
 
+The default engine is `ClarityEngine` (Clarity DSL, `.clarity.html` files). Use `setView()` to switch to `NativeEngine` (plain PHP) if needed.
+
 ```php
-$ctx->view()->setPath(__DIR__ . '/../views');
-$ctx->view()->setLayout('layouts/main');
-$ctx->view()->setExtension('php');          // default is already 'php'
+$ctx->view()->setViewPath(__DIR__ . '/../views');      // required
+$ctx->view()->setLayout('layouts/main');               // optional default layout
+$ctx->view()->setCachePath('/var/cache/clarity');      // optional, default: sys_temp/clarity
+$ctx->view()->addFilter('upper', fn($v) => strtoupper($v)); // custom filter
 $ctx->view()->addNamespace('admin', __DIR__ . '/../views/admin');
+
+// Switch to plain-PHP templates instead
+use Merlin\Mvc\Engines\NativeEngine;
+$ctx->setView(new NativeEngine());
+$ctx->view()->setViewPath(__DIR__ . '/../views');
+$ctx->view()->setExtension('php');   // default for NativeEngine
 ```
 
 ---
@@ -350,11 +359,18 @@ $router->add('GET', '/items/{id:uuid}', 'ItemController::viewAction');
 
 ## ViewEngine
 
+The default engine is `ClarityEngine`. Templates use the Clarity DSL (`{{ }}`, `{% %}`) and are auto-compiled and cached. See [docs/03b-CLARITY-TEMPLATES.md](../docs/03b-CLARITY-TEMPLATES.md) for the full syntax reference.
+
 ```php
-$view = $ctx->view();
-$view->setPath(__DIR__ . '/../views');  // base directory for views
-$view->setLayout('layouts/main');       // default wrapping layout, or null for none
-$view->setExtension('php');             // default: 'php'
+$view = $ctx->view();  // returns ClarityEngine by default
+$view->setViewPath(__DIR__ . '/../views');  // base directory for views
+$view->setLayout('layouts/main');          // default wrapping layout, or null for none
+// extension default: .clarity.html (ClarityEngine) / .php (NativeEngine)
+
+// Filters (ClarityEngine-specific)
+$view->addFilter('currency', fn($v) => number_format($v, 2) . ' €');
+$view->setCachePath('/var/cache/clarity');
+$view->flushCache();  // invalidate all compiled templates
 
 // Named namespaces
 $view->addNamespace('admin', __DIR__ . '/../views/admin');
@@ -413,8 +429,8 @@ $ctx = AppContext::instance();
 // Register database connection(s)
 $ctx->dbManager()->set('default', new Database('mysql:host=localhost;dbname=myapp', 'user', 'pass'));
 
-// Configure view engine
-$ctx->view()->setPath(__DIR__ . '/../views');
+// Configure view engine (ClarityEngine is the default)
+$ctx->view()->setViewPath(__DIR__ . '/../views');
 
 // Routing
 $router = $ctx->router();
@@ -470,3 +486,4 @@ The files under `docs/api/` are **auto-generated** from source PHPDoc. Do not ed
 - `Model` has **no `toArray()` method** – access properties directly or build an array manually.
 - `Crypt` is a **static-only** class – never instantiate it.
 - All middleware must implement `Merlin\Mvc\MiddlewareInterface`.
+- The default view engine is `ClarityEngine` (Clarity DSL, `.clarity.html` templates). Use `$ctx->setView(new NativeEngine())` to switch to plain-PHP templates. Template syntax reference: `docs/03b-CLARITY-TEMPLATES.md`.

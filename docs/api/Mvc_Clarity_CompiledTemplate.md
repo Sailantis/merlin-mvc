@@ -1,0 +1,37 @@
+# 🧩 Class: CompiledTemplate
+
+**Full name:** [Merlin\Mvc\Clarity\CompiledTemplate](../../src/Mvc/Clarity/CompiledTemplate.php)
+
+Value object produced by the Clarity Compiler for a single template file.
+
+## 🔐 Public Properties
+
+- `public` string `$className` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
+- `public` string `$code` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
+- `public` array `$sourceMap` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
+- `public` array `$dependencies` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
+
+## 🚀 Public methods
+
+### __construct() · [source](../../src/Mvc/Clarity/CompiledTemplate.php#L22)
+
+`public function __construct(string $className, string $code, array $sourceMap, array $dependencies): mixed`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$className` | string | - | Generated class name (e.g. __Clarity_f1f1fde8ef8cc7825f199f1b7bf3ad0e). |
+| `$code` | string | - | Full PHP source of the compiled file. |
+| `$sourceMap` | array | - | [phpLine => templateLine] mapping. |
+| `$dependencies` | array | - | [absolutePath => mtime] for cache invalidation. |
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+
+---
+
+[Back to the Index ⤴](index.md)

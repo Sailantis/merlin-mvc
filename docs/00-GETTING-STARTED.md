@@ -4,7 +4,7 @@
 
 ## Requirements
 
-- PHP >= 8.0
+- PHP >= 8.1
 - Composer
 - `ext-pdo`
 - `ext-mbstring`
@@ -53,7 +53,7 @@ $ctx = AppContext::instance();
 $ctx->dbManager()->set('default', new Database('mysql:host=localhost;dbname=myapp', 'user', 'pass'));
 
 // Configure view engine
-$ctx->view()->setPath(__DIR__ . '/../views');
+$ctx->view()->setViewPath(__DIR__ . '/../views');
 $ctx->view()->setLayout('layouts/main');   // default wrapping layout for all views
 
 // Set up routing

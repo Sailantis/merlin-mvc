@@ -3,7 +3,7 @@
   "description": "A lightweight, fast PHP framework for building modern MVC web applications and CLI tools. Merlin combines the best ideas from frameworks like Phalcon, CodeIgniter, and Laravel into a minimal yet powerful toolkit.",
   "type": "library",
   "require": {
-    "php": ">=8.0",
+    "php": ">=8.1",
     "ext-mbstring": "*",
     "ext-pdo": "*"
   },

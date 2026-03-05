@@ -1,11 +1,19 @@
 <?php
 namespace Merlin\Mvc;
 
-class ViewEngine
+/**
+ * Abstract base for all view engine implementations.
+ *
+ * Holds shared configuration state (path, layout, extension, namespaces,
+ * global variables, render depth) and the path-resolution logic.
+ * Concrete engines (NativeEngine, ClarityEngine, …) extend this class and
+ * implement the three abstract rendering methods.
+ */
+abstract class ViewEngine
 {
-    protected string $extension = '.php';
+    protected string $extension; // set by concrete engines
     protected array $namespaces = [];
-    protected string $path = __DIR__ . '/../../../../../views';
+    protected string $viewPath = __DIR__ . '/../../../../../views';
     protected int $renderDepth = 0;
     protected ?string $layout = null;
     protected array $vars = [];
@@ -77,9 +85,9 @@ class ViewEngine
      * @param string $path Base directory for views.
      * @return $this
      */
-    public function setPath(string $path): static
+    public function setViewPath(string $path): static
     {
-        $this->path = rtrim($path, '/');
+        $this->viewPath = rtrim($path, '/');
         return $this;
     }
 
@@ -88,9 +96,9 @@ class ViewEngine
      *
      * @return string Base directory for views.
      */
-    public function getPath(): string
+    public function getViewPath(): string
     {
-        return $this->path;
+        return $this->viewPath;
     }
 
     /**
@@ -152,61 +160,28 @@ class ViewEngine
      * @param array $vars Additional variables for this render call.
      * @return string Rendered content.
      */
-    public function render(string $view, array $vars = []): string
-    {
-        $content = $this->renderPartial($view, $vars);
-
-        if ($this->layout !== null && $this->renderDepth === 0) {
-            $content = $this->renderLayout($this->layout, $content);
-        }
-
-        return $content;
-    }
+    abstract public function render(string $view, array $vars = []): string;
 
     /**
-     * Render a partial view template and return the generated output.
-     *
-     * This method extracts variables into the local scope of the template
-     * and captures the output buffer.
+     * Render a partial view (without applying a layout) and return the output.
      *
      * @param string $view View name to resolve and render.
      * @param array $vars Variables for this render call.
      * @return string Rendered HTML/output.
-     * @throws Exception If the view file cannot be resolved.
      */
-    public function renderPartial(string $view, array $vars = []): string
-    {
-        $file = $this->resolveView($view);
-        if (!is_file($file)) {
-            throw new \RuntimeException("View not found: $file");
-        }
-
-        $this->renderDepth++;
-        extract(array_merge($this->vars, $vars), EXTR_SKIP);
-
-        ob_start();
-        include $file;
-        $output = ob_get_clean();
-
-        $this->renderDepth--;
-        return $output;
-    }
+    abstract public function renderPartial(string $view, array $vars = []): string;
 
     /**
      * Render a layout template wrapping provided content.
      *
-     * The layout receives the content in the `content` variable.
+     * The layout receives the rendered view in the `content` variable.
      *
      * @param string $layout Layout view name.
      * @param string $content Previously rendered content.
      * @param array $vars Additional variables to pass to the layout.
      * @return string Rendered layout output.
      */
-    public function renderLayout(string $layout, string $content, array $vars = []): string
-    {
-        $vars['content'] = $content;
-        return $this->renderPartial($layout, $vars);
-    }
+    abstract public function renderLayout(string $layout, string $content, array $vars = []): string;
 
     /**
      * Get current render nesting depth. Useful to detect top-level renders
@@ -246,6 +221,8 @@ class ViewEngine
 
         $len = \strlen($view);
 
+        $addExtension = !\str_ends_with($view, $this->extension);
+
         if ($view[0] === '/') {
             // absolute unix path
             $path = $view;
@@ -260,18 +237,56 @@ class ViewEngine
 
         } elseif ($view[0] === '.') {
             // treat as literal relative path: ./partials/header or ../shared/footer
-            $path = $this->path . '/' . $view;
+            $path = $this->viewPath . '/' . $view;
 
         } else {
             // relative view name, resolve to path using dot-notation
             $relative = \str_replace('.', '/', $view);
-            $path = $this->path . '/' . $relative;
+            $path = $this->viewPath . '/' . $relative;
         }
 
-        if (!\str_ends_with($path, $this->extension)) {
+        if ($addExtension) {
             $path .= $this->extension;
         }
         return $path;
+    }
+
+    // -- Clarity-specific helper methods for IDE completion --
+
+    /**
+     * Register a custom filter callable.
+     *
+     * @param string   $name Filter name used in templates (e.g. 'currency').
+     * @param callable $fn   fn($value, ...$args): mixed
+     * @return static
+     */
+    public function addFilter(string $name, callable $fn): static
+    {
+        throw new \LogicException("Filters are not supported by this ViewEngine.");
+    }
+
+    /**
+     * Override the cache directory.
+     */
+    public function setCachePath(string $path): static
+    {
+        throw new \LogicException("Caching is not supported by this ViewEngine.");
+    }
+
+    /**
+     * Get the currently configured cache directory.
+     */
+    public function getCachePath(): string
+    {
+        throw new \LogicException("Caching is not supported by this ViewEngine.");
+    }
+
+    /**
+     * Flush all cached compiled templates.
+     */
+    public function flushCache(): static
+    {
+        throw new \LogicException("Caching is not supported by this ViewEngine.");
     }
 
 }

@@ -8,7 +8,7 @@ A lightweight, fast PHP framework for building modern MVC web applications and C
 
 **Lightweight & Fast** - Minimal dependencies and overhead. No bloat, just what you need.
 
-**Modern PHP** - Built for PHP 8.0+, embracing type hints, named arguments, and modern patterns.
+**Modern PHP** - Built for PHP 8.1+, embracing type hints, named arguments, and modern patterns.
 
 **Unified Query Builder** - One consistent, fluent API for all database operations, whether you're using models or raw queries.
 
@@ -25,7 +25,7 @@ A lightweight, fast PHP framework for building modern MVC web applications and C
 - **Router** - Fast pattern matching with named routes, parameter validation, and middleware support
 - **Controllers** - Clean action-based controllers with dependency injection
 - **Dispatcher** - Flexible request dispatching with middleware pipeline
-- **ViewEngine** - Fast PHP-based templating with layout support
+- **ViewEngine** - Clarity template engine with auto-escaping, template inheritance, and a filter pipeline (native PHP templates also supported)
 
 ### Database & ORM
 
@@ -65,7 +65,7 @@ A lightweight, fast PHP framework for building modern MVC web applications and C
 
 ## Requirements
 
-- PHP >= 8.0
+- PHP >= 8.1
 - PDO extension (`ext-pdo`)
 - Multibyte String extension (`ext-mbstring`)
 - Optional: Sodium or OpenSSL extension for advanced encryption features
@@ -460,6 +460,7 @@ Comprehensive guides and references:
 - **[Architecture](docs/01-ARCHITECTURE.md)** - Understand core components and design principles
 - **[MVC Routing](docs/02-MVC-ROUTING.md)** - Define routes, patterns, and middleware
 - **[Controllers & Views](docs/03-CONTROLLERS-VIEWS.md)** - Build controllers and render views
+- **[Clarity Templates](docs/03b-CLARITY-TEMPLATES.md)** - Sandboxed template engine with auto-escaping and inheritance
 - **[Models & ORM](docs/04-MODELS-ORM.md)** - Work with Active Record models
 - **[Database Queries](docs/05-DATABASE-QUERIES.md)** - Master the query builder
 - **[HTTP Request](docs/06-HTTP-REQUEST.md)** - Handle requests, uploads, and headers
@@ -488,7 +489,7 @@ $ctx->dbManager()->set('default',
 );
 
 // Configure services
-$ctx->view()->setPath(__DIR__ . '/views');
+$ctx->view()->setViewPath(__DIR__ . '/views');   // ClarityEngine is the default
 
 // Access services anywhere
 $ctx = AppContext::instance();

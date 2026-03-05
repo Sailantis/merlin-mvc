@@ -296,7 +296,7 @@ All three places (`$middleware`, `$actionMiddleware`, group arrays) accept the s
 
 ## ViewEngine Basics
 
-The `ViewEngine` provides PHP-based templating with layout support. Views are ordinary PHP files — you have access to any variables you pass in.
+The `ViewEngine` API is shared by all engines. The default engine is `ClarityEngine`, which compiles `.clarity.html` templates with auto-escaping, template inheritance, and a filter pipeline. See [Clarity Templates](03b-CLARITY-TEMPLATES.md) for the full syntax reference.
 
 Configure the view service in your bootstrap:
 
@@ -304,8 +304,7 @@ Configure the view service in your bootstrap:
 use Merlin\AppContext;
 
 $view = AppContext::instance()->view();
-$view->setPath(__DIR__ . '/../views');
-$view->setExtension('php');       // default, can be omitted
+$view->setViewPath(__DIR__ . '/../views');
 $view->setLayout('layouts/main'); // wraps every render() call
 ```
 
@@ -422,6 +421,7 @@ See [Validation](07-VALIDATION.md) for the complete rule reference.
 
 ## Related
 
+- [Clarity Engine](03b-CLARITY-TEMPLATES.md)
 - [MVC Routing](02-MVC-ROUTING.md)
 - [HTTP Request](06-HTTP-REQUEST.md)
 - [API Reference](api/index.md)
