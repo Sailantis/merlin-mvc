@@ -359,7 +359,7 @@ $router->add('GET', '/items/{id:uuid}', 'ItemController::viewAction');
 
 ## ViewEngine
 
-The default engine is `ClarityEngine`. Templates use the Clarity DSL (`{{ }}`, `{% %}`) and are auto-compiled and cached. See [docs/03b-CLARITY-TEMPLATES.md](../docs/03b-CLARITY-TEMPLATES.md) for the full syntax reference.
+The default engine is `ClarityEngine`. Templates use the Clarity DSL (`{{ }}`, `{% %}`) and are auto-compiled and cached. See [docs/03b-CLARITY-ENGINE.md](../docs/03b-CLARITY-ENGINE.md) for the full syntax reference.
 
 ```php
 $view = $ctx->view();  // returns ClarityEngine by default
@@ -486,4 +486,4 @@ The files under `docs/api/` are **auto-generated** from source PHPDoc. Do not ed
 - `Model` has **no `toArray()` method** – access properties directly or build an array manually.
 - `Crypt` is a **static-only** class – never instantiate it.
 - All middleware must implement `Merlin\Mvc\MiddlewareInterface`.
-- The default view engine is `ClarityEngine` (Clarity DSL, `.clarity.html` templates). Use `$ctx->setView(new NativeEngine())` to switch to plain-PHP templates. Template syntax reference: `docs/03b-CLARITY-TEMPLATES.md`.
+- The default view engine is `ClarityEngine` (Clarity DSL, `.clarity.html` templates). Use `$ctx->setView(new NativeEngine())` to switch to plain-PHP templates. Template syntax reference: `docs/03b-CLARITY-ENGINE.md`.

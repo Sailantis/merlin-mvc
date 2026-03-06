@@ -55,7 +55,7 @@ class Tokenizer
     public function tokenize(string $source): array
     {
         $segments = [];
-        $pattern = '/\{\{.*?\}\}|\{%.*?%\}/s';
+        $pattern = '/\{\{.*?\}\}++|\{%.*?%\}++|\{#.*?#\}++/s';
         if (!\preg_match_all($pattern, $source, $matches, PREG_OFFSET_CAPTURE)) {
             return [
                 [
@@ -83,7 +83,18 @@ class Tokenizer
 
             $len = \strlen($match);
             $inner = \trim(\substr($match, 2, $len - 4));
-            $type = $match[1] === '%' ? self::BLOCK_TAG : self::OUTPUT_TAG;
+            switch ($match[1]) {
+                case '#':
+                    continue 2; // comment tag: skip
+                case '%':
+                    $type = self::BLOCK_TAG;
+                    break;
+                case '{':
+                    $type = self::OUTPUT_TAG;
+                    break;
+                default:
+                    throw new ClarityException("Unexpected tag type in match: {$match[0]}");
+            }
             $segments[] = [
                 self::KEY_TYPE => $type,
                 self::KEY_CONTENT => $inner,
@@ -209,7 +220,12 @@ class Tokenizer
 
     /**
      * Split $subject on $delimiter while respecting single- and double-quoted
-     * string literals (i.e. do not split on delimiters inside quotes).
+     * string literals and balanced parentheses / square brackets (i.e. do not
+     * split on delimiters that are inside quotes or inside brackets).
+     *
+     * This ensures that lambdas with inner pipelines work correctly, for example:
+     *   items |> map(item => item |> upper) |> join(",")
+     * The |> inside map(...) is at depth > 0 and is not treated as a split point.
      *
      * @return string[]
      */
@@ -222,6 +238,7 @@ class Tokenizer
         $i = 0;
         $inSingle = false;
         $inDouble = false;
+        $depth = 0; // parenthesis / square-bracket nesting depth
 
         while ($i < $len) {
             $ch = $subject[$i];
@@ -240,7 +257,17 @@ class Tokenizer
                 $inDouble = !$inDouble;
                 $current .= $ch;
                 $i++;
-            } elseif (!$inSingle && !$inDouble && \substr($subject, $i, $dlen) === $delimiter) {
+            } elseif (!$inSingle && !$inDouble && ($ch === '(' || $ch === '[')) {
+                $depth++;
+                $current .= $ch;
+                $i++;
+            } elseif (!$inSingle && !$inDouble && ($ch === ')' || $ch === ']')) {
+                if ($depth > 0) {
+                    $depth--;
+                }
+                $current .= $ch;
+                $i++;
+            } elseif (!$inSingle && !$inDouble && $depth === 0 && \substr($subject, $i, $dlen) === $delimiter) {
                 $parts[] = $current;
                 $current = '';
                 $i += $dlen;
@@ -638,7 +665,103 @@ class Tokenizer
     private const RE_FILTER = '/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:\(\s*(.*)\s*\))?\s*$/s';
 
     /**
+     * Filters whose first argument must be a lambda expression or a filter
+     * reference (quoted string). Plain variable references are rejected to
+     * prevent callable injection from template variables.
+     */
+    private const CALLABLE_ARG_FILTERS = ['map' => true, 'filter' => true, 'reduce' => true];
+
+    private ?FilterRegistry $filterRegistry = null;
+
+    public function setFilterRegistry(FilterRegistry $registry): void
+    {
+        $this->filterRegistry = $registry;
+    }
+
+    /**
+     * If $arg is a named argument of the form  identifier=expression  (where
+     * = is not part of ==, !=, <=, >=), return ['name'=>…, 'expr'=>…].
+     * Returns null for ordinary positional arguments.
+     */
+    private function parseNamedArg(string $arg): ?array
+    {
+        // identifier followed by = that is not == ; also must not be !=, <=, >=
+        if (\preg_match('/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=(?![=])(.+)$/s', $arg, $m)) {
+            return ['name' => $m[1], 'expr' => \trim($m[2])];
+        }
+        return null;
+    }
+
+    /**
+     * Return parameter metadata for a filter callable, skipping the first
+     * parameter ($value).  Each element:
+     *   ['name' => string, 'optional' => bool, 'defaultCode' => string|null]
+     * Returns null when reflection is impossible (e.g. built-in functions).
+     *
+     * @return list<array{name:string,optional:bool,defaultCode:string|null}>|null
+     */
+    private function getFilterParamInfos(string $filterName): ?array
+    {
+        if ($this->filterRegistry === null) {
+            return null;
+        }
+        $filters = $this->filterRegistry->all();
+        if (!isset($filters[$filterName])) {
+            return null;
+        }
+        $callable = $filters[$filterName];
+        try {
+            $rf = match (true) {
+                $callable instanceof \Closure
+                => new \ReflectionFunction($callable),
+                \is_array($callable)
+                => new \ReflectionMethod($callable[0], $callable[1]),
+                \is_string($callable) && \str_contains($callable, '::')
+                => new \ReflectionMethod(...\explode('::', $callable, 2)),
+                \is_string($callable) && \function_exists($callable)
+                => new \ReflectionFunction($callable),
+                \is_object($callable)
+                => new \ReflectionMethod($callable, '__invoke'),
+                default => null,
+            };
+        } catch (\ReflectionException) {
+            return null;
+        }
+        if ($rf === null) {
+            return null;
+        }
+        $params = $rf->getParameters();
+        \array_shift($params); // skip leading $value parameter
+        $infos = [];
+        foreach ($params as $p) {
+            $defaultCode = null;
+            if ($p->isOptional()) {
+                try {
+                    $defaultCode = \var_export($p->getDefaultValue(), true);
+                } catch (\ReflectionException) {
+                    // Cannot extract default (internal function, etc.) — leave null
+                }
+            }
+            $infos[] = [
+                'name' => $p->getName(),
+                'optional' => $p->isOptional(),
+                'defaultCode' => $defaultCode,
+            ];
+        }
+        return $infos;
+    }
+
+    /**
      * Build a PHP filter call:  $__f['name']($value, arg1, arg2)
+     *
+     * For map / filter / reduce the first argument must be either:
+     *   - a lambda expression:  param => expression
+     *   - a filter reference:   'filterName' or "filterName"
+     * Bare variable names are rejected at compile time.
+     *
+     * Named arguments (identifier=expression) are resolved to positional via
+     * reflection at compile time, so the emitted PHP retains zero-overhead
+     * positional calls.
      *
      * @param string $filterSegment Clarity filter segment e.g. 'number(2)' or 'upper'
      * @param string $phpValue      Already-converted PHP expression for the input value.
@@ -662,16 +785,244 @@ class Tokenizer
         $call = "\$__f[{$safeName}]({$phpValue}";
 
         if ($args !== '') {
-            // Process each argument as a Clarity expression (no auto-escape)
             $argList = $this->splitRespectingStrings($args, ',');
-            foreach ($argList as $arg) {
-                $arg = trim($arg);
-                $call .= ', ' . $this->convertVarsAndOps($arg);
+            $isCallableFilter = isset(self::CALLABLE_ARG_FILTERS[$name]);
+
+            // Detect whether any named arguments are present.
+            // Named args are not supported for callable-arg filters (map/filter/reduce)
+            // because their first arg uses a special lambda/filter-reference syntax.
+            $hasNamedArgs = false;
+            if (!$isCallableFilter) {
+                foreach ($argList as $arg) {
+                    if ($this->parseNamedArg(\trim($arg)) !== null) {
+                        $hasNamedArgs = true;
+                        break;
+                    }
+                }
+            }
+
+            if ($hasNamedArgs) {
+                // Validate: positional args may not follow named args
+                $seenNamed = false;
+                foreach ($argList as $arg) {
+                    $isNamed = $this->parseNamedArg(\trim($arg)) !== null;
+                    if ($isNamed) {
+                        $seenNamed = true;
+                    } elseif ($seenNamed) {
+                        throw new ClarityException(
+                            "Positional argument after named argument in filter '{$name}'"
+                        );
+                    }
+                }
+
+                // Resolve parameter names via reflection
+                $paramInfos = $this->getFilterParamInfos($name);
+                if ($paramInfos === null) {
+                    throw new ClarityException(
+                        "Cannot use named arguments for filter '{$name}': "
+                        . 'parameter names are not available via reflection'
+                    );
+                }
+
+                // Separate positional and named args into their PHP expressions
+                $positional = [];
+                $named = [];
+                foreach ($argList as $arg) {
+                    $parsed = $this->parseNamedArg(\trim($arg));
+                    if ($parsed === null) {
+                        $positional[] = $this->convertVarsAndOps(\trim($arg));
+                    } else {
+                        $named[$parsed['name']] = $this->convertVarsAndOps($parsed['expr']);
+                    }
+                }
+
+                // Place positional args first, then named args at their reflected positions
+                $result = $positional;
+                foreach ($named as $paramName => $phpExpr) {
+                    $pos = null;
+                    foreach ($paramInfos as $i => $info) {
+                        if ($info['name'] === $paramName) {
+                            $pos = $i;
+                            break;
+                        }
+                    }
+                    if ($pos === null) {
+                        throw new ClarityException(
+                            "Unknown named argument '{$paramName}' for filter '{$name}'"
+                        );
+                    }
+                    if (isset($result[$pos])) {
+                        throw new ClarityException(
+                            "Argument '{$paramName}' is provided more than once for filter '{$name}'"
+                        );
+                    }
+                    $result[$pos] = $phpExpr;
+                }
+
+                // Fill any gaps between filled positions using reflected defaults
+                if (!empty($result)) {
+                    $maxPos = \max(\array_keys($result));
+                    for ($i = 0; $i <= $maxPos; $i++) {
+                        if (!isset($result[$i])) {
+                            if (!isset($paramInfos[$i])) {
+                                throw new ClarityException(
+                                    "Missing argument at position " . ($i + 1) . " for filter '{$name}'"
+                                );
+                            }
+                            if (!$paramInfos[$i]['optional'] || $paramInfos[$i]['defaultCode'] === null) {
+                                throw new ClarityException(
+                                    "Cannot skip required argument '{$paramInfos[$i]['name']}' for filter '{$name}'"
+                                );
+                            }
+                            $result[$i] = $paramInfos[$i]['defaultCode'];
+                        }
+                    }
+                }
+
+                \ksort($result);
+                foreach ($result as $phpArg) {
+                    $call .= ', ' . $phpArg;
+                }
+            } else {
+                // Original behaviour: purely positional arguments
+                $argIndex = 0;
+                foreach ($argList as $arg) {
+                    $arg = \trim($arg);
+                    if ($isCallableFilter && $argIndex === 0) {
+                        $call .= ', ' . $this->compileCallableArg($arg, $name);
+                    } else {
+                        $call .= ', ' . $this->convertVarsAndOps($arg);
+                    }
+                    $argIndex++;
+                }
             }
         }
 
         $call .= ')';
         return $call;
+    }
+
+    /**
+     * Compile the callable argument accepted by map / filter / reduce.
+     *
+     * Accepted forms:
+     *   param => expression            single-parameter lambda
+     *   'filterName' / "filterName"   reference to a registered filter
+     *
+     * Anything else (bare variable names, function calls, …) is rejected.
+     */
+    private function compileCallableArg(string $arg, string $filterName): string
+    {
+        // ── Filter reference: 'name' or "name" ───────────────────────────────
+        $trimmed = \trim($arg);
+        if (\strlen($trimmed) >= 2) {
+            $first = $trimmed[0];
+            $last = $trimmed[-1];
+            if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+                $refName = \substr($trimmed, 1, -1);
+                if (!\preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $refName)) {
+                    throw new ClarityException(
+                        "Filter reference must be a plain identifier, got: '{$refName}'"
+                    );
+                }
+                return "\$__f['" . \addslashes($refName) . "']";
+            }
+        }
+
+        // ── Lambda: param => expression ──────────────────────────────────────
+        $arrowPos = $this->findLambdaArrow($arg);
+        if ($arrowPos !== false) {
+            return $this->compileLambda($arg, $arrowPos, $filterName === 'reduce');
+        }
+
+        throw new ClarityException(
+            "The '{$filterName}' filter requires a lambda (e.g. 'item => item.name') "
+            . "or a filter reference (e.g. '\"upper\"'), got: '{$arg}'"
+        );
+    }
+
+    /**
+     * Find the position of the first '=>' operator that is not inside a quoted
+     * string. Returns false if none is found.
+     */
+    private function findLambdaArrow(string $s): int|false
+    {
+        $len = \strlen($s);
+        $inSingle = false;
+        $inDouble = false;
+
+        for ($i = 0; $i < $len - 1; $i++) {
+            $ch = $s[$i];
+
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $i++;
+                continue;
+            }
+
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+                continue;
+            }
+            if ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+                continue;
+            }
+
+            if (!$inSingle && !$inDouble && $ch === '=' && $s[$i + 1] === '>') {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Compile a Clarity lambda expression to a PHP static closure.
+     *
+     * Syntax: param => body_expression
+     *
+     * - The parameter name becomes a PHP closure parameter ($param).
+     * - For 'reduce', a second implicit parameter named 'value' (the current
+     *   element) is automatically added so you can write:
+     *       carry => carry + value
+     * - The body is compiled as a full Clarity expression (including filter
+     *   pipelines) with the parameter name(s) treated as local variables,
+     *   while all other identifiers are resolved from the captured $vars.
+     * - Both $vars and $__f (the filter registry) are captured by value so
+     *   the closure can access outer template variables and other filters.
+     *
+     * @param string $arg      The full lambda string (e.g. 'item => item.name').
+     * @param int    $arrow    Position of '=>' in $arg.
+     * @param bool   $isReduce When true, add implicit second param 'value'.
+     */
+    private function compileLambda(string $arg, int $arrow, bool $isReduce): string
+    {
+        $param = \trim(\substr($arg, 0, $arrow));
+        $body = \trim(\substr($arg, $arrow + 2));
+
+        if (!\preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $param)) {
+            throw new ClarityException(
+                "Lambda parameter must be a valid identifier, got: '{$param}'"
+            );
+        }
+
+        // Compile the body as a full Clarity expression (handles |> pipelines).
+        // convertVarsAndOps maps all identifiers to $vars['name'], so we fix
+        // up the parameter references afterwards with a targeted substitution.
+        $phpBody = $this->processCondition($body);
+
+        // Replace $vars['param'] → $param  (lambda's own parameter)
+        $phpBody = \str_replace("\$vars['{$param}']", '$' . $param, $phpBody);
+
+        $signature = "mixed \${$param}";
+
+        if ($isReduce) {
+            // Implicit second parameter for reduce: the current element.
+            $phpBody = \str_replace("\$vars['value']", '$value', $phpBody);
+            $signature .= ', mixed $value';
+        }
+
+        return "static function({$signature}) use (\$vars, \$__f): mixed { return {$phpBody}; }";
     }
 
     private const RE_FILTER_NAME = '/^([a-zA-Z_][a-zA-Z0-9_]*)/';

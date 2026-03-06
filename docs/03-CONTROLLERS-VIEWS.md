@@ -296,7 +296,7 @@ All three places (`$middleware`, `$actionMiddleware`, group arrays) accept the s
 
 ## ViewEngine Basics
 
-The `ViewEngine` API is shared by all engines. The default engine is `ClarityEngine`, which compiles `.clarity.html` templates with auto-escaping, template inheritance, and a filter pipeline. See [Clarity Templates](03b-CLARITY-TEMPLATES.md) for the full syntax reference.
+The `ViewEngine` API is shared by all engines. The default engine is `ClarityEngine`, which compiles `.clarity.html` templates with auto-escaping, template inheritance, and a filter pipeline. See [Clarity Engine](03b-CLARITY-ENGINE.md) for the full syntax reference.
 
 Configure the view service in your bootstrap:
 
@@ -421,7 +421,7 @@ See [Validation](07-VALIDATION.md) for the complete rule reference.
 
 ## Related
 
-- [Clarity Engine](03b-CLARITY-TEMPLATES.md)
+- [Clarity Engine](03b-CLARITY-ENGINE.md)
 - [MVC Routing](02-MVC-ROUTING.md)
 - [HTTP Request](06-HTTP-REQUEST.md)
 - [API Reference](api/index.md)

@@ -61,7 +61,7 @@ Each element is:  ['type' => TEXT|OUTPUT|BLOCK, 'content' => string, 'line' => i
 
 ---
 
-### processExpression() · [source](../../src/Mvc/Clarity/Tokenizer.php#L128)
+### processExpression() · [source](../../src/Mvc/Clarity/Tokenizer.php#L139)
 
 `public function processExpression(string $expression, bool $autoEscape = true): string`
 
@@ -85,7 +85,7 @@ expression and each subsequent segment is a filter call.
 
 ---
 
-### processCondition() · [source](../../src/Mvc/Clarity/Tokenizer.php#L161)
+### processCondition() · [source](../../src/Mvc/Clarity/Tokenizer.php#L172)
 
 `public function processCondition(string $expression): string`
 
@@ -106,7 +106,7 @@ structure conditions (if, for, set) where auto-escape is meaningless.
 
 ---
 
-### processLvalue() · [source](../../src/Mvc/Clarity/Tokenizer.php#L180)
+### processLvalue() · [source](../../src/Mvc/Clarity/Tokenizer.php#L191)
 
 `public function processLvalue(string $var): string`
 
@@ -128,7 +128,7 @@ Used for the left-hand side of {% set var = ... %}.
 
 ---
 
-### convertVarsAndOps() · [source](../../src/Mvc/Clarity/Tokenizer.php#L267)
+### convertVarsAndOps() · [source](../../src/Mvc/Clarity/Tokenizer.php#L294)
 
 `public function convertVarsAndOps(string $expr): string`
 
@@ -154,7 +154,7 @@ identifiers/var-chains, operators, punctuation) and process each atom.
 
 ---
 
-### varChainToPhp() · [source](../../src/Mvc/Clarity/Tokenizer.php#L613)
+### varChainToPhp() · [source](../../src/Mvc/Clarity/Tokenizer.php#L640)
 
 `public function varChainToPhp(string $chain): string`
 
@@ -180,11 +180,37 @@ a.b[c.d].e    → $vars['a']['b'][$vars['c']['d']]['e']
 
 ---
 
-### buildFilterCall() · [source](../../src/Mvc/Clarity/Tokenizer.php#L647)
+### setFilterRegistry() · [source](../../src/Mvc/Clarity/Tokenizer.php#L676)
+
+`public function setFilterRegistry(Merlin\Mvc\Clarity\FilterRegistry $registry): void`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$registry` | [FilterRegistry](Mvc_Clarity_FilterRegistry.md) | - |  |
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### buildFilterCall() · [source](../../src/Mvc/Clarity/Tokenizer.php#L770)
 
 `public function buildFilterCall(string $filterSegment, string $phpValue, bool &$isRaw = false): string`
 
 Build a PHP filter call:  $__f['name']($value, arg1, arg2)
+
+For map / filter / reduce the first argument must be either:
+  - a lambda expression:  param => expression
+  - a filter reference:   'filterName' or "filterName"
+Bare variable names are rejected at compile time.
+
+Named arguments (identifier=expression) are resolved to positional via
+reflection at compile time, so the emitted PHP retains zero-overhead
+positional calls.
 
 **🧭 Parameters**
 
@@ -202,7 +228,7 @@ Build a PHP filter call:  $__f['name']($value, arg1, arg2)
 
 ---
 
-### filterName() · [source](../../src/Mvc/Clarity/Tokenizer.php#L682)
+### filterName() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1033)
 
 `public function filterName(string $filterSegment): string`
 

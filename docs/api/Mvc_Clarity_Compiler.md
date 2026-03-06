@@ -41,7 +41,24 @@ and error mapping — no file I/O needed on warm paths (OPcache serves them).
 
 ---
 
-### setBasePath() · [source](../../src/Mvc/Clarity/Compiler.php#L68)
+### setFilterRegistry() · [source](../../src/Mvc/Clarity/Compiler.php#L64)
+
+`public function setFilterRegistry(Merlin\Mvc\Clarity\FilterRegistry $registry): static`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$registry` | [FilterRegistry](Mvc_Clarity_FilterRegistry.md) | - |  |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### setBasePath() · [source](../../src/Mvc/Clarity/Compiler.php#L74)
 
 `public function setBasePath(string $path): static`
 
@@ -58,7 +75,7 @@ and error mapping — no file I/O needed on warm paths (OPcache serves them).
 
 ---
 
-### setExtension() · [source](../../src/Mvc/Clarity/Compiler.php#L74)
+### setExtension() · [source](../../src/Mvc/Clarity/Compiler.php#L80)
 
 `public function setExtension(string $ext): static`
 
@@ -75,7 +92,7 @@ and error mapping — no file I/O needed on warm paths (OPcache serves them).
 
 ---
 
-### setNamespaces() · [source](../../src/Mvc/Clarity/Compiler.php#L80)
+### setNamespaces() · [source](../../src/Mvc/Clarity/Compiler.php#L86)
 
 `public function setNamespaces(array $namespaces): static`
 
@@ -92,7 +109,7 @@ and error mapping — no file I/O needed on warm paths (OPcache serves them).
 
 ---
 
-### compile() · [source](../../src/Mvc/Clarity/Compiler.php#L96)
+### compile() · [source](../../src/Mvc/Clarity/Compiler.php#L102)
 
 `public function compile(string $sourcePath): Merlin\Mvc\Clarity\CompiledTemplate`
 

@@ -285,7 +285,8 @@ class ClarityEngine extends ViewEngine
         $this->compiler
             ->setBasePath($this->viewPath)
             ->setExtension($this->extension)
-            ->setNamespaces($this->namespaces);
+            ->setNamespaces($this->namespaces)
+            ->setFilterRegistry($this->filterRegistry);
     }
 
     /**

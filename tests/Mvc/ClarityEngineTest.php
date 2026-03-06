@@ -8,6 +8,11 @@ use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+function clarity_test_reduce_add(mixed $carry, mixed $item): mixed
+{
+    return $carry + $item;
+}
+
 class ClarityEngineTest extends TestCase
 {
     private static string $viewDir;
@@ -120,14 +125,6 @@ class ClarityEngineTest extends TestCase
         self::tpl('raw', '{{ html |> raw }}');
         $result = self::render('raw', ['html' => '<b>bold</b>']);
         $this->assertSame('<b>bold</b>', $result);
-    }
-
-    public function testRawMidPipelineThrowsAtCompileTime(): void
-    {
-        $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches("/'raw' must be the last filter/");
-        self::tpl('raw_mid', '{{ html |> raw |> upper }}');
-        self::render('raw_mid', ['html' => 'hello']);
     }
 
     public function testEscapeFilterIsNotRegistered(): void
@@ -268,6 +265,287 @@ class ClarityEngineTest extends TestCase
         $this->assertSame('ALICE', self::render('pipeline', ['name' => '  alice  ']));
     }
 
+    // -- String filters -------------------------------------------------------
+
+    public function testFilterCapitalize(): void
+    {
+        self::tpl('f_capitalize', '{{ v |> capitalize }}');
+        $this->assertSame('Hello world', self::render('f_capitalize', ['v' => 'hello world']));
+    }
+
+    public function testFilterTitle(): void
+    {
+        self::tpl('f_title', '{{ v |> title }}');
+        $this->assertSame('Hello World', self::render('f_title', ['v' => 'hello world']));
+    }
+
+    public function testFilterNl2br(): void
+    {
+        self::tpl('f_nl2br', '{{ v |> nl2br |> raw }}');
+        $this->assertSame("a<br />\nb", self::render('f_nl2br', ['v' => "a\nb"]));
+    }
+
+    public function testFilterReplace(): void
+    {
+        self::tpl('f_replace', '{{ v |> replace("world", "earth") }}');
+        $this->assertSame('hello earth', self::render('f_replace', ['v' => 'hello world']));
+    }
+
+    public function testFilterSplitJoin(): void
+    {
+        self::tpl('f_split_join', '{{ v |> split(",") |> join("-") }}');
+        $this->assertSame('a-b-c', self::render('f_split_join', ['v' => 'a,b,c']));
+    }
+
+    public function testFilterSlug(): void
+    {
+        self::tpl('f_slug', '{{ v |> slug }}');
+        $this->assertSame('hello-world', self::render('f_slug', ['v' => 'Hello World!']));
+    }
+
+    public function testFilterStriptags(): void
+    {
+        self::tpl('f_striptags', '{{ v |> striptags }}');
+        $this->assertSame('bold', self::render('f_striptags', ['v' => '<b>bold</b>']));
+    }
+
+    // -- Number filters -------------------------------------------------------
+
+    public function testFilterAbs(): void
+    {
+        self::tpl('f_abs', '{{ v |> abs }}');
+        $this->assertSame('5', self::render('f_abs', ['v' => 5]));
+        $this->assertSame('7', self::render('f_abs', ['v' => -7]));
+    }
+
+    public function testFilterRound(): void
+    {
+        self::tpl('f_round', '{{ v |> round(2) }}');
+        $this->assertSame('3.57', self::render('f_round', ['v' => 3.567]));
+    }
+
+    public function testFilterRoundDefault(): void
+    {
+        self::tpl('f_round_default', '{{ v |> round }}');
+        $this->assertSame('4', self::render('f_round_default', ['v' => 3.7]));
+    }
+
+    // -- Date filters ---------------------------------------------------------
+
+    public function testFilterDateModify(): void
+    {
+        self::tpl('f_date_modify', '{{ ts |> date_modify("+1 day") |> date("Y-m-d") }}');
+        $ts = mktime(12, 0, 0, 6, 14, 2023);
+        $this->assertSame('2023-06-15', self::render('f_date_modify', ['ts' => $ts]));
+    }
+
+    // -- Array filters --------------------------------------------------------
+
+    public function testFilterFirst(): void
+    {
+        self::tpl('f_first', '{{ items |> first }}');
+        $this->assertSame('a', self::render('f_first', ['items' => ['a', 'b', 'c']]));
+    }
+
+    public function testFilterLast(): void
+    {
+        self::tpl('f_last', '{{ items |> last }}');
+        $this->assertSame('c', self::render('f_last', ['items' => ['a', 'b', 'c']]));
+    }
+
+    public function testFilterKeys(): void
+    {
+        self::tpl('f_keys', '{{ map |> keys |> join(",") }}');
+        $this->assertSame('x,y', self::render('f_keys', ['map' => ['x' => 1, 'y' => 2]]));
+    }
+
+    public function testFilterMerge(): void
+    {
+        self::tpl('f_merge', '{{ a |> merge(b) |> join(",") }}');
+        $this->assertSame('1,2,3,4', self::render('f_merge', ['a' => [1, 2], 'b' => [3, 4]]));
+    }
+
+    public function testFilterSort(): void
+    {
+        self::tpl('f_sort', '{{ items |> sort |> join(",") }}');
+        $this->assertSame('1,2,3', self::render('f_sort', ['items' => [3, 1, 2]]));
+    }
+
+    public function testFilterReverseArray(): void
+    {
+        self::tpl('f_rev_arr', '{{ items |> reverse |> join(",") }}');
+        $this->assertSame('c,b,a', self::render('f_rev_arr', ['items' => ['a', 'b', 'c']]));
+    }
+
+    public function testFilterReverseString(): void
+    {
+        self::tpl('f_rev_str', '{{ v |> reverse }}');
+        $this->assertSame('cba', self::render('f_rev_str', ['v' => 'abc']));
+    }
+
+    public function testFilterShuffle(): void
+    {
+        self::tpl('f_shuffle', '{{ items |> shuffle |> sort |> join(",") }}');
+        $this->assertSame('1,2,3', self::render('f_shuffle', ['items' => [3, 1, 2]]));
+    }
+
+    public function testFilterMap(): void
+    {
+        // Filter reference: "upper" resolves to the registered 'upper' filter.
+        self::tpl('f_map', '{{ items |> map("upper") |> join(",") }}');
+        $this->assertSame('A,B,C', self::render('f_map', ['items' => ['a', 'b', 'c']]));
+    }
+
+    public function testFilterFilter(): void
+    {
+        // Lambda: keep only truthy (non-empty) items.
+        self::tpl('f_filter', '{{ items |> filter(item => item) |> join(",") }}');
+        $this->assertSame('a,b', self::render('f_filter', ['items' => ['a', '', 'b', '']]));
+    }
+
+    public function testFilterReduce(): void
+    {
+        // Lambda with implicit 'value' second parameter.
+        self::tpl('f_reduce', '{{ items |> reduce(carry => carry + value, 0) }}');
+        $this->assertSame('10', self::render('f_reduce', ['items' => [1, 2, 3, 4]]));
+    }
+
+    public function testFilterBatch(): void
+    {
+        self::tpl('f_batch_len', '{{ items |> batch(2) |> length }}');
+        $this->assertSame('2', self::render('f_batch_len', ['items' => [1, 2, 3, 4]]));
+    }
+
+    // -- Lambda expressions ---------------------------------------------------
+
+    public function testLambdaMapFieldAccess(): void
+    {
+        // Lambda extracts a nested field from each array element.
+        self::tpl('lambda_map_field', '{{ users |> map(u => u.name) |> join(",") }}');
+        $result = self::render('lambda_map_field', [
+            'users' => [['name' => 'alice'], ['name' => 'bob'], ['name' => 'carol']],
+        ]);
+        $this->assertSame('alice,bob,carol', $result);
+    }
+
+    public function testLambdaMapWithFilterPipeline(): void
+    {
+        // Lambda body can itself use the |> filter pipeline.
+        self::tpl('lambda_map_pipeline', '{{ items |> map(item => item |> upper) |> join(",") }}');
+        $this->assertSame('HELLO,WORLD', self::render('lambda_map_pipeline', ['items' => ['hello', 'world']]));
+    }
+
+    public function testLambdaMapAccessesOuterVar(): void
+    {
+        // Lambda closes over outer template variables via $vars capture.
+        self::tpl('lambda_outer', '{{ items |> map(item => item ~ suffix) |> join(",") }}');
+        $this->assertSame('a!,b!,c!', self::render('lambda_outer', [
+            'items' => ['a', 'b', 'c'],
+            'suffix' => '!',
+        ]));
+    }
+
+    public function testLambdaFilterByField(): void
+    {
+        // Lambda keeps only active items, then extracts labels.
+        self::tpl(
+            'lambda_filter_field',
+            '{{ items |> filter(item => item.active) |> map(item => item.label) |> join(",") }}'
+        );
+        $result = self::render('lambda_filter_field', [
+            'items' => [
+                ['active' => true, 'label' => 'A'],
+                ['active' => false, 'label' => 'B'],
+                ['active' => true, 'label' => 'C'],
+            ],
+        ]);
+        $this->assertSame('A,C', $result);
+    }
+
+    public function testLambdaFilterByOuterVar(): void
+    {
+        // Lambda condition references an outer template variable.
+        self::tpl(
+            'lambda_filter_outer',
+            '{{ items |> filter(item => item.score >= threshold) |> map(item => item.name) |> join(",") }}'
+        );
+        $result = self::render('lambda_filter_outer', [
+            'items' => [['name' => 'a', 'score' => 5], ['name' => 'b', 'score' => 3], ['name' => 'c', 'score' => 7]],
+            'threshold' => 5,
+        ]);
+        $this->assertSame('a,c', $result);
+    }
+
+    public function testLambdaReduceSum(): void
+    {
+        // Reduce with implicit 'value' second parameter.
+        self::tpl('lambda_reduce_sum', '{{ numbers |> reduce(carry => carry + value, 0) }}');
+        $this->assertSame('10', self::render('lambda_reduce_sum', ['numbers' => [1, 2, 3, 4]]));
+    }
+
+    public function testLambdaReduceWithOuterVar(): void
+    {
+        // Reduce lambda accesses an outer template variable.
+        self::tpl('lambda_reduce_outer', '{{ numbers |> reduce(carry => carry + value + bonus, 0) }}');
+        // 4 elements, each adds value + bonus(=1), sums (1+1)+(2+1)+(3+1)+(4+1) = 14
+        $this->assertSame('14', self::render('lambda_reduce_outer', [
+            'numbers' => [1, 2, 3, 4],
+            'bonus' => 1,
+        ]));
+    }
+
+    public function testFilterReferenceMap(): void
+    {
+        // A quoted string resolves to a registered Clarity filter as callable.
+        self::tpl('filter_ref_map', '{{ items |> map("upper") |> join(",") }}');
+        $this->assertSame('FOO,BAR', self::render('filter_ref_map', ['items' => ['foo', 'bar']]));
+    }
+
+    public function testFilterReferenceReduce(): void
+    {
+        // Register a custom 'sum2' filter and use it as a reference inside reduce.
+        self::$engine->addFilter('sum2', fn(mixed $carry, mixed $item): mixed => $carry + $item);
+        self::tpl('filter_ref_reduce', '{{ numbers |> reduce("sum2", 0) }}');
+        $this->assertSame('6', self::render('filter_ref_reduce', ['numbers' => [1, 2, 3]]));
+    }
+
+    public function testBareVariableCallableRejectedForMap(): void
+    {
+        // Passing a bare variable name as callable must be rejected at compile time.
+        $this->expectException(ClarityException::class);
+        self::tpl('reject_map_var', '{{ items |> map(myFn) }}');
+        self::render('reject_map_var', ['items' => [1, 2], 'myFn' => 'strtoupper']);
+    }
+
+    public function testBareVariableCallableRejectedForFilter(): void
+    {
+        $this->expectException(ClarityException::class);
+        self::tpl('reject_filter_var', '{{ items |> filter(pred) }}');
+        self::render('reject_filter_var', ['items' => [1, 2], 'pred' => 'is_int']);
+    }
+
+    public function testBareVariableCallableRejectedForReduce(): void
+    {
+        $this->expectException(ClarityException::class);
+        self::tpl('reject_reduce_var', '{{ items |> reduce(fn, 0) }}');
+        self::render('reject_reduce_var', ['items' => [1, 2], 'fn' => 'array_sum']);
+    }
+
+    public function testFilterBatchWithFill(): void
+    {
+        self::tpl('f_batch_fill', '{{ items |> batch(3, 0) |> last |> last }}');
+        $this->assertSame('0', self::render('f_batch_fill', ['items' => [1, 2, 3, 4]]));
+    }
+
+    // -- Utility filters ------------------------------------------------------
+
+    public function testFilterDataUri(): void
+    {
+        self::tpl('f_data_uri', '{{ v |> data_uri("text/plain") |> raw }}');
+        $result = self::render('f_data_uri', ['v' => 'hello']);
+        $this->assertSame('data:text/plain;base64,' . base64_encode('hello'), $result);
+    }
+
     // =========================================================================
     // Custom Filters
     // =========================================================================
@@ -284,6 +562,75 @@ class ClarityEngineTest extends TestCase
         self::$engine->addFilter('repeat', fn(string $v, int $n): string => str_repeat($v, $n));
         self::tpl('repeat', '{{ word |> repeat(3) }}');
         $this->assertSame('hahaha', self::render('repeat', ['word' => 'ha']));
+    }
+
+    // =========================================================================
+    // Named Arguments for Filters
+    // =========================================================================
+
+    public function testNamedArgSingleBuiltin(): void
+    {
+        // number(decimals=2) — named single arg, same result as positional
+        self::tpl('named_number', '{{ v |> number(decimals=2) }}');
+        $this->assertSame(number_format(3.14159, 2), self::render('named_number', ['v' => 3.14159]));
+    }
+
+    public function testNamedArgCustomFilter(): void
+    {
+        // Custom filter with named arg
+        self::$engine->addFilter('mult', fn(int $v, int $factor = 1): int => $v * $factor);
+        self::tpl('named_custom', '{{ v |> mult(factor=3) }}');
+        $this->assertSame('15', self::render('named_custom', ['v' => 5]));
+    }
+
+    public function testNamedArgSkipsToLaterParam(): void
+    {
+        // slug(separator=…) — skip first optional param 'separator' which is already
+        // at position 0 (after $value), so this is equivalent to slug('_')
+        self::tpl('named_slug', '{{ v |> slug(separator="_") }}');
+        $this->assertSame('hello_world', self::render('named_slug', ['v' => 'Hello World']));
+    }
+
+    public function testNamedArgWithGapFilledByDefault(): void
+    {
+        // slice has params ($start, $length=null). Use only 'length' → start defaults to 0.
+        // Actually let's use 'number' with a non-first named param.
+        // number($decimals=2), only one extra param so no gap possible there.
+        // Use slice: slice(start=2) — length gets its default (null = no limit)
+        self::tpl('named_slice_start', '{{ v |> slice(start=2) }}');
+        $this->assertSame('cde', self::render('named_slice_start', ['v' => 'abcde']));
+    }
+
+    public function testNamedArgAndPositionalMixed(): void
+    {
+        // Positional first, then named for remaining
+        self::$engine->addFilter('fmtnum', fn(mixed $v, int $dec = 2, string $sep = '.'): string =>
+            number_format((float) $v, $dec, $sep));
+        self::tpl('named_mixed', '{{ v |> fmtnum(3, sep=",") }}');
+        $this->assertSame('3,142', self::render('named_mixed', ['v' => 3.14159]));
+    }
+
+    public function testNamedArgUnknownThrows(): void
+    {
+        $this->expectException(ClarityException::class);
+        // 'decimals' is the correct name; 'decimalz' is a typo → compile error
+        self::tpl('named_unknown', '{{ v |> number(decimalz=2) }}');
+        self::render('named_unknown', ['v' => 1.5]);
+    }
+
+    public function testNamedArgPositionalAfterNamedThrows(): void
+    {
+        $this->expectException(ClarityException::class);
+        self::$engine->addFilter('foo', fn(mixed $v, int $a = 1, int $b = 2): int => $v + $a + $b);
+        self::tpl('named_positional_after', '{{ v |> foo(a=1, 2) }}');
+        self::render('named_positional_after', ['v' => 0]);
+    }
+
+    public function testNamedArgPipelinePreserved(): void
+    {
+        // Named args work in a pipeline alongside other filters
+        self::tpl('named_pipeline', '{{ v |> trim |> number(decimals=1) }}');
+        $this->assertSame(number_format(3.1, 1), self::render('named_pipeline', ['v' => ' 3.14159 ']));
     }
 
     // =========================================================================

@@ -61,6 +61,12 @@ class Compiler
         $this->tokenizer = new Tokenizer();
     }
 
+    public function setFilterRegistry(FilterRegistry $registry): static
+    {
+        $this->tokenizer->setFilterRegistry($registry);
+        return $this;
+    }
+
     // -------------------------------------------------------------------------
     // Configuration
     // -------------------------------------------------------------------------

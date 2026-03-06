@@ -1,4 +1,6 @@
-# Clarity Template Engine
+# Clarity DSL Template Engine
+
+![Clarity Logo](images/clarity-dsl-logo-opt.svg)
 
 **A sandboxed, compiled template engine for Merlin** – Clarity compiles `.clarity.html` files into PHP classes that are cached on disk. Templates can only access variables passed to `render()` and registered filters; arbitrary PHP code is intentionally disallowed.
 
@@ -96,7 +98,7 @@ a.b[c.d].e                → $vars['a']['b'][$vars['c']['d']]['e']
 | `+`, `-`, `*`, `/`, `%`          | same           |                      |
 | `true`, `false`, `null`          | same           |                      |
 
-```html
+```twig
 {% if user.active and user.role == 'admin' %}
 <span>Admin</span>
 {% endif %}
@@ -112,16 +114,18 @@ Function calls (e.g. `strtoupper(name)`) are **not allowed** in expressions. Use
 
 Filters transform a value before it is output. Chain multiple filters with `|>`:
 
-```html
-{{ user.name |> upper }} {{ price |> number(2) }} {{ createdAt |> date('d.m.Y')
-}} {{ description |> trim |> upper }}
+```twig
+{{ user.name |> upper }}
+{{ price |> number(2) }}
+{{ createdAt |> date('d.m.Y') }}
+{{ description |> trim |> upper }}
 ```
 
 Filters with arguments use parentheses after the filter name:
 
-```html
-{{ amount |> number(0) }} {# 0 decimal places #} {{ timestamp |> date('H:i') }}
-{# format as time #}
+```twig
+{{ amount |> number(0) }} {# 0 decimal places #}
+{{ timestamp |> date('H:i') }} {# format as time #}
 ```
 
 ### Built-in Filters
@@ -129,8 +133,8 @@ Filters with arguments use parentheses after the filter name:
 | Filter   | Signature                   | Description                                     |
 | -------- | --------------------------- | ----------------------------------------------- |
 | `trim`   | `(value)`                   | Remove leading/trailing whitespace              |
-| `upper`  | `(value)`                   | `strtoupper`                                    |
-| `lower`  | `(value)`                   | `strtolower`                                    |
+| `upper`  | `(value)`                   | `mb_strtoupper`                                 |
+| `lower`  | `(value)`                   | `mb_strtolower`                                 |
 | `length` | `(value)`                   | `strlen` for strings, `count` for arrays        |
 | `number` | `(value, decimals = 2)`     | `number_format`                                 |
 | `date`   | `(value, format = 'Y-m-d')` | Formats a Unix timestamp or `DateTimeInterface` |
@@ -152,10 +156,60 @@ $ctx->view()->addFilter('excerpt', fn($v, int $len = 100) =>
 
 Use them in templates:
 
-```html
-{{ product.price |> currency }} {{ product.price |> currency('$') }} {{
-article.body |> excerpt(150) }}
+```twig
+{{ product.price |> currency }}
+{{ product.price |> currency('$') }}
+{{ article.body |> excerpt(150) }}
 ```
+
+---
+
+## Lambda Expressions
+
+The `map`, `filter`, and `reduce` filters accept a **lambda expression** or a **filter reference** as their callable argument. This keeps templates secure: arbitrary PHP callables cannot be injected through template variables.
+
+### Lambda syntax
+
+```
+param => expression
+```
+
+The parameter name becomes a local variable bound to the current element. The body is a full Clarity expression — it can access outer template variables and even use the filter pipeline (`|>`).
+
+```twig
+{# Extract a field from every item #}
+{{ users |> map(u => u.name) |> join(', ') }}
+{# Keep only active items, then extract labels #}
+{{ items |> filter(i => i.active) |> map(i => i.label) |> join(', ') }}
+{# Apply a filter inside the lambda body #}
+{{ tags |> map(t => t.name |> upper) |> join(', ') }}
+{# Access an outer template variable inside the lambda #}
+{{ words |> map(w => w ~ suffix) |> join(' ') }}
+```
+
+### Reduce and the implicit `value` parameter
+
+`reduce` passes two arguments to its callable: the accumulator and the current element. Declare the accumulator name in the lambda; the current element is always available as `value`.
+
+```twig
+{# Sum a list of numbers (0 is the optional initial value) #}
+{{ numbers |> reduce(sum => sum + value, 0) }}
+{# Build a string #}
+{{ words |> reduce(acc => acc ~ ' ' ~ value) }}
+```
+
+### Filter references
+
+A quoted string resolves to a registered Clarity filter, allowing you to reuse existing filters as callbacks:
+
+```twig
+{# 'upper' is a built-in filter #}
+{{ tags |> map("upper") |> join(', ') }}
+{# Use a custom filter registered via addFilter() #}
+{{ prices |> map("currency") |> join(', ') }}
+```
+
+> **Security note:** Only registered Clarity filters can be referenced this way. Arbitrary PHP function names are rejected at compile time.
 
 ---
 
@@ -163,7 +217,7 @@ article.body |> excerpt(150) }}
 
 ### If / Elseif / Else
 
-```html
+```twig
 {% if stock > 0 %}
 <button>Add to cart</button>
 {% elseif stock == 0 %}
@@ -177,7 +231,7 @@ article.body |> excerpt(150) }}
 
 **Iterate over a list:**
 
-```html
+```twig
 <ul>
   {% for item in items %}
   <li>{{ item.name }}</li>
@@ -187,34 +241,36 @@ article.body |> excerpt(150) }}
 
 **Exclusive range** (`..`) – last value is not included:
 
-```html
-{% for i in 1..10 %} {{ i }} {% endfor %} {# prints 1 2 3 4 5 6 7 8 9 #}
+```twig
+{% for i in 1..10 %} {{ i }} {% endfor %}
+{# prints 1 2 3 4 5 6 7 8 9 #}
 ```
 
 **Inclusive range** (`...`) – last value is included:
 
-```html
-{% for i in 1...10 %} {{ i }} {% endfor %} {# prints 1 2 3 4 5 6 7 8 9 10 #}
+```twig
+{% for i in 1...10 %} {{ i }} {% endfor %}
+{# prints 1 2 3 4 5 6 7 8 9 10 #}
 ```
 
 **With a step:**
 
-```html
-{% for i in 0...100 step 10 %} {{ i }} {% endfor %} {# prints 0 10 20 30 40 50
-60 70 80 90 100 #}
+```twig
+{% for i in 0...100 step 10 %} {{ i }} {% endfor %}
+{# prints 0 10 20 30 40 50 60 70 80 90 100 #}
 ```
 
 Ranges can use variables:
 
-```html
+```twig
 {% for i in start...end step stride %} {{ i }} {% endfor %}
 ```
 
 ### Variable Assignment
 
-```html
-{% set total = items.length %} {% set label = user.firstName ~ ' ' ~
-user.lastName %}
+```twig
+{% set total = items.length %}
+{% set label = user.firstName ~ ' ' ~ user.lastName %}
 
 <p>{{ total }} items for {{ label }}</p>
 ```
@@ -227,7 +283,7 @@ Clarity implements block-based template inheritance. A child template extends a 
 
 **Parent layout** (`layouts/main.clarity.html`):
 
-```html
+```twig
 <!DOCTYPE html>
 <html>
   <head>
@@ -244,9 +300,10 @@ Clarity implements block-based template inheritance. A child template extends a 
 
 **Child template** (`pages/home.clarity.html`):
 
-```html
-{% extends "layouts/main" %} {% block title %}Home – My App{% endblock %} {%
-block body %}
+```twig
+{% extends "layouts/main" %}
+{% block title %}Home – My App{% endblock %}
+{% block body %}
 <h1>Welcome, {{ user.name }}!</h1>
 {% endblock %}
 ```
@@ -261,8 +318,9 @@ block body %}
 
 Embed another template inline using `{% include %}`. The included file shares the current variable scope.
 
-```html
-{% include "partials/nav" %} {% include "partials/user_card" %}
+```twig
+{% include "partials/nav" %}
+{% include "partials/user_card" %}
 ```
 
 Included files are compiled and inlined at compile time. They do not create a separate render call.
@@ -275,13 +333,13 @@ Register a named directory and reference templates with the `namespace::path` sy
 $ctx->view()->addNamespace('admin', __DIR__ . '/../views/admin');
 ```
 
-```html
+```twig
 {% include "admin::partials/sidebar" %} {% extends "admin::layouts/main" %}
 ```
 
 Dots and slashes are interchangeable as path separators:
 
-```html
+```twig
 {% include "admin::partials.sidebar" %} {# same as above #}
 ```
 
@@ -337,6 +395,7 @@ Clarity templates have **no access to PHP**:
 - Function calls (`strtoupper(x)`) are rejected at compile time – use the filter pipeline.
 - Statement delimiters (`;`), backticks, heredocs, and PHP open/close tags are disallowed in expressions.
 - Objects passed to `render()` are automatically cast to arrays (via `JsonSerializable`, `toArray()`, or `get_object_vars()`), preventing method calls from inside templates.
+- `map`, `filter`, and `reduce` only accept lambda expressions or filter references — passing a callable via a template variable is rejected at compile time.
 
 ---
 
