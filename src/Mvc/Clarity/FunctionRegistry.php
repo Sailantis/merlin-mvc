@@ -401,6 +401,8 @@ class FunctionRegistry
             $s = (string) \preg_replace('/[^a-z0-9]+/', $separator, $s);
             return \trim($s, $separator);
         };
+
+        $this->filters['json'] = static fn(mixed ...$args): string => (string) \json_encode($args);
     }
 
     // -------------------------------------------------------------------------

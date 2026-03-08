@@ -7,7 +7,14 @@
   </header>
   <ul>
     {% for item in items %}
-      <li{% if loop.index0 is defined and loop.index0 % 2 == 0 %} class="even"{% endif %}>{{ item }}</li>
+      <li{% if loop.index0 is defined and loop.index0 % 2 == 0 %} class="even"{% endif %}>
+        {{ item }}
+        <div class="extras">
+          {% for j in 0..9 %}
+            <span>{{ item ~ '-' ~ j }}</span>
+          {% endfor %}
+        </div>
+      </li>
     {% endfor %}
   </ul>
 {% endblock %}

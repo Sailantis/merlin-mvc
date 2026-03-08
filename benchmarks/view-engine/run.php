@@ -9,10 +9,11 @@ use Merlin\Mvc\Engines\ClarityEngine;
 use Merlin\Mvc\Engines\NativeEngine;
 
 // CLI options: --engines=comma,separated --iterations-per-run=N --runs=N --out=prefix --no-penalty --penalty-separate
-$opts = getopt('', ['engines::', 'iterations-per-run::', 'runs::', 'out::', 'no-penalty', 'penalty-separate']);
+$opts = getopt('', ['engines::', 'iterations-per-run::', 'runs::', 'out::', 'no-penalty', 'penalty-separate', 'items::']);
 $engines = isset($opts['engines']) ? explode(',', $opts['engines']) : ['native', 'clarity', 'plates', 'blade', 'twig'];
 $itersPerRun = isset($opts['iterations-per-run']) ? (int) $opts['iterations-per-run'] : 10000;
 $runs = isset($opts['runs']) ? (int) $opts['runs'] : 30;
+$itemsCount = isset($opts['items']) ? (int) $opts['items'] : 200; // number of items passed to templates (was 50)
 $outPrefix = $opts['out'] ?? null; // optional prefix for results files
 $penaltyEnabled = !isset($opts['no-penalty']);
 $penaltySeparate = isset($opts['penalty-separate']);
@@ -146,7 +147,7 @@ foreach ($engines as $key) {
     echo "Warm run...\n";
     $start = hrtime(true);
     try {
-        $out = $engine->render($template, ['title' => 'Benchmark', 'items' => range(1, 50)]);
+        $out = $engine->render($template, ['title' => 'Benchmark', 'items' => range(1, $itemsCount)]);
     } catch (Exception $e) {
         echo "Error during warm run: " . $e->getMessage() . "\n";
         continue;
@@ -174,7 +175,7 @@ foreach ($engines as $key) {
                 $p1 = hrtime(true);
                 $penaltyTime = ($p1 - $p0) / 1e6;
             }
-            $engine->render($template, ['title' => 'Benchmark', 'items' => range(1, 50)]);
+            $engine->render($template, ['title' => 'Benchmark', 'items' => range(1, $itemsCount)]);
             $t1 = hrtime(true);
 
             $iterTime = ($t1 - $t0) / 1e6;

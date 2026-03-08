@@ -224,7 +224,7 @@ Get all registered functions as a name → callable map.
 
 ---
 
-### castToArray() · [source](../../src/Mvc/Clarity/FunctionRegistry.php#L421)
+### castToArray() · [source](../../src/Mvc/Clarity/FunctionRegistry.php#L423)
 
 `public static function castToArray(mixed $value): mixed`
 

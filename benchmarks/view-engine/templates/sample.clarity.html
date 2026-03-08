@@ -4,7 +4,14 @@
   {% include "partials/header" %}
   <ul>
   {% for item, idx in items %}
-    <li{% if idx % 2 == 0 %} class="even"{% endif %}>{{ item }}</li>
+    <li{% if idx % 2 == 0 %} class="even"{% endif %}>
+      {{ item }}
+      <div class="extras">
+        {% for j in [0,1,2,3,4,5,6,7,8,9] %}
+          <span>{{ item ~ '-' ~ j }}</span>
+        {% endfor %}
+      </div>
+    </li>
   {% endfor %}
   </ul>
 {% endblock %}
