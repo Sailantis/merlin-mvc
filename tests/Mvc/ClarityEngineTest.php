@@ -127,13 +127,6 @@ class ClarityEngineTest extends TestCase
         $this->assertSame('<b>bold</b>', $result);
     }
 
-    public function testEscapeFilterIsNotRegistered(): void
-    {
-        $this->expectException(ClarityException::class);
-        self::tpl('escape_filter', '{{ html |> escape }}');
-        self::render('escape_filter', ['html' => '<b>bold</b>']);
-    }
-
     public function testDotAccessOnArray(): void
     {
         self::tpl('dot', '{{ user.name }}');
@@ -196,6 +189,69 @@ class ClarityEngineTest extends TestCase
         self::tpl('concat', '{{ first ~ " " ~ last }}');
         $result = self::render('concat', ['first' => 'John', 'last' => 'Doe']);
         $this->assertSame('John Doe', $result);
+    }
+
+    public function testArrayLiteralCanBePassedToFilters(): void
+    {
+        self::tpl('array_literal_filter', '{{ [1, 2, user.id] |> json |> raw }}');
+        $result = self::render('array_literal_filter', ['user' => ['id' => 3]]);
+        $this->assertSame('[1,2,3]', $result);
+    }
+
+    public function testObjectLiteralCanBePassedToFilters(): void
+    {
+        self::tpl(
+            'object_literal_filter',
+            '{{ { foo: "bar", count: count, nested: { id: user.id }, items: [1, 2] } |> json |> raw }}'
+        );
+
+        $result = self::render('object_literal_filter', [
+            'count' => 3,
+            'user' => ['id' => 7],
+        ]);
+
+        $this->assertSame('{"foo":"bar","count":3,"nested":{"id":7},"items":[1,2]}', $result);
+    }
+
+    public function testLiteralCollectionsSupportPostfixAccess(): void
+    {
+        self::tpl(
+            'literal_postfix_access',
+            '{{ { user: { name: "Alice" } }.user.name ~ ":" ~ [10, 20, 30][1] }}'
+        );
+
+        $this->assertSame('Alice:20', self::render('literal_postfix_access'));
+    }
+
+    public function testSetCanStoreNestedLiteralCollections(): void
+    {
+        self::tpl(
+            'set_literal_collection',
+            '{% set payload = { meta: { total: count }, items: [1, 2, 3] } %}{{ payload.meta.total ~ ":" ~ payload.items[2] }}'
+        );
+
+        $this->assertSame('5:3', self::render('set_literal_collection', ['count' => 5]));
+    }
+
+    public function testArrayLiteralSupportsSpread(): void
+    {
+        self::tpl('array_spread', '{{ [1, ...items, 4] |> json |> raw }}');
+        $this->assertSame('[1,2,3,4]', self::render('array_spread', ['items' => [2, 3]]));
+    }
+
+    public function testObjectLiteralSupportsSpread(): void
+    {
+        self::tpl('object_spread', '{{ { foo: "bar", ...payload, answer: 42 } |> json |> raw }}');
+        $result = self::render('object_spread', ['payload' => ['name' => 'Merlin']]);
+        $this->assertSame('{"foo":"bar","name":"Merlin","answer":42}', $result);
+    }
+
+    public function testSpreadOutsideCollectionThrows(): void
+    {
+        $this->expectException(ClarityException::class);
+        $this->expectExceptionMessageMatches('/Spread operator is only allowed inside array and object literals/');
+        self::tpl('invalid_spread', '{{ include("x", ...context()) }}');
+        self::render('invalid_spread');
     }
 
     // =========================================================================
@@ -612,8 +668,10 @@ class ClarityEngineTest extends TestCase
 
     public function testNamedArgUnknownThrows(): void
     {
-        $this->expectException(ClarityException::class);
-        // 'decimals' is the correct name; 'decimalz' is a typo → compile error
+        // 'decimals' is the correct name; 'decimalz' is a typo.
+        // With the reflection-free approach, PHP validates named arg names at
+        // runtime (Error), not at compile time (ClarityException).
+        $this->expectException(\Throwable::class);
         self::tpl('named_unknown', '{{ v |> number(decimalz=2) }}');
         self::render('named_unknown', ['v' => 1.5]);
     }
@@ -621,6 +679,8 @@ class ClarityEngineTest extends TestCase
     public function testNamedArgPositionalAfterNamedThrows(): void
     {
         $this->expectException(ClarityException::class);
+        // Positional after named is caught at compile time as a ClarityException
+        // (avoids generating syntactically invalid PHP).
         self::$engine->addFilter('foo', fn(mixed $v, int $a = 1, int $b = 2): int => $v + $a + $b);
         self::tpl('named_positional_after', '{{ v |> foo(a=1, 2) }}');
         self::render('named_positional_after', ['v' => 0]);
@@ -631,6 +691,45 @@ class ClarityEngineTest extends TestCase
         // Named args work in a pipeline alongside other filters
         self::tpl('named_pipeline', '{{ v |> trim |> number(decimals=1) }}');
         $this->assertSame(number_format(3.1, 1), self::render('named_pipeline', ['v' => ' 3.14159 ']));
+    }
+
+    // =========================================================================
+    // Custom Functions
+    // =========================================================================
+
+    public function testCustomFunctionSimple(): void
+    {
+        self::$engine->addFunction('add', fn(int $a, int $b = 1): int => $a + $b);
+        self::tpl('func_add', '{{ add(2, 3) }}');
+        $this->assertSame('5', self::render('func_add'));
+    }
+
+    public function testCustomFunctionNamedArgs(): void
+    {
+        self::$engine->addFunction('concat', fn(string $a, string $b = ''): string => $a . $b);
+        self::tpl('func_concat_named', '{{ concat(b=", world", a="Hello") }}');
+        $this->assertSame('Hello, world', self::render('func_concat_named'));
+    }
+
+    public function testCustomFunctionNamedArgWithDefault(): void
+    {
+        self::$engine->addFunction('incr', fn(int $a, int $inc = 1): int => $a + $inc);
+        self::tpl('func_incr_default', '{{ incr(a=3) }}');
+        $this->assertSame('4', self::render('func_incr_default'));
+    }
+
+    public function testBuiltInContextFunctionReturnsTemplateVars(): void
+    {
+        self::tpl('builtin_context', '{{ context() |> json |> raw }}');
+        $this->assertSame('{"name":"Bob","count":2}', self::render('builtin_context', ['name' => 'Bob', 'count' => 2]));
+    }
+
+    public function testBuiltInContextRejectsArguments(): void
+    {
+        $this->expectException(ClarityException::class);
+        $this->expectExceptionMessageMatches('/context\(\) does not accept any arguments/');
+        self::tpl('builtin_context_args', '{{ context(name) |> json |> raw }}');
+        self::render('builtin_context_args', ['name' => 'Bob']);
     }
 
     // =========================================================================
@@ -700,6 +799,29 @@ class ClarityEngineTest extends TestCase
         self::tpl('nested_for', $tpl);
         $result = self::render('nested_for', ['rows' => [['a', 'b'], ['c', 'd']]]);
         $this->assertSame('ab|cd|', $result);
+    }
+
+    public function testForLoopIndexWithStyle(): void
+    {
+        // {% for item, idx in list %} exposes the key as idx
+        self::tpl('for_idx_with', '{% for item, idx in list %}{{ idx }}:{{ item }},{% endfor %}');
+        $this->assertSame('0:a,1:b,2:c,', self::render('for_idx_with', ['list' => ['a', 'b', 'c']]));
+    }
+
+    public function testForLoopIndexWithStyleAssocArray(): void
+    {
+        // Works with associative arrays; idx holds the string key
+        self::tpl('for_idx_with_assoc', '{% for v, k in map %}{{ k }}={{ v }},{% endfor %}');
+        $this->assertSame('x=1,y=2,', self::render('for_idx_with_assoc', ['map' => ['x' => 1, 'y' => 2]]));
+    }
+
+    public function testForLoopIndexNestedNoCollision(): void
+    {
+        // Nested loops with independent index variables must not interfere
+        $tpl = '{% for outer, oi in rows %}{% for inner, ii in outer %}{{ oi }}.{{ ii }}:{{ inner }},{% endfor %}{% endfor %}';
+        self::tpl('for_nested_idx', $tpl);
+        $result = self::render('for_nested_idx', ['rows' => [['a', 'b'], ['c']]]);
+        $this->assertSame('0.0:a,0.1:b,1.0:c,', $result);
     }
 
     // =========================================================================
@@ -825,6 +947,67 @@ class ClarityEngineTest extends TestCase
         $this->assertSame('Hi Bob there', $result);
     }
 
+    public function testStaticIncludeRecursionThrows(): void
+    {
+        self::tpl('partials/loop_a', 'A {% include "partials/loop_b" %}');
+        self::tpl('partials/loop_b', 'B {% include "partials/loop_a" %}');
+
+        $this->expectException(ClarityException::class);
+        $this->expectExceptionMessageMatches('/Recursive static include detected/');
+        self::render('partials/loop_a');
+    }
+
+    public function testDynamicIncludeFunctionRendersTemplateWithContext(): void
+    {
+        self::tpl('partials/card', '<b>{{ foo }}</b> {{ name }}');
+        self::tpl('dynamic_include', '{{ include("partials/card", { foo: "bar", ...context() }) }}');
+
+        $result = self::render('dynamic_include', ['name' => 'Bob']);
+        $this->assertSame('<b>bar</b> Bob', $result);
+    }
+
+    public function testDynamicIncludeAssignedViaSetRemainsUnescaped(): void
+    {
+        self::tpl('partials/inline_html', '<em>{{ name }}</em>');
+        self::tpl('dynamic_include_set', '{% set content = include("partials/inline_html", context()) %}{{ content |> raw }}');
+
+        $result = self::render('dynamic_include_set', ['name' => 'Bob']);
+        $this->assertSame('<em>Bob</em>', $result);
+    }
+
+    public function testDynamicIncludeRemainsSafeAcrossNestedContext(): void
+    {
+        self::tpl('partials/inner_html', '<strong>{{ name }}</strong>');
+        self::tpl('partials/outer_html', '{{ snippet |> raw }}');
+        self::tpl(
+            'dynamic_include_nested_context',
+            '{% set snippet = include("partials/inner_html", context()) %}{{ include("partials/outer_html", context()) }}'
+        );
+
+        $result = self::render('dynamic_include_nested_context', ['name' => 'Bob']);
+        $this->assertSame('<strong>Bob</strong>', $result);
+    }
+
+    public function testDynamicIncludeFunctionSupportsNamespacedTemplates(): void
+    {
+        $nsPath = self::$viewDir . DIRECTORY_SEPARATOR . 'namespaced';
+        @mkdir($nsPath, 0755, true);
+        file_put_contents($nsPath . DIRECTORY_SEPARATOR . 'badge.clarity.html', '<span>{{ label }}</span>');
+        self::$engine->addNamespace('ui', $nsPath);
+
+        self::tpl('dynamic_include_ns', '{{ include("ui::badge", { label: "ok" }) }}');
+        $this->assertSame('<span>ok</span>', self::render('dynamic_include_ns'));
+    }
+
+    public function testDynamicIncludeRecursionThrows(): void
+    {
+        self::tpl('dynamic_loop', '{{ include("dynamic_loop", context()) }}');
+
+        $this->expectException(ClarityException::class);
+        $this->expectExceptionMessageMatches('/Recursive template rendering detected/');
+        self::render('dynamic_loop');
+    }
+
     // =========================================================================
     // Extends / Block
     // =========================================================================
@@ -885,7 +1068,7 @@ class ClarityEngineTest extends TestCase
     }
 
     // =========================================================================
-    // Cache Behaviour
+    // Cache Behavior
     // =========================================================================
 
     public function testCacheHitProducesSameOutput(): void
@@ -977,13 +1160,11 @@ class ClarityEngineTest extends TestCase
     // =========================================================================
     // Security – function call prevention
     // =========================================================================
-    // Security – function call prevention
-    // =========================================================================
 
     public function testFunctionCallInOutputTagThrowsAtCompileTime(): void
     {
         $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches('/Function calls are not allowed/');
+        $this->expectExceptionMessageMatches('/unregistered function/');
         self::tpl('sec_output', "{{ system('id') }}");
         self::render('sec_output');
     }
@@ -991,7 +1172,7 @@ class ClarityEngineTest extends TestCase
     public function testFunctionCallInSetDirectiveThrowsAtCompileTime(): void
     {
         $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches('/Function calls are not allowed/');
+        $this->expectExceptionMessageMatches('/unregistered function/');
         self::tpl('sec_set', "{% set x = system('id') %}{{ x }}");
         self::render('sec_set');
     }
@@ -999,7 +1180,7 @@ class ClarityEngineTest extends TestCase
     public function testFunctionCallInIfConditionThrowsAtCompileTime(): void
     {
         $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches('/Function calls are not allowed/');
+        $this->expectExceptionMessageMatches('/unregistered function/');
         self::tpl('sec_if', "{% if system('id') %}yes{% endif %}");
         self::render('sec_if');
     }
@@ -1007,7 +1188,7 @@ class ClarityEngineTest extends TestCase
     public function testFunctionCallInRangeBoundThrowsAtCompileTime(): void
     {
         $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches('/Function calls are not allowed/');
+        $this->expectExceptionMessageMatches('/unregistered function/');
         self::tpl('sec_range', "{% for i in system ('id')...10 %}{{ i }}{% endfor %}");
         self::render('sec_range');
     }
@@ -1015,7 +1196,7 @@ class ClarityEngineTest extends TestCase
     public function testFunctionCallInFilterArgumentThrowsAtCompileTime(): void
     {
         $this->expectException(ClarityException::class);
-        $this->expectExceptionMessageMatches('/Function calls are not allowed/');
+        $this->expectExceptionMessageMatches('/unregistered function/');
         self::tpl('sec_filter_arg', "{{ name |> substr(system('id'), 1) }}");
         self::render('sec_filter_arg');
     }

@@ -290,11 +290,14 @@ Get current render nesting depth. Useful to detect top-level renders
 
 ---
 
-### addFilter() · [source](../../src/Mvc/ViewEngine.php#L263)
+### addFilter() · [source](../../src/Mvc/ViewEngine.php#L266)
 
 `public function addFilter(string $name, callable $fn): static`
 
 Register a custom filter callable.
+
+Filters transform a piped value and are invoked with pipe syntax,
+e.g. `{{ value|name }}` or `{{ value|name(arg) }}`.
 
 **🧭 Parameters**
 
@@ -310,7 +313,48 @@ Register a custom filter callable.
 
 ---
 
-### setCachePath() · [source](../../src/Mvc/ViewEngine.php#L271)
+### addFunction() · [source](../../src/Mvc/ViewEngine.php#L281)
+
+`public function addFunction(string $name, callable $fn): static`
+
+Register a custom function callable.
+
+Functions are called directly in templates, e.g. `{{ name(arg) }}`.
+This is distinct from filters, which transform a piped value.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - | Function name used in templates (e.g. 'formatDate'). |
+| `$fn` | callable | - | fn(...$args): mixed |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### getDriver() · [source](../../src/Mvc/ViewEngine.php#L296)
+
+`public function getDriver(): mixed`
+
+Return the underlying engine/driver object for advanced configuration.
+
+Returns the raw engine instance (e.g. `\Twig\Environment`,
+`\League\Plates\Engine`, `\Illuminate\View\Factory`) for cases not
+covered by the adapter API.  Returns `null` for engines without a
+separate driver object (Clarity, Native).
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+---
+
+### setCachePath() · [source](../../src/Mvc/ViewEngine.php#L304)
 
 `public function setCachePath(string $path): static`
 
@@ -329,7 +373,7 @@ Override the cache directory.
 
 ---
 
-### getCachePath() · [source](../../src/Mvc/ViewEngine.php#L279)
+### getCachePath() · [source](../../src/Mvc/ViewEngine.php#L312)
 
 `public function getCachePath(): string`
 
@@ -342,7 +386,7 @@ Get the currently configured cache directory.
 
 ---
 
-### flushCache() · [source](../../src/Mvc/ViewEngine.php#L287)
+### flushCache() · [source](../../src/Mvc/ViewEngine.php#L320)
 
 `public function flushCache(): static`
 

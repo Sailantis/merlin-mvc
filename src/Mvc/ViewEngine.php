@@ -256,6 +256,9 @@ abstract class ViewEngine
     /**
      * Register a custom filter callable.
      *
+     * Filters transform a piped value and are invoked with pipe syntax,
+     * e.g. `{{ value|name }}` or `{{ value|name(arg) }}`.
+     *
      * @param string   $name Filter name used in templates (e.g. 'currency').
      * @param callable $fn   fn($value, ...$args): mixed
      * @return static
@@ -263,6 +266,36 @@ abstract class ViewEngine
     public function addFilter(string $name, callable $fn): static
     {
         throw new \LogicException("Filters are not supported by this ViewEngine.");
+    }
+
+    /**
+     * Register a custom function callable.
+     *
+     * Functions are called directly in templates, e.g. `{{ name(arg) }}`.
+     * This is distinct from filters, which transform a piped value.
+     *
+     * @param string   $name Function name used in templates (e.g. 'formatDate').
+     * @param callable $fn   fn(...$args): mixed
+     * @return static
+     */
+    public function addFunction(string $name, callable $fn): static
+    {
+        throw new \LogicException("Functions are not supported by this ViewEngine.");
+    }
+
+    /**
+     * Return the underlying engine/driver object for advanced configuration.
+     *
+     * Returns the raw engine instance (e.g. `\Twig\Environment`,
+     * `\League\Plates\Engine`, `\Illuminate\View\Factory`) for cases not
+     * covered by the adapter API.  Returns `null` for engines without a
+     * separate driver object (Clarity, Native).
+     *
+     * @return mixed
+     */
+    public function getDriver(): mixed
+    {
+        return null;
     }
 
     /**

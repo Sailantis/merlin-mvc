@@ -26,7 +26,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Mvc/Engines/ClarityEngine.php#L42)
+### __construct() · [source](../../src/Mvc/Engines/ClarityEngine.php#L44)
 
 `public function __construct(array $vars = []): mixed`
 
@@ -43,7 +43,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### addFilter() · [source](../../src/Mvc/Engines/ClarityEngine.php#L58)
+### addFilter() · [source](../../src/Mvc/Engines/ClarityEngine.php#L62)
 
 `public function addFilter(string $name, callable $fn): static`
 
@@ -63,7 +63,30 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### setCachePath() · [source](../../src/Mvc/Engines/ClarityEngine.php#L67)
+### addFunction() · [source](../../src/Mvc/Engines/ClarityEngine.php#L74)
+
+`public function addFunction(string $name, callable $fn): static`
+
+{@inheritdoc}
+
+The return value is automatically cast to a plain array/scalar/null
+at the call site in compiled templates, preventing object leakage.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - |  |
+| `$fn` | callable | - |  |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### setCachePath() · [source](../../src/Mvc/Engines/ClarityEngine.php#L83)
 
 `public function setCachePath(string $path): static`
 
@@ -82,7 +105,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### getCachePath() · [source](../../src/Mvc/Engines/ClarityEngine.php#L76)
+### getCachePath() · [source](../../src/Mvc/Engines/ClarityEngine.php#L92)
 
 `public function getCachePath(): string`
 
@@ -95,7 +118,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### flushCache() · [source](../../src/Mvc/Engines/ClarityEngine.php#L84)
+### flushCache() · [source](../../src/Mvc/Engines/ClarityEngine.php#L100)
 
 `public function flushCache(): static`
 
@@ -108,7 +131,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### render() · [source](../../src/Mvc/Engines/ClarityEngine.php#L97)
+### render() · [source](../../src/Mvc/Engines/ClarityEngine.php#L113)
 
 `public function render(string $view, array $vars = []): string`
 
@@ -128,7 +151,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### renderPartial() · [source](../../src/Mvc/Engines/ClarityEngine.php#L111)
+### renderPartial() · [source](../../src/Mvc/Engines/ClarityEngine.php#L127)
 
 `public function renderPartial(string $view, array $vars = []): string`
 
@@ -148,7 +171,7 @@ Cache location: sys_get_temp_dir()/clarity  (configurable via setCachePath())
 
 ---
 
-### renderLayout() · [source](../../src/Mvc/Engines/ClarityEngine.php#L134)
+### renderLayout() · [source](../../src/Mvc/Engines/ClarityEngine.php#L150)
 
 `public function renderLayout(string $layout, string $content, array $vars = []): string`
 

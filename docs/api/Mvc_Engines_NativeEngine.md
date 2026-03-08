@@ -10,7 +10,58 @@ hand-written PHP includes.
 
 ## 🚀 Public methods
 
-### render() · [source](../../src/Mvc/Engines/NativeEngine.php#L24)
+### addFunction() · [source](../../src/Mvc/Engines/NativeEngine.php#L32)
+
+`public function addFunction(string $name, callable $fn): static`
+
+Register a custom function callable.
+
+Functions are called directly in templates, e.g. `{{ name(arg) }}`.
+This is distinct from filters, which transform a piped value.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - | Function name used in templates (e.g. 'formatDate'). |
+| `$fn` | callable | - | fn(...$args): mixed |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### __call() · [source](../../src/Mvc/Engines/NativeEngine.php#L47)
+
+`public function __call(string $name, array $args): mixed`
+
+Dispatch calls to registered functions from within templates.
+
+Templates are included inside a method scope where `$this` is the
+NativeEngine instance, so `$this->myFunc($arg)` naturally routes here
+for any name that is not an actual engine method.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - |  |
+| `$args` | array | - |  |
+
+**➡️ Return value**
+
+- Type: mixed
+
+**⚠️ Throws**
+
+- LogicException  When the function is not registered.
+
+
+---
+
+### render() · [source](../../src/Mvc/Engines/NativeEngine.php#L64)
 
 `public function render(string $view, array $vars = []): string`
 
@@ -31,7 +82,7 @@ Render a view (and optional layout) and return the result.
 
 ---
 
-### renderPartial() · [source](../../src/Mvc/Engines/NativeEngine.php#L48)
+### renderPartial() · [source](../../src/Mvc/Engines/NativeEngine.php#L86)
 
 `public function renderPartial(string $view, array $vars = []): string`
 
@@ -59,7 +110,7 @@ template scope. Per-call variables override globals.
 
 ---
 
-### renderLayout() · [source](../../src/Mvc/Engines/NativeEngine.php#L77)
+### renderLayout() · [source](../../src/Mvc/Engines/NativeEngine.php#L126)
 
 `public function renderLayout(string $layout, string $content, array $vars = []): string`
 

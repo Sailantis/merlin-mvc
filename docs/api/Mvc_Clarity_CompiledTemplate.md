@@ -10,12 +10,13 @@ Value object produced by the Clarity Compiler for a single template file.
 - `public` string `$code` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
 - `public` array `$sourceMap` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
 - `public` array `$dependencies` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
+- `public` array `$sourceFiles` · [source](../../src/Mvc/Clarity/CompiledTemplate.php)
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Mvc/Clarity/CompiledTemplate.php#L22)
+### __construct() · [source](../../src/Mvc/Clarity/CompiledTemplate.php#L24)
 
-`public function __construct(string $className, string $code, array $sourceMap, array $dependencies): mixed`
+`public function __construct(string $className, string $code, array $sourceMap, array $dependencies, array $sourceFiles = []): mixed`
 
 **🧭 Parameters**
 
@@ -23,8 +24,9 @@ Value object produced by the Clarity Compiler for a single template file.
 |---|---|---|---|
 | `$className` | string | - | Generated class name (e.g. __Clarity_f1f1fde8ef8cc7825f199f1b7bf3ad0e). |
 | `$code` | string | - | Full PHP source of the compiled file. |
-| `$sourceMap` | array | - | [phpLine => templateLine] mapping. |
+| `$sourceMap` | array | - | [phpLine, fileIndex, templateLine] mapping. |
 | `$dependencies` | array | - | [absolutePath => mtime] for cache invalidation. |
+| `$sourceFiles` | array | `[]` | Unique source file paths (parallel to $sourceMap file indices). |
 
 **➡️ Return value**
 

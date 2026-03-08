@@ -21,7 +21,7 @@ namespace Merlin\Mvc\Clarity;
  *   class __Clarity_<slug>_<hash> {
  *       public static array $dependencies = ['/abs/path' => mtime, ...];
  *       public static array $sourceMap    = [phpLine => tplLine, ...];
- *       public function __construct(private array $__f) {}
+ *       public function __construct(private array $__fl, private array $__fn) {}
  *       public function render(array $vars): string { ... }
  *   }
  *
@@ -37,6 +37,12 @@ class Compiler
 
     /** @var array<int, int>  phpOutputLine → templateLine source map */
     private array $sourceMap = [];
+
+    /** @var string[]  de-duplicated list of source file paths, in order of first appearance */
+    private array $sourceFiles = [];
+
+    /** @var array<string,int>  path → index in $sourceFiles */
+    private array $sourceFileIndex = [];
 
     /** Current PHP output line counter (tracks lines emitted to the render body) */
     private int $phpLine = 0;
@@ -56,12 +62,18 @@ class Compiler
     /** Counter for generating unique temp-variable names in compiled range loops */
     private int $rangeCounter = 0;
 
+    /** @var string[] */
+    private array $extendsStack = [];
+
+    /** @var string[] */
+    private array $compileStack = [];
+
     public function __construct()
     {
         $this->tokenizer = new Tokenizer();
     }
 
-    public function setFilterRegistry(FilterRegistry $registry): static
+    public function setFilterRegistry(FunctionRegistry $registry): static
     {
         $this->tokenizer->setFilterRegistry($registry);
         return $this;
@@ -103,9 +115,13 @@ class Compiler
     {
         $this->dependencies = [];
         $this->sourceMap = [];
+        $this->sourceFiles = [];
+        $this->sourceFileIndex = [];
         $this->phpLine = 0;
         $this->forStack = [];
         $this->rangeCounter = 0;
+        $this->extendsStack = [];
+        $this->compileStack = [];
 
         if (!is_file($sourcePath)) {
             throw new ClarityException("Template file not found: {$sourcePath}", $sourcePath);
@@ -132,6 +148,7 @@ class Compiler
             code: $code,
             sourceMap: $this->sourceMap,
             dependencies: $this->dependencies,
+            sourceFiles: $this->sourceFiles,
         );
     }
 
@@ -149,30 +166,44 @@ class Compiler
      */
     private function resolveExtends(string $source, string $sourcePath): string
     {
-        // Match {% extends "path" %} or {% extends 'path' %}
-        if (!\preg_match('/\{%-?\s*extends\s+["\']([^"\']+)["\']\s*-?%\}/s', $source, $m)) {
-            return $source;
+        if (\in_array($sourcePath, $this->extendsStack, true)) {
+            $chain = [...$this->extendsStack, $sourcePath];
+            throw new ClarityException(
+                'Recursive template inheritance detected: ' . \implode(' -> ', $chain),
+                $sourcePath
+            );
         }
 
-        $layoutRef = $m[1];
-        $layoutPath = $this->resolvePath($layoutRef, $sourcePath);
+        $this->extendsStack[] = $sourcePath;
 
-        if (!is_file($layoutPath)) {
-            throw new ClarityException("Layout file not found: {$layoutPath}", $sourcePath);
+        try {
+            // Match {% extends "path" %} or {% extends 'path' %}
+            if (!\preg_match('/\{%-?\s*extends\s+["\']([^"\']+)["\']\s*-?%\}/s', $source, $m)) {
+                return $source;
+            }
+
+            $layoutRef = $m[1];
+            $layoutPath = $this->resolvePath($layoutRef, $sourcePath);
+
+            if (!is_file($layoutPath)) {
+                throw new ClarityException("Layout file not found: {$layoutPath}", $sourcePath);
+            }
+
+            $layoutSource = $this->readWithDep($layoutPath);
+
+            // Recursively resolve the layout's own extends
+            $layoutSource = $this->resolveExtends($layoutSource, $layoutPath);
+
+            // Extract child blocks: {% block name %}...{% endblock %}
+            $childBlocks = $this->extractBlocks($source);
+
+            // Merge: replace layout's blocks with child definitions
+            $merged = $this->mergeBlocks($layoutSource, $childBlocks);
+
+            return $merged;
+        } finally {
+            \array_pop($this->extendsStack);
         }
-
-        $layoutSource = $this->readWithDep($layoutPath);
-
-        // Recursively resolve the layout's own extends
-        $layoutSource = $this->resolveExtends($layoutSource, $layoutPath);
-
-        // Extract child blocks: {% block name %}...{% endblock %}
-        $childBlocks = $this->extractBlocks($source);
-
-        // Merge: replace layout's blocks with child definitions
-        $merged = $this->mergeBlocks($layoutSource, $childBlocks);
-
-        return $merged;
     }
 
     /**
@@ -312,55 +343,67 @@ class Compiler
      */
     private function compileSourceInto(string $source, string $sourcePath, array &$lines): void
     {
+        if (\in_array($sourcePath, $this->compileStack, true)) {
+            $chain = [...$this->compileStack, $sourcePath];
+            throw new ClarityException(
+                'Recursive static include detected: ' . \implode(' -> ', $chain),
+                $sourcePath
+            );
+        }
+
+        $this->compileStack[] = $sourcePath;
         $segments = $this->tokenizer->tokenize($source);
 
-        foreach ($segments as $seg) {
-            $tplLine = $seg[Tokenizer::KEY_LINE];
+        try {
+            foreach ($segments as $seg) {
+                $tplLine = $seg[Tokenizer::KEY_LINE];
 
-            switch ($seg[Tokenizer::KEY_TYPE]) {
+                switch ($seg[Tokenizer::KEY_TYPE]) {
 
-                case Tokenizer::TEXT:
-                    if ($seg[Tokenizer::KEY_CONTENT] === '') {
-                        break;
-                    }
-                    $this->addPhpLines(
-                        $lines,
-                        $this->textToPhp($seg[Tokenizer::KEY_CONTENT]),
-                        $tplLine,
-                        $sourcePath
-                    );
-                    break;
-
-                case Tokenizer::OUTPUT_TAG:
-                    $phpExpr = $this->tokenizer->processExpression(
-                        $seg[Tokenizer::KEY_CONTENT],
-                        true
-                    );
-                    $this->addPhpLines(
-                        $lines,
-                        "echo {$phpExpr};",
-                        $tplLine,
-                        $sourcePath
-                    );
-                    break;
-
-                case Tokenizer::BLOCK_TAG:
-                    $compiled = $this->compileBlock(
-                        $seg[Tokenizer::KEY_CONTENT],
-                        $sourcePath,
-                        $tplLine,
-                        $lines
-                    );
-                    if ($compiled !== '') {
+                    case Tokenizer::TEXT:
+                        if ($seg[Tokenizer::KEY_CONTENT] === '') {
+                            break;
+                        }
                         $this->addPhpLines(
                             $lines,
-                            $compiled,
+                            $this->textToPhp($seg[Tokenizer::KEY_CONTENT]),
                             $tplLine,
                             $sourcePath
                         );
-                    }
-                    break;
+                        break;
+
+                    case Tokenizer::OUTPUT_TAG:
+                        $phpExpr = $this->tokenizer->processExpression(
+                            $seg[Tokenizer::KEY_CONTENT]
+                        );
+                        $this->addPhpLines(
+                            $lines,
+                            "echo {$phpExpr};",
+                            $tplLine,
+                            $sourcePath
+                        );
+                        break;
+
+                    case Tokenizer::BLOCK_TAG:
+                        $compiled = $this->compileBlock(
+                            $seg[Tokenizer::KEY_CONTENT],
+                            $sourcePath,
+                            $tplLine,
+                            $lines
+                        );
+                        if ($compiled !== '') {
+                            $this->addPhpLines(
+                                $lines,
+                                $compiled,
+                                $tplLine,
+                                $sourcePath
+                            );
+                        }
+                        break;
+                }
             }
+        } finally {
+            \array_pop($this->compileStack);
         }
     }
 
@@ -406,10 +449,11 @@ class Compiler
         };
     }
 
-    private const RE_FOR_IN = '/^([a-zA-Z_][a-zA-Z0-9_.]*)\s+in\s+(.+?)(?:(\.\.\.|\.\.)(.+?)(?:\s+step\s+(.+))?)?$/s';
+    private const RE_FOR_IN = '/^([a-zA-Z_][a-zA-Z0-9_.]*)(?:\s*,\s*([a-zA-Z_][a-zA-Z0-9_]*))?\s+in\s+(.+?)(?:(\.\.\.?)(.+?)(?:\s+step\s+(.+))?)?$/s';
 
     /**
      * Compile {% for item in list %} → PHP foreach.
+     * Compile {% for item, idx in list %} → PHP foreach.
      * Compile {% for i in start..end %} / {% for i in start...end [step N] %} → native PHP for.
      *
      * Range syntax:
@@ -426,20 +470,18 @@ class Compiler
         }
 
         // Range syntax: varName in startExpr(..|...)endExpr [step stepExpr]
-        // We try ... before .. so the longer token is matched first.
-        if (isset($m[3]) && $m[3] !== '') {
+        if (isset($m[4]) && $m[4] !== '') {
             $item = $this->tokenizer->processLvalue($m[1]);
-            $start = $this->tokenizer->processCondition(trim($m[2]));
-            $inclusive = ($m[3] === '...');
-            $end = $this->tokenizer->processCondition(trim($m[4]));
-            $step = isset($m[5]) && $m[5] !== '' ? $this->tokenizer->processCondition(trim($m[5])) : '1';
+            $start = $this->tokenizer->processCondition(trim($m[3]));
+            $inclusive = ($m[4] === '...');
+            $end = $this->tokenizer->processCondition(trim($m[5]));
+            $step = isset($m[6]) && $m[6] !== '' ? $this->tokenizer->processCondition(trim($m[6])) : '1';
             $cmp = $inclusive ? '<=' : '<';
 
-            // Unique temp vars so nested range loops don't collide.
             $n = $this->rangeCounter++;
-            $rb = "\$__rb{$n}"; // range begin
-            $re = "\$__re{$n}"; // range end
-            $rs = "\$__rs{$n}"; // range step
+            $rb = "\$__rb{$n}";
+            $re = "\$__re{$n}";
+            $rs = "\$__rs{$n}";
 
             $srcLabel = addslashes($sourcePath . ':' . $tplLine);
 
@@ -452,10 +494,18 @@ class Compiler
             ]);
         }
 
-        // Fallback: standard foreach over an iterable
+        // Standard foreach
         $item = $this->tokenizer->processLvalue($m[1]);
-        $listExpr = $this->tokenizer->processCondition(trim($m[2]));
+        $listExpr = $this->tokenizer->processCondition(trim($m[3]));
 
+        // Optional key
+        if (isset($m[2]) && $m[2] !== '') {
+            $idx = $this->tokenizer->processLvalue($m[2]);
+            $this->forStack[] = 'foreach';
+            return "foreach ({$listExpr} as {$idx} => {$item}):";
+        }
+
+        // No key
         $this->forStack[] = 'foreach';
         return "foreach ({$listExpr} as {$item}):";
     }
@@ -510,6 +560,15 @@ class Compiler
         }
 
         $includePath = $this->resolvePath($m[1], $sourcePath);
+
+        if (\in_array($includePath, $this->compileStack, true)) {
+            $chain = [...$this->compileStack, $includePath];
+            throw new ClarityException(
+                'Recursive static include detected: ' . \implode(' -> ', $chain),
+                $sourcePath,
+                $tplLine
+            );
+        }
 
         if (!is_file($includePath)) {
             throw new ClarityException("Included file not found: {$includePath}", $sourcePath, $tplLine);
@@ -570,12 +629,18 @@ class Compiler
      */
     private function addPhpLines(array &$lines, string $php, int $tplLine, string $file): void
     {
+        if (!isset($this->sourceFileIndex[$file])) {
+            $this->sourceFileIndex[$file] = \count($this->sourceFiles);
+            $this->sourceFiles[] = $file;
+        }
+        $fileIdx = $this->sourceFileIndex[$file];
+
         foreach (explode("\n", $php) as $codeLine) {
             $this->phpLine++;
-            // Emit a new range only when (file, tplLine) changes from the last entry.
+            // Emit a new range only when (fileIndex, tplLine) changes from the last entry.
             $last = end($this->sourceMap);
-            if ($last === false || $last[1] !== $file || $last[2] !== $tplLine) {
-                $this->sourceMap[] = [$this->phpLine, $file, $tplLine];
+            if ($last === false || $last[1] !== $fileIdx || $last[2] !== $tplLine) {
+                $this->sourceMap[] = [$this->phpLine, $fileIdx, $tplLine];
             }
             $lines[] = $codeLine;
         }
@@ -674,6 +739,7 @@ class Compiler
         );
 
         $depsExport = var_export($this->dependencies, true);
+        $filesExport = var_export($this->sourceFiles, true);
         $mapExport = var_export($this->sourceMap, true);
 
         return <<<PHP
@@ -682,15 +748,20 @@ class Compiler
             /** @var array<string,int> absolutePath => mtime for every file read during compilation */
             public static array \$dependencies = {$depsExport};
 
-            /** @var list<array{int,string,int}> source-map ranges: [phpLineStart, templateFile, templateLine] */
+            /** @var string[] source file paths, indexed by the integer used in \$sourceMap */
+            public static array \$sourceFiles = {$filesExport};
+
+            /** @var list<array{int,int,int}> source-map ranges: [phpLineStart, fileIndex, templateLine] */
             public static array \$sourceMap = {$mapExport};
 
-            /** @param array<string,callable> \$__f Filter registry */
-            public function __construct(private array \$__f) {}
+            /** @param array<string,callable> \$__fl Filter registry */
+            /** @param array<string,callable> \$__fn Function registry */
+            /** @param callable \$__cast Cast custom function/filter results to scalars/arrays — prevents object leakage. */
+            public function __construct(private array \$__fl, private array \$__fn, private mixed \$__cast) {}
 
             public function render(array \$vars): string
             {
-                ob_start();                \$__f = \$this->__f;
+                ob_start();
                 try {
         {$indented}
                     return (string) ob_get_clean();

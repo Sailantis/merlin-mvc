@@ -26,7 +26,8 @@ namespace Merlin\Mvc\Clarity;
  * - format(...$args)       : sprintf-style string formatting
  * - length                 : mb_strlen for strings, count for arrays
  * - slice($start[,$len])   : mb_substr / array_slice
- * - u                      : wrap in UnicodeString (alias: unicode)
+ * - unicode                : wrap in UnicodeString
+ * - escape                 : htmlspecialchars (alias: esc)
  *
  * Numbers
  * - number($dec)           : number_format with $dec decimal places (default 2)
@@ -58,14 +59,27 @@ namespace Merlin\Mvc\Clarity;
  * - url_encode             : rawurlencode the value
  * - data_uri[$mime]        : base64-encoded data: URI
  */
-class FilterRegistry
+class FunctionRegistry
 {
+    private mixed $includeRenderer;
+
+    /** @var array<string, callable> */
+    private array $functions = [];
+
     /** @var array<string, callable> */
     private array $filters = [];
 
-    public function __construct()
+    /** @var array<string, true> Names of user-registered (non-builtin) filters. */
+    private array $customFilters = [];
+
+    /** @var array<string, true> Names of user-registered (non-builtin) functions. */
+    private array $customFunctions = [];
+
+    public function __construct(?callable $includeRenderer = null)
     {
-        $this->registerBuiltins();
+        $this->includeRenderer = $includeRenderer;
+        $this->registerBuiltinFunctions();
+        $this->registerBuiltinFilters();
     }
 
     /**
@@ -75,18 +89,28 @@ class FilterRegistry
      * @param callable $fn   Callable receiving ($value, ...$args).
      * @return static
      */
-    public function add(string $name, callable $fn): static
+    public function addFilter(string $name, callable $fn): static
     {
         $this->filters[$name] = $fn;
+        $this->customFilters[$name] = true;
         return $this;
     }
 
     /**
      * Check whether a named filter is registered.
      */
-    public function has(string $name): bool
+    public function hasFilter(string $name): bool
     {
         return isset($this->filters[$name]);
+    }
+
+    /**
+     * Returns true when $name was registered via addFilter() rather than a built-in.
+     * Used by the compiler to decide whether to sandbox the return value.
+     */
+    public function isCustomFilter(string $name): bool
+    {
+        return isset($this->customFilters[$name]);
     }
 
     /**
@@ -94,15 +118,91 @@ class FilterRegistry
      *
      * @return array<string, callable>
      */
-    public function all(): array
+    public function allFilters(): array
     {
         return $this->filters;
     }
 
+    /**
+     * Register a user-defined function.
+     *
+     * @param string   $name Function name used in templates (e.g. 'greet').
+     * @param callable $fn   Callable receiving any positional arguments.
+     * @return static
+     */
+    public function addFunction(string $name, callable $fn): static
+    {
+        $this->functions[$name] = $fn;
+        $this->customFunctions[$name] = true;
+        return $this;
+    }
+
+    /**
+     * Check whether a named function is registered.
+     */
+    public function hasFunction(string $name): bool
+    {
+        return isset($this->functions[$name]);
+    }
+
+    /**
+     * Returns true when $name was registered via addFunction() rather than a built-in.
+     * Used by the compiler to decide whether to sandbox the return value.
+     */
+    public function isCustomFunction(string $name): bool
+    {
+        return isset($this->customFunctions[$name]);
+    }
+
+    /**
+     * Get all registered functions as a name → callable map.
+     *
+     * @return array<string, callable>
+     */
+    public function allFunctions(): array
+    {
+        return $this->functions;
+    }
+
     // -------------------------------------------------------------------------
 
-    private function registerBuiltins(): void
+    private function registerBuiltinFunctions(): void
     {
+        $this->functions['context'] = static fn(array $vars = []): array => $vars;
+
+        $this->functions['include'] = function (string $view, array $context = []): string {
+            if ($this->includeRenderer === null) {
+                throw new \LogicException('The built-in include() function is not available in this Clarity runtime.');
+            }
+
+            return ($this->includeRenderer)(
+                $view,
+                self::castToArray($context)
+            );
+        };
+
+        $this->functions['json'] = static fn(mixed ...$args): string => (string) \json_encode($args);
+
+        $this->functions['dump'] = static function (mixed ...$args): string {
+            $result = '';
+            foreach ($args as $index => $arg) {
+                $result .= "[$index] ";
+                $result .= print_r($arg, true);
+                $result .= "\n";
+            }
+            return $result;
+        };
+
+        $this->functions['keys'] = static fn(mixed $v): array =>
+            \is_array($v) ? \array_keys($v) : [];
+
+        $this->functions['values'] = static fn(mixed $v): array =>
+            \is_array($v) ? \array_values($v) : [];
+    }
+
+    private function registerBuiltinFilters(): void
+    {
+
         $this->filters['default'] = static fn(mixed $v, mixed $fallback) => $v ?: $fallback;
 
         $this->filters['length'] = static fn(mixed $v): int => \is_array($v) || $v instanceof \Countable ? \count($v) : \mb_strlen((string) $v);
@@ -118,8 +218,9 @@ class FilterRegistry
 
         $this->filters['unicode'] = static fn(mixed $v, int $start = 0, ?int $length = null): UnicodeString => new UnicodeString((string) $v, $start, $length);
 
-        // Alias 'u' for 'unicode'
-        $this->filters['u'] = $this->filters['unicode'];
+        $this->filters['escape'] = static fn(mixed $v): string => (string) \htmlspecialchars((string) $v, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
+
+        $this->filters['esc'] = $this->filters['escape']; // alias
 
         $this->filters['trim'] = static fn(mixed $v): string => trim((string) $v);
 
@@ -281,8 +382,6 @@ class FilterRegistry
 
         // ── Utility ────────────────────────────────────────────────────────
 
-        $this->filters['json'] = static fn(mixed $v): string => (string) \json_encode($v);
-
         $this->filters['data_uri'] = static fn(mixed $v, string $mime = 'application/octet-stream'): string =>
             'data:' . $mime . ';base64,' . \base64_encode((string) $v);
 
@@ -302,5 +401,45 @@ class FilterRegistry
             $s = (string) \preg_replace('/[^a-z0-9]+/', $separator, $s);
             return \trim($s, $separator);
         };
+    }
+
+    // -------------------------------------------------------------------------
+    // Object → array casting
+    // -------------------------------------------------------------------------
+
+    /**
+     * Recursively cast values to arrays so templates never receive live
+     * objects and cannot call methods.
+     *
+     * Precedence:
+     * 1. JsonSerializable → jsonSerialize() then recurse
+     * 2. Objects with toArray() → toArray() then recurse
+     * 3. Other objects → get_object_vars() then recurse
+     * 4. Arrays → recurse element by element
+     * 5. Scalars / null → pass through
+     */
+    public static function castToArray(mixed $value): mixed
+    {
+        if (\is_array($value)) {
+            $result = [];
+            foreach ($value as $k => $v) {
+                $result[$k] = self::castToArray($v);
+            }
+            return $result;
+        }
+
+        if ($value instanceof \JsonSerializable) {
+            $data = $value->jsonSerialize();
+            return self::castToArray((array) $data);
+        }
+
+        if (\is_object($value)) {
+            if (method_exists($value, 'toArray')) {
+                return self::castToArray($value->toArray());
+            }
+            return self::castToArray(get_object_vars($value));
+        }
+
+        return $value;
     }
 }

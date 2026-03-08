@@ -27,7 +27,12 @@ Conversions performed
 Pipeline (|>)
 • Each step after |> is a filter: name  or  name(arg1, arg2)
 • Arguments are themselves processed as expressions
-• Result: nested $__f['name']($__f['name']($expr, arg), …)
+• Result: nested $this->__fl['name']($this->__fl['name']($expr, arg), …)
+
+Named arguments
+• Clarity uses `=` syntax: filter(precision=2) or fn(from="system")
+• These are emitted directly as PHP named arguments: `precision: 2`, `from: 'system'`
+• PHP itself validates parameter names and arity at runtime — no reflection needed
 
 ## 📌 Public Constants
 
@@ -40,7 +45,7 @@ Pipeline (|>)
 
 ## 🚀 Public methods
 
-### tokenize() · [source](../../src/Mvc/Clarity/Tokenizer.php#L55)
+### tokenize() · [source](../../src/Mvc/Clarity/Tokenizer.php#L61)
 
 `public function tokenize(string $source): array`
 
@@ -61,9 +66,9 @@ Each element is:  ['type' => TEXT|OUTPUT|BLOCK, 'content' => string, 'line' => i
 
 ---
 
-### processExpression() · [source](../../src/Mvc/Clarity/Tokenizer.php#L139)
+### processExpression() · [source](../../src/Mvc/Clarity/Tokenizer.php#L145)
 
-`public function processExpression(string $expression, bool $autoEscape = true): string`
+`public function processExpression(string $expression): string`
 
 Convert a Clarity expression string to a PHP expression string.
 
@@ -75,7 +80,6 @@ expression and each subsequent segment is a filter call.
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$expression` | string | - | Raw expression from inside {{ ... }} or the<br>right-hand side of {% set var = ... %}. |
-| `$autoEscape` | bool | `true` | When true and there is no |> raw at the end,<br>wraps the whole result in htmlspecialchars(). |
 
 **➡️ Return value**
 
@@ -85,7 +89,7 @@ expression and each subsequent segment is a filter call.
 
 ---
 
-### processCondition() · [source](../../src/Mvc/Clarity/Tokenizer.php#L172)
+### processCondition() · [source](../../src/Mvc/Clarity/Tokenizer.php#L171)
 
 `public function processCondition(string $expression): string`
 
@@ -106,7 +110,7 @@ structure conditions (if, for, set) where auto-escape is meaningless.
 
 ---
 
-### processLvalue() · [source](../../src/Mvc/Clarity/Tokenizer.php#L191)
+### processLvalue() · [source](../../src/Mvc/Clarity/Tokenizer.php#L190)
 
 `public function processLvalue(string $var): string`
 
@@ -128,7 +132,7 @@ Used for the left-hand side of {% set var = ... %}.
 
 ---
 
-### convertVarsAndOps() · [source](../../src/Mvc/Clarity/Tokenizer.php#L294)
+### convertVarsAndOps() · [source](../../src/Mvc/Clarity/Tokenizer.php#L293)
 
 `public function convertVarsAndOps(string $expr): string`
 
@@ -154,7 +158,7 @@ identifiers/var-chains, operators, punctuation) and process each atom.
 
 ---
 
-### varChainToPhp() · [source](../../src/Mvc/Clarity/Tokenizer.php#L640)
+### varChainToPhp() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1007)
 
 `public function varChainToPhp(string $chain): string`
 
@@ -180,15 +184,15 @@ a.b[c.d].e    → $vars['a']['b'][$vars['c']['d']]['e']
 
 ---
 
-### setFilterRegistry() · [source](../../src/Mvc/Clarity/Tokenizer.php#L676)
+### setFilterRegistry() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1043)
 
-`public function setFilterRegistry(Merlin\Mvc\Clarity\FilterRegistry $registry): void`
+`public function setFilterRegistry(Merlin\Mvc\Clarity\FunctionRegistry $registry): void`
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$registry` | [FilterRegistry](Mvc_Clarity_FilterRegistry.md) | - |  |
+| `$registry` | [FunctionRegistry](Mvc_Clarity_FunctionRegistry.md) | - |  |
 
 **➡️ Return value**
 
@@ -197,20 +201,19 @@ a.b[c.d].e    → $vars['a']['b'][$vars['c']['d']]['e']
 
 ---
 
-### buildFilterCall() · [source](../../src/Mvc/Clarity/Tokenizer.php#L770)
+### buildFilterCall() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1119)
 
-`public function buildFilterCall(string $filterSegment, string $phpValue, bool &$isRaw = false): string`
+`public function buildFilterCall(string $filterSegment, string $phpValue): string`
 
-Build a PHP filter call:  $__f['name']($value, arg1, arg2)
+Build a PHP filter call:  $this->__fl['name']($value, arg1, name2: arg2)
 
 For map / filter / reduce the first argument must be either:
   - a lambda expression:  param => expression
   - a filter reference:   'filterName' or "filterName"
 Bare variable names are rejected at compile time.
 
-Named arguments (identifier=expression) are resolved to positional via
-reflection at compile time, so the emitted PHP retains zero-overhead
-positional calls.
+Named arguments (`identifier=expression`) are emitted directly as PHP named
+arguments (`identifier: phpExpr`). PHP validates names and arity at runtime.
 
 **🧭 Parameters**
 
@@ -218,7 +221,6 @@ positional calls.
 |---|---|---|---|
 | `$filterSegment` | string | - | Clarity filter segment e.g. 'number(2)' or 'upper' |
 | `$phpValue` | string | - | Already-converted PHP expression for the input value. |
-| `$isRaw` | bool | `false` |  |
 
 **➡️ Return value**
 
@@ -228,7 +230,7 @@ positional calls.
 
 ---
 
-### filterName() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1033)
+### filterName() · [source](../../src/Mvc/Clarity/Tokenizer.php#L1294)
 
 `public function filterName(string $filterSegment): string`
 

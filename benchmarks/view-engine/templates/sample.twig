@@ -1,0 +1,13 @@
+{% extends 'layouts/main.twig' %}
+
+{% block content %}
+  <header>
+    <h1>{{ title|upper }}</h1>
+    <p>Items: {{ items|length }}</p>
+  </header>
+  <ul>
+    {% for item in items %}
+      <li{% if loop.index0 is defined and loop.index0 % 2 == 0 %} class="even"{% endif %}>{{ item }}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -48,7 +48,7 @@ $sourceMap    – list<[phpLineStart, templateFile, templateLine]>  ranges
 
 ---
 
-### setPath() · [source](../../src/Mvc/Clarity/Cache.php#L52)
+### setPath() · [source](../../src/Mvc/Clarity/Cache.php#L54)
 
 `public function setPath(string $path): static`
 
@@ -67,7 +67,7 @@ Change the cache directory at runtime.
 
 ---
 
-### getPath() · [source](../../src/Mvc/Clarity/Cache.php#L58)
+### getPath() · [source](../../src/Mvc/Clarity/Cache.php#L60)
 
 `public function getPath(): string`
 
@@ -78,7 +78,7 @@ Change the cache directory at runtime.
 
 ---
 
-### isFresh() · [source](../../src/Mvc/Clarity/Cache.php#L81)
+### isFresh() · [source](../../src/Mvc/Clarity/Cache.php#L83)
 
 `public function isFresh(string $sourcePath): bool`
 
@@ -108,7 +108,7 @@ On warm paths the class is already in memory; `readDeps()` reflects
 
 ---
 
-### load() · [source](../../src/Mvc/Clarity/Cache.php#L115)
+### load() · [source](../../src/Mvc/Clarity/Cache.php#L117)
 
 `public function load(string $sourcePath): string|null`
 
@@ -132,7 +132,7 @@ is OPcache-eligible) and registers the returned class name.
 
 ---
 
-### writeAndLoad() · [source](../../src/Mvc/Clarity/Cache.php#L149)
+### writeAndLoad() · [source](../../src/Mvc/Clarity/Cache.php#L151)
 
 `public function writeAndLoad(string $sourcePath, Merlin\Mvc\Clarity\CompiledTemplate $compiled): string`
 
@@ -158,7 +158,7 @@ loaded in this process.
 
 ---
 
-### invalidate() · [source](../../src/Mvc/Clarity/Cache.php#L166)
+### invalidate() · [source](../../src/Mvc/Clarity/Cache.php#L172)
 
 `public function invalidate(string $sourcePath): void`
 
@@ -178,7 +178,7 @@ remove it from the in-process registry.
 
 ---
 
-### flush() · [source](../../src/Mvc/Clarity/Cache.php#L179)
+### flush() · [source](../../src/Mvc/Clarity/Cache.php#L185)
 
 `public function flush(): void`
 
@@ -192,7 +192,7 @@ registry so stale class names do not prevent recompilation.
 
 ---
 
-### classNameFor() · [source](../../src/Mvc/Clarity/Cache.php#L199)
+### classNameFor() · [source](../../src/Mvc/Clarity/Cache.php#L209)
 
 `public function classNameFor(string $sourcePath): string`
 
@@ -215,7 +215,7 @@ to obtain the real class name after a template has been loaded.
 
 ---
 
-### getLoadedClassName() · [source](../../src/Mvc/Clarity/Cache.php#L208)
+### getLoadedClassName() · [source](../../src/Mvc/Clarity/Cache.php#L218)
 
 `public function getLoadedClassName(string $sourcePath): string|null`
 
@@ -235,11 +235,19 @@ given source path, or null if the template has not been loaded yet.
 
 ---
 
-### cacheFilePath() · [source](../../src/Mvc/Clarity/Cache.php#L214)
+### cacheFilePath() · [source](../../src/Mvc/Clarity/Cache.php#L233)
 
 `public function cacheFilePath(string $sourcePath): string`
 
 Compute the cache file path for a given source path.
+
+Files are stored under a 2-character hex subdirectory derived from the
+first two characters of the source path's MD5 hash.  This limits the
+number of files per directory to at most 256 buckets × N templates,
+keeping directory listings manageable even for large applications.
+
+Example:  md5('/var/www/views/home/index.clarity.html') = 'a3f…'
+          → {cachePath}/a3/a3f….php
 
 **🧭 Parameters**
 

@@ -4,8 +4,8 @@
 
 A UTF-8 string that can be accessed by character index and counted.
 
-This is used internally by the Clarity template engine to support
-character indexing and length counting for strings with multibyte characters.
+This is used internally by the Clarity DSL engine to support
+character indexing and array access for strings with multibyte characters.
 
 ArrayAccess: Get the character at the given index (0-based).
 
@@ -163,6 +163,17 @@ Note: This class is immutable, so offsetSet and offsetUnset will throw exception
 **➡️ Return value**
 
 - Type: int
+
+
+---
+
+### jsonSerialize() · [source](../../src/Mvc/Clarity/UnicodeString.php#L91)
+
+`public function jsonSerialize(): mixed`
+
+**➡️ Return value**
+
+- Type: mixed
 
 
 

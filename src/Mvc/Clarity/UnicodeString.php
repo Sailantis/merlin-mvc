@@ -6,8 +6,8 @@ use LogicException;
 /**
  * A UTF-8 string that can be accessed by character index and counted.
  *
- * This is used internally by the Clarity template engine to support
- * character indexing and length counting for strings with multibyte characters.
+ * This is used internally by the Clarity DSL engine to support
+ * character indexing and array access for strings with multibyte characters.
  *
  * ArrayAccess: Get the character at the given index (0-based).
  *
@@ -17,7 +17,7 @@ use LogicException;
  *
  * Note: This class is immutable, so offsetSet and offsetUnset will throw exceptions.
  */
-class UnicodeString implements \ArrayAccess, \Countable
+class UnicodeString implements \ArrayAccess, \Countable, \JsonSerializable
 {
     private array $chars;
 
@@ -86,5 +86,10 @@ class UnicodeString implements \ArrayAccess, \Countable
     public function count(): int
     {
         return \count($this->chars);
+    }
+
+    public function jsonSerialize(): mixed
+    {
+        return \implode('', $this->chars);
     }
 }

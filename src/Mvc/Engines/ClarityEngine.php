@@ -4,7 +4,7 @@ namespace Merlin\Mvc\Engines;
 use Merlin\Mvc\Clarity\Cache;
 use Merlin\Mvc\Clarity\ClarityException;
 use Merlin\Mvc\Clarity\Compiler;
-use Merlin\Mvc\Clarity\FilterRegistry;
+use Merlin\Mvc\Clarity\FunctionRegistry;
 use Merlin\Mvc\ViewEngine;
 use ParseError;
 
@@ -33,9 +33,11 @@ use ParseError;
  */
 class ClarityEngine extends ViewEngine
 {
-    private FilterRegistry $filterRegistry;
+    private FunctionRegistry $functionRegistry;
     private Cache $cache;
     private Compiler $compiler;
+    /** @var string[] */
+    private array $renderStack = [];
 
     protected string $extension = '.clarity.html';
 
@@ -43,7 +45,9 @@ class ClarityEngine extends ViewEngine
     {
         parent::__construct($vars);
 
-        $this->filterRegistry = new FilterRegistry();
+        $this->functionRegistry = new FunctionRegistry(
+            fn(string $view, array $vars = []): string => $this->renderPartial($view, $vars)
+        );
         $this->cache = new Cache();
         $this->compiler = new Compiler();
     }
@@ -57,7 +61,19 @@ class ClarityEngine extends ViewEngine
      */
     public function addFilter(string $name, callable $fn): static
     {
-        $this->filterRegistry->add($name, $fn);
+        $this->functionRegistry->addFilter($name, $fn);
+        return $this;
+    }
+
+    /**
+     * {@inheritdoc}
+     *
+     * The return value is automatically cast to a plain array/scalar/null
+     * at the call site in compiled templates, preventing object leakage.
+     */
+    public function addFunction(string $name, callable $fn): static
+    {
+        $this->functionRegistry->addFunction($name, $fn);
         return $this;
     }
 
@@ -119,7 +135,7 @@ class ClarityEngine extends ViewEngine
         $this->renderDepth++;
         try {
             $merged = [...$this->vars, ...$vars];
-            $cast = $this->castToArray($merged);
+            $cast = FunctionRegistry::castToArray($merged);
             $output = $this->renderFile($sourcePath, $cast);
         } finally {
             $this->renderDepth--;
@@ -151,22 +167,40 @@ class ClarityEngine extends ViewEngine
      */
     private function renderFile(string $sourcePath, array $vars): string
     {
+        if (isset($this->renderStack[$sourcePath])) {
+            $chain = [...array_keys($this->renderStack), $sourcePath];
+            throw new ClarityException(
+                'Recursive template rendering detected: ' . \implode(' -> ', $chain),
+                $sourcePath
+            );
+        }
+
+        $this->renderStack[$sourcePath] = true;
+
         // Ensure compiled class is loaded
-        $className = $this->loadCachedClass($sourcePath);
-
-        // Instantiate with filter array
-        $template = new $className($this->filterRegistry->all());
-
-        // Install error handler to map PHP errors → template lines
-        set_error_handler(
-            $this->buildErrorHandler($sourcePath),
-            E_ALL
-        );
-
         try {
-            $output = $template->render($vars);
+            $className = $this->loadCachedClass($sourcePath);
+
+            // Instantiate with filter and function registries
+            $template = new $className(
+                $this->functionRegistry->allFilters(),
+                $this->functionRegistry->allFunctions(),
+                [FunctionRegistry::class, 'castToArray']
+            );
+
+            // Install error handler to map PHP errors → template lines
+            set_error_handler(
+                $this->buildErrorHandler($sourcePath),
+                E_ALL
+            );
+
+            try {
+                $output = $template->render($vars);
+            } finally {
+                restore_error_handler();
+            }
         } finally {
-            restore_error_handler();
+            unset($this->renderStack[$sourcePath]);
         }
 
         return $output;
@@ -210,6 +244,7 @@ class ClarityEngine extends ViewEngine
                 $e->getLine(),
                 $compiled->code,
                 $compiled->sourceMap,
+                $compiled->sourceFiles,
                 $sourcePath
             );
             throw new ClarityException(
@@ -232,13 +267,14 @@ class ClarityEngine extends ViewEngine
      * offset is determined dynamically by locating the "ob_start()" sentinel
      * that marks the start of the render() body.
      *
-     * @param int    $fileLine     1-based line number reported by the ParseError.
-     * @param string $compiledCode The compiled PHP code from CompiledTemplate (no leading <?php).
-     * @param array  $sourceMap    Source map from the CompiledTemplate.
-     * @param string $sourcePath   Fallback template file path.
+     * @param int      $fileLine     1-based line number reported by the ParseError.
+     * @param string   $compiledCode The compiled PHP code from CompiledTemplate (no leading <?php).
+     * @param array    $sourceMap    Source map from the CompiledTemplate.
+     * @param string[] $files        Source file paths (indexed by the integers in $sourceMap).
+     * @param string   $sourcePath   Fallback template file path.
      * @return array{0: string|null, 1: int}  [templateFile|null, templateLine]
      */
-    private function mapCompiledErrorLine(int $fileLine, string $compiledCode, array $sourceMap, string $sourcePath): array
+    private function mapCompiledErrorLine(int $fileLine, string $compiledCode, array $sourceMap, array $files, string $sourcePath): array
     {
         if ($sourceMap === []) {
             return [null, 0];
@@ -273,7 +309,11 @@ class ClarityEngine extends ViewEngine
             }
         }
 
-        return $matched !== null ? [$matched[1], $matched[2]] : [null, 0];
+        if ($matched === null) {
+            return [null, 0];
+        }
+        $tplFile = $files[$matched[1]] ?? null;
+        return [$tplFile, $matched[2]];
     }
 
     /**
@@ -286,7 +326,7 @@ class ClarityEngine extends ViewEngine
             ->setBasePath($this->viewPath)
             ->setExtension($this->extension)
             ->setNamespaces($this->namespaces)
-            ->setFilterRegistry($this->filterRegistry);
+            ->setFilterRegistry($this->functionRegistry);
     }
 
     /**
@@ -316,8 +356,9 @@ class ClarityEngine extends ViewEngine
      * template file and line number using the $sourceMap static property on
      * the compiled class — no file I/O required.
      *
-     * The source map is a list of ranges: [phpLineStart, templateFile, templateLine].
+     * The source map is a list of ranges: [phpLineStart, fileIndex, templateLine].
      * The matching range is the last entry whose phpLineStart ≤ $phpLine.
+     * File paths are resolved from the parallel $files static property.
      *
      * @param string $sourcePath Absolute path to the entry template.
      * @param int    $phpLine    Line number of the error in the compiled file.
@@ -332,18 +373,12 @@ class ClarityEngine extends ViewEngine
 
         try {
             $map = $className::$sourceMap;
+            $files = $className::$sourceFiles;
         } catch (\Error) {
             return [null, 0];
         }
-        /*
-        try {
-            $map = (new \ReflectionClass($className))->getStaticPropertyValue('sourceMap');
-        } catch (\ReflectionException) {
-            return [null, 0];
-        }
-        */
 
-        if (!is_array($map) || $map === []) {
+        if (!\is_array($map) || $map === []) {
             return [null, 0];
         }
 
@@ -357,46 +392,11 @@ class ClarityEngine extends ViewEngine
             }
         }
 
-        return $matched !== null ? [$matched[1], $matched[2]] : [null, 0];
+        if ($matched === null) {
+            return [null, 0];
+        }
+        $tplFile = $files[$matched[1]] ?? null;
+        return [$tplFile, $matched[2]];
     }
 
-    // -------------------------------------------------------------------------
-    // Object → array casting
-    // -------------------------------------------------------------------------
-
-    /**
-     * Recursively cast values to arrays so templates never receive live
-     * objects and cannot call methods.
-     *
-     * Precedence:
-     * 1. JsonSerializable → jsonSerialize() then recurse
-     * 2. Objects with toArray() → toArray() then recurse
-     * 3. Other objects → get_object_vars() then recurse
-     * 4. Arrays → recurse element by element
-     * 5. Scalars / null → pass through
-     */
-    private function castToArray(mixed $value): mixed
-    {
-        if (\is_array($value)) {
-            $result = [];
-            foreach ($value as $k => $v) {
-                $result[$k] = $this->castToArray($v);
-            }
-            return $result;
-        }
-
-        if ($value instanceof \JsonSerializable) {
-            $data = $value->jsonSerialize();
-            return $this->castToArray((array) $data);
-        }
-
-        if (\is_object($value)) {
-            if (method_exists($value, 'toArray')) {
-                return $this->castToArray($value->toArray());
-            }
-            return $this->castToArray(get_object_vars($value));
-        }
-
-        return $value;
-    }
 }

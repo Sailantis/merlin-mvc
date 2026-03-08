@@ -50,7 +50,7 @@
 - [ClarityException](Mvc_Clarity_ClarityException.md) `Merlin\Mvc\Clarity\ClarityException`
 - [CompiledTemplate](Mvc_Clarity_CompiledTemplate.md) `Merlin\Mvc\Clarity\CompiledTemplate`
 - [Compiler](Mvc_Clarity_Compiler.md) `Merlin\Mvc\Clarity\Compiler`
-- [FilterRegistry](Mvc_Clarity_FilterRegistry.md) `Merlin\Mvc\Clarity\FilterRegistry`
+- [FunctionRegistry](Mvc_Clarity_FunctionRegistry.md) `Merlin\Mvc\Clarity\FunctionRegistry`
 - [Tokenizer](Mvc_Clarity_Tokenizer.md) `Merlin\Mvc\Clarity\Tokenizer`
 - [UnicodeString](Mvc_Clarity_UnicodeString.md) `Merlin\Mvc\Clarity\UnicodeString`
 

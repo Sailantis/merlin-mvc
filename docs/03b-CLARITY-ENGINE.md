@@ -31,16 +31,17 @@ $ctx->view()->setViewPath(__DIR__ . '/../views');
 
 ### Configuration
 
-| Method                                   | Description                                                              |
-| ---------------------------------------- | ------------------------------------------------------------------------ |
-| `setViewPath(string $path)`              | Base directory where templates are found                                 |
-| `setLayout(?string $layout)`             | Default layout template (`null` disables the layout)                     |
-| `setExtension(string $ext)`              | Override the file extension (default: `.clarity.html`)                   |
-| `setCachePath(string $path)`             | Directory for compiled PHP files (default: `sys_get_temp_dir()/clarity`) |
-| `getCachePath()`                         | Return the current cache path                                            |
-| `flushCache()`                           | Delete all compiled files – useful during development                    |
-| `addFilter(string $name, callable $fn)`  | Register a custom filter                                                 |
-| `addNamespace(string $ns, string $path)` | Register a named directory for template resolution                       |
+| Method                                    | Description                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| `setViewPath(string $path)`               | Base directory where templates are found                                 |
+| `setLayout(?string $layout)`              | Default layout template (`null` disables the layout)                     |
+| `setExtension(string $ext)`               | Override the file extension (default: `.clarity.html`)                   |
+| `setCachePath(string $path)`              | Directory for compiled PHP files (default: `sys_get_temp_dir()/clarity`) |
+| `getCachePath()`                          | Return the current cache path                                            |
+| `flushCache()`                            | Delete all compiled files – useful during development                    |
+| `addFilter(string $name, callable $fn)`   | Register a custom filter                                                 |
+| `addFunction(string $name, callable $fn)` | Register a custom function                                               |
+| `addNamespace(string $ns, string $path)`  | Register a named directory for template resolution                       |
 
 ---
 
@@ -106,7 +107,43 @@ a.b[c.d].e                → $vars['a']['b'][$vars['c']['d']]['e']
 <p>{{ firstName ~ ' ' ~ lastName }}</p>
 ```
 
-Function calls (e.g. `strtoupper(name)`) are **not allowed** in expressions. Use the filter pipeline instead.
+Registered template functions are allowed in expressions. Built-in `context()` and `include()` are always available, and user code may register additional functions via `addFunction()`. Arbitrary PHP function calls such as `strtoupper(name)` are still rejected at compile time.
+
+### Collection Literals
+
+Clarity supports array and object literals directly inside expressions:
+
+```twig
+{{ [1, 2, user.id] |> json |> raw }}
+{{ { name: user.name, active: user.active } |> json |> raw }}
+```
+
+Object keys must be fixed identifiers or quoted strings.
+
+### Spread Operator
+
+Array and object literals support the spread operator:
+
+```twig
+{{ [1, ...items, 99] |> json |> raw }}
+{{ { foo: "bar", ...payload } |> json |> raw }}
+```
+
+Spread is only valid inside array and object literals.
+
+### Built-in Functions
+
+Two Clarity functions are built in:
+
+```twig
+{{ context() |> json |> raw }}
+{{ include("partials/card", { ...context(), title: "Hello" }) }}
+```
+
+- `context()` returns the current template variable array (`$vars`).
+- `include(view, context = [])` renders another template dynamically and returns its rendered markup.
+- `include()` resolves paths from the view base path or registered namespaces, just like `{% include %}` and `{% extends %}`.
+- Markup returned by `include()` is treated as safe by Clarity auto-escaping, even when stored via `{% set %}` and rendered later.
 
 ---
 
@@ -325,6 +362,19 @@ Embed another template inline using `{% include %}`. The included file shares th
 
 Included files are compiled and inlined at compile time. They do not create a separate render call.
 
+Recursive include chains are rejected during compilation.
+
+### Dynamic Include Function
+
+Use `include()` when the target template or the include context must be decided dynamically at render time:
+
+```twig
+{{ include("partials/user_card", { role: "admin", ...context() }) }}
+{{ include(selectedTemplate, context()) }}
+```
+
+Unlike `{% include %}`, the `include()` function performs a separate render call at runtime and returns the rendered markup directly.
+
 ### Named Namespaces
 
 Register a named directory and reference templates with the `namespace::path` syntax:
@@ -399,6 +449,27 @@ Clarity templates have **no access to PHP**:
 
 ---
 
+**Benchmark Results**
+
+The following micro-benchmark compares Clarity (compiled templates) with other popular PHP template engines using the `benchmarks` harness. Results were written to `benchmarks/view-engine/results-2026-03-07-004340.json` and `benchmarks/view-engine/results-2026-03-07-004340.csv`.
+
+- **Context:** CLI run, PHP 8.3, OPcache CLI enabled for steady-state measurements; 10,000 iterations per engine.
+- **Measured metrics:** warm render time (ms), per-iteration mean/median/p95 (ms), and peak memory.
+
+**Summary (warmup, mean render time, ms)**
+
+| Engine  | Warm (ms) | Mean (ms) | P95 (ms) |
+| ------- | --------- | --------- | -------- |
+| native  | 1.8808    | 0.2191    | 0.3162   |
+| clarity | 0.7028    | 0.2744    | 0.3797   |
+| plates  | 5.9563    | 0.3860    | 0.5624   |
+| blade   | 28.4739   | 0.7479    | 1.0375   |
+| twig    | 19.7515   | 0.8289    | 1.1061   |
+
+You can find the full CSV/JSON outputs in the repository under `benchmarks/view-engine/` and an SVG visualization next to the results: [benchmarks/view-engine/results-2026-03-07-01.svg](../benchmarks/view-engine/results-2026-03-07-01.svg).
+
+![Benchmark Result](../benchmarks/view-engine/results-2026-03-07-01.svg)
+
 ## Choosing Between ClarityEngine and NativeEngine
 
 |                       | ClarityEngine _(default)_                                    | NativeEngine                             |
@@ -406,8 +477,8 @@ Clarity templates have **no access to PHP**:
 | Template syntax       | Clarity DSL (`{{ }}`, `{% %}`)                               | Plain PHP (`<?= ?>`, `<?php ?>`)         |
 | Sandboxed             | Yes                                                          | No                                       |
 | Auto-escaping         | Always on by default                                         | Manual                                   |
-| Compilation & caching | Yes                                                          | Native                                   |
-| Template inheritance  | `{% extends %}` / `{% block %}`                              | Not built-in                             |
+| Compilation & caching | Yes                                                          | No                                       |
+| Template inheritance  | `{% extends %}` / `{% block %}`                              | require/include                          |
 | Filter pipeline       | Built-in                                                     | Not built-in                             |
 | Suitable for          | User-facing views, team projects, untrusted template authors | Full PHP control, existing PHP templates |
 

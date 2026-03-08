@@ -43,7 +43,9 @@ class Cache
 
     public function __construct(string $path = '')
     {
-        $this->path = $path !== '' ? rtrim($path, '/\\') : rtrim(sys_get_temp_dir(), '/\\') . DIRECTORY_SEPARATOR . 'clarity';
+        $this->path = $path !== ''
+            ? rtrim($path, '/\\')
+            : sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'clarity_cache';
     }
 
     /**
@@ -148,12 +150,16 @@ class Cache
      */
     public function writeAndLoad(string $sourcePath, CompiledTemplate $compiled): string
     {
-        $this->ensureDirectory();
+        $cacheFile = $this->cacheFilePath($sourcePath);
+        $dir = \dirname($cacheFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
 
         $code = "<?php\n" . $compiled->code . "\n";
-        file_put_contents($this->cacheFilePath($sourcePath), $code, LOCK_EX);
+        file_put_contents($cacheFile, $code, LOCK_EX);
 
-        $className = require $this->cacheFilePath($sourcePath);
+        $className = require $cacheFile;
         self::$classNames[$sourcePath] = $className;
 
         return $className;
@@ -181,8 +187,12 @@ class Cache
         if (!is_dir($this->path)) {
             return;
         }
-        foreach (glob($this->path . DIRECTORY_SEPARATOR . '*.php') ?: [] as $file) {
-            @unlink($file);
+        $iter = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($this->path, \FilesystemIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($iter as $file) {
+            $file->isDir() ? rmdir($file->getPathname()) : unlink($file->getPathname());
         }
         self::$classNames = [];
     }
@@ -210,11 +220,21 @@ class Cache
         return self::$classNames[$sourcePath] ?? null;
     }
 
-    /** Compute the cache file path for a given source path. */
+    /** Compute the cache file path for a given source path.
+     *
+     * Files are stored under a 2-character hex subdirectory derived from the
+     * first two characters of the source path's MD5 hash.  This limits the
+     * number of files per directory to at most 256 buckets × N templates,
+     * keeping directory listings manageable even for large applications.
+     *
+     * Example:  md5('/var/www/views/home/index.clarity.html') = 'a3f…'
+     *           → {cachePath}/a3/a3f….php
+     */
     public function cacheFilePath(string $sourcePath): string
     {
-        $cachePath = $this->path . DIRECTORY_SEPARATOR . md5($sourcePath) . '.php';
-        return $cachePath;
+        $hash = md5($sourcePath);
+        $bucket = \substr($hash, 0, 2);
+        return $this->path . DIRECTORY_SEPARATOR . $bucket . DIRECTORY_SEPARATOR . $hash . '.php';
     }
 
     /**

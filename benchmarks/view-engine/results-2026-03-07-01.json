@@ -1,0 +1,52 @@
+[
+    {
+        "engine": "clarity",
+        "warm_ms": 0.7028,
+        "warm_peak_mem": 4194304,
+        "iterations": 10000,
+        "mean_ms": 0.2743617300000015,
+        "median_ms": 0.2532,
+        "p95_ms": 0.3797,
+        "peak_mem": 4194304
+    },
+    {
+        "engine": "native",
+        "warm_ms": 1.8808,
+        "warm_peak_mem": 4194304,
+        "iterations": 10000,
+        "mean_ms": 0.21914146999999962,
+        "median_ms": 0.1937,
+        "p95_ms": 0.3162,
+        "peak_mem": 4194304
+    },
+    {
+        "engine": "twig",
+        "warm_ms": 19.7515,
+        "warm_peak_mem": 4194304,
+        "iterations": 10000,
+        "mean_ms": 0.8289158199999989,
+        "median_ms": 0.7574,
+        "p95_ms": 1.1061,
+        "peak_mem": 4194304
+    },
+    {
+        "engine": "plates",
+        "warm_ms": 5.9563,
+        "warm_peak_mem": 4194304,
+        "iterations": 10000,
+        "mean_ms": 0.3860280099999979,
+        "median_ms": 0.3475,
+        "p95_ms": 0.5624,
+        "peak_mem": 4194304
+    },
+    {
+        "engine": "blade",
+        "warm_ms": 28.4739,
+        "warm_peak_mem": 4194304,
+        "iterations": 10000,
+        "mean_ms": 0.747864540000002,
+        "median_ms": 0.6741,
+        "p95_ms": 1.0375,
+        "peak_mem": 4194304
+    }
+]

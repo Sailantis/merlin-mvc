@@ -27,7 +27,12 @@ namespace Merlin\Mvc\Clarity;
  * Pipeline (|>)
  * • Each step after |> is a filter: name  or  name(arg1, arg2)
  * • Arguments are themselves processed as expressions
- * • Result: nested $__f['name']($__f['name']($expr, arg), …)
+ * • Result: nested $this->__fl['name']($this->__fl['name']($expr, arg), …)
+ *
+ * Named arguments
+ * • Clarity uses `=` syntax: filter(precision=2) or fn(from="system")
+ * • These are emitted directly as PHP named arguments: `precision: 2`, `from: 'system'`
+ * • PHP itself validates parameter names and arity at runtime — no reflection needed
  */
 class Tokenizer
 {
@@ -39,6 +44,7 @@ class Tokenizer
     public const KEY_CONTENT = 1;
     public const KEY_LINE = 2;
 
+    private bool $autoEscape = true;
 
     // -------------------------------------------------------------------------
     // Segment splitting
@@ -136,27 +142,20 @@ class Tokenizer
      *                           wraps the whole result in htmlspecialchars().
      * @return string PHP expression (no leading <?= or trailing ?>).
      */
-    public function processExpression(string $expression, bool $autoEscape = true): string
+    public function processExpression(string $expression): string
     {
+        $this->autoEscape = true;
         [$expr, $filters] = $this->splitPipeline($expression);
 
         $phpExpr = $this->convertVarsAndOps($expr);
 
-        $applyEscape = $autoEscape;
-
         // Wrap in filter calls (innermost first → outermost last)
-        $isRaw = false;
         foreach ($filters as $filterSegment) {
-            $phpExpr = $this->buildFilterCall($filterSegment, $phpExpr, $isRaw);
+            $phpExpr = $this->buildFilterCall($filterSegment, $phpExpr);
         }
 
-        if ($isRaw) {
-            // If a 'raw' filter is found anywhere in the chain, disable auto-escape for the whole expression.
-            $applyEscape = false;
-        }
-
-        if ($applyEscape) {
-            $phpExpr = "\\htmlspecialchars((string)({$phpExpr}), \\ENT_QUOTES, 'UTF-8')";
+        if ($this->autoEscape) {
+            $phpExpr = "\\htmlspecialchars((string)({$phpExpr}), 11, 'UTF-8')";
         }
 
         return $phpExpr;
@@ -220,8 +219,8 @@ class Tokenizer
 
     /**
      * Split $subject on $delimiter while respecting single- and double-quoted
-     * string literals and balanced parentheses / square brackets (i.e. do not
-     * split on delimiters that are inside quotes or inside brackets).
+     * string literals and balanced parentheses / square / curly brackets (i.e.
+     * do not split on delimiters that are inside quotes or nested structures).
      *
      * This ensures that lambdas with inner pipelines work correctly, for example:
      *   items |> map(item => item |> upper) |> join(",")
@@ -238,7 +237,7 @@ class Tokenizer
         $i = 0;
         $inSingle = false;
         $inDouble = false;
-        $depth = 0; // parenthesis / square-bracket nesting depth
+        $depth = 0; // parenthesis / square / curly-brace nesting depth
 
         while ($i < $len) {
             $ch = $subject[$i];
@@ -257,11 +256,11 @@ class Tokenizer
                 $inDouble = !$inDouble;
                 $current .= $ch;
                 $i++;
-            } elseif (!$inSingle && !$inDouble && ($ch === '(' || $ch === '[')) {
+            } elseif (!$inSingle && !$inDouble && ($ch === '(' || $ch === '[' || $ch === '{')) {
                 $depth++;
                 $current .= $ch;
                 $i++;
-            } elseif (!$inSingle && !$inDouble && ($ch === ')' || $ch === ']')) {
+            } elseif (!$inSingle && !$inDouble && ($ch === ')' || $ch === ']' || $ch === '}')) {
                 if ($depth > 0) {
                     $depth--;
                 }
@@ -361,6 +360,20 @@ class Tokenizer
                 throw new ClarityException("Direct PHP variable access ('\$') is not allowed in Clarity expressions; use dot-notation instead.");
             }
 
+            if (
+                $ch === '.'
+                && ($expr[$i + 1] ?? '') === '.'
+                && ($expr[$i + 2] ?? '') === '.'
+            ) {
+                throw new ClarityException('Spread operator is only allowed inside array and object literals.');
+            }
+
+            if ($ch === '[' || $ch === '{') {
+                [$literalPhp, $i] = $this->parseCollectionLiteralAt($expr, $i);
+                $out .= $literalPhp;
+                continue;
+            }
+
             // Identifier / var-chain detection
             if (\ctype_alpha($ch) || $ch === '_') {
                 $start = $i;
@@ -391,14 +404,19 @@ class Tokenizer
                         continue;
                     }
 
-                    // Guard against function-call syntax
+                    // Function-call syntax: allowed only for explicitly registered functions.
                     $j = $i;
                     while ($j < $len && \ctype_space($expr[$j])) {
                         $j++;
                     }
                     if ($j < $len && $expr[$j] === '(') {
+                        if ($this->functionRegistry !== null && $this->functionRegistry->hasFunction($token)) {
+                            [$call, $i] = $this->buildFunctionCallInExpr($token, $expr, $j, $len);
+                            $out .= $call;
+                            continue;
+                        }
                         $context = \substr($expr, \max(0, $start - 10), \min(60, $len - $start + 10));
-                        throw new ClarityException("Function calls are not allowed in expressions: '{$token}(...)' in context '{$context}'");
+                        throw new ClarityException("Call to unregistered function in context '{$context}'. Register it via addFunction() first.");
                     }
 
                     if (isset($this->varChainCache[$token])) {
@@ -425,15 +443,14 @@ class Tokenizer
                 $segments = $parsed['segments'];
                 $token = \substr($expr, $start, $i - $start);
 
-                // For dot/bracket chains a keyword match is impossible, so skip that
-                // check and go straight to function-call guard + var-chain conversion.
+                // Dot/bracket chains cannot be function calls — always forbidden.
                 $j = $i;
                 while ($j < $len && \ctype_space($expr[$j])) {
                     $j++;
                 }
                 if ($j < $len && $expr[$j] === '(') {
                     $context = \substr($expr, \max(0, $start - 10), \min(60, $len - $start + 10));
-                    throw new ClarityException("Function calls are not allowed in expressions: '{$token}(...)' in context '{$context}'");
+                    throw new ClarityException("Method calls are not allowed in expressions: '{$token}(...)' in context '{$context}'");
                 }
                 $out .= $this->varChainToPhpWithSegments($token, $segments);
                 continue;
@@ -447,6 +464,356 @@ class Tokenizer
         return $out;
     }
 
+    /**
+     * Parse a Clarity array/object literal and any trailing property/index access.
+     *
+     * @return array{0:string,1:int}
+     */
+    private function parseCollectionLiteralAt(string $expr, int $start): array
+    {
+        [$inner, $end] = $this->extractBalancedSegment($expr, $start);
+
+        $php = $expr[$start] === '['
+            ? $this->compileArrayLiteral($inner)
+            : $this->compileObjectLiteral($inner);
+
+        return $this->compilePostfixAccessChain($expr, $end, $php);
+    }
+
+    private function compileArrayLiteral(string $inner): string
+    {
+        $inner = \trim($inner);
+        if ($inner === '') {
+            return '[]';
+        }
+
+        $items = [];
+        foreach ($this->splitRespectingStrings($inner, ',') as $part) {
+            $part = \trim($part);
+            if ($part === '') {
+                throw new ClarityException('Array literals must not contain empty elements.');
+            }
+            if (\str_starts_with($part, '...')) {
+                $spread = \trim(\substr($part, 3));
+                if ($spread === '') {
+                    throw new ClarityException('Array spread operator must be followed by an expression.');
+                }
+                $items[] = '...' . $this->processCondition($spread);
+                continue;
+            }
+
+            $items[] = $this->processCondition($part);
+        }
+
+        return '[' . \implode(', ', $items) . ']';
+    }
+
+    private function compileObjectLiteral(string $inner): string
+    {
+        $inner = \trim($inner);
+        if ($inner === '') {
+            return '[]';
+        }
+
+        $items = [];
+        foreach ($this->splitRespectingStrings($inner, ',') as $entry) {
+            $entry = \trim($entry);
+            if ($entry === '') {
+                throw new ClarityException('Object literals must not contain empty entries.');
+            }
+
+            if (\str_starts_with($entry, '...')) {
+                $spread = \trim(\substr($entry, 3));
+                if ($spread === '') {
+                    throw new ClarityException('Object spread operator must be followed by an expression.');
+                }
+                $items[] = '...' . $this->processCondition($spread);
+                continue;
+            }
+
+            $colonPos = $this->findTopLevelChar($entry, ':');
+            if ($colonPos === false) {
+                throw new ClarityException("Object literal entries must use 'key: value' syntax: '{$entry}'");
+            }
+
+            $rawKey = \trim(\substr($entry, 0, $colonPos));
+            $rawValue = \trim(\substr($entry, $colonPos + 1));
+
+            if ($rawValue === '') {
+                throw new ClarityException("Object literal entry is missing a value for key '{$rawKey}'.");
+            }
+
+            $items[] = $this->compileObjectKey($rawKey) . ' => ' . $this->processCondition($rawValue);
+        }
+
+        return '[' . \implode(', ', $items) . ']';
+    }
+
+    private function compileObjectKey(string $rawKey): string
+    {
+        if ($rawKey === '') {
+            throw new ClarityException('Object literal keys must not be empty.');
+        }
+
+        $first = $rawKey[0];
+        $last = $rawKey[\strlen($rawKey) - 1];
+        if (($first === '"' && $last === '"') || ($first === "'" && $last === "'")) {
+            return $rawKey;
+        }
+
+        if (!\preg_match(self::IDENT_RE, $rawKey)) {
+            throw new ClarityException(
+                "Object literal keys must be fixed strings or identifiers, got '{$rawKey}'."
+            );
+        }
+
+        return "'" . \addslashes($rawKey) . "'";
+    }
+
+    /**
+     * Consume chained property/index access after a compiled expression.
+     *
+     * @return array{0:string,1:int}
+     */
+    private function compilePostfixAccessChain(string $expr, int $start, string $php): array
+    {
+        $len = \strlen($expr);
+        $i = $start;
+
+        while ($i < $len) {
+            while ($i < $len && \ctype_space($expr[$i])) {
+                $i++;
+            }
+
+            if ($i >= $len) {
+                break;
+            }
+
+            if ($expr[$i] === '.') {
+                $nameStart = $i + 1;
+                if ($nameStart >= $len || !(\ctype_alpha($expr[$nameStart]) || $expr[$nameStart] === '_')) {
+                    break;
+                }
+
+                $nameEnd = $nameStart + 1;
+                while ($nameEnd < $len && (\ctype_alnum($expr[$nameEnd]) || $expr[$nameEnd] === '_')) {
+                    $nameEnd++;
+                }
+
+                $name = \substr($expr, $nameStart, $nameEnd - $nameStart);
+                $php = '(' . $php . ')[\'' . $name . '\']';
+                $i = $nameEnd;
+                continue;
+            }
+
+            if ($expr[$i] === '[') {
+                [$inner, $end] = $this->extractBalancedSegment($expr, $i);
+                $inner = \trim($inner);
+                if ($inner === '') {
+                    throw new ClarityException('Index access must not be empty.');
+                }
+
+                $indexPhp = \ctype_digit($inner) ? $inner : $this->processCondition($inner);
+                $php = '(' . $php . ')[' . $indexPhp . ']';
+                $i = $end;
+                continue;
+            }
+
+            break;
+        }
+
+        return [$php, $i];
+    }
+
+    /**
+     * Extract the contents of a balanced (), [] or {} segment starting at $start.
+     *
+     * @return array{0:string,1:int}
+     */
+    private function extractBalancedSegment(string $subject, int $start): array
+    {
+        $open = $subject[$start] ?? null;
+        $pairs = ['(' => ')', '[' => ']', '{' => '}'];
+        if ($open === null || !isset($pairs[$open])) {
+            throw new ClarityException('Expected a balanced segment opener.');
+        }
+
+        $stack = [$pairs[$open]];
+        $len = \strlen($subject);
+        $i = $start + 1;
+        $inSingle = false;
+        $inDouble = false;
+
+        while ($i < $len) {
+            $ch = $subject[$i];
+
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $i += 2;
+                continue;
+            }
+
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+                $i++;
+                continue;
+            }
+
+            if ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+                $i++;
+                continue;
+            }
+
+            if ($inSingle || $inDouble) {
+                $i++;
+                continue;
+            }
+
+            if (isset($pairs[$ch])) {
+                $stack[] = $pairs[$ch];
+                $i++;
+                continue;
+            }
+
+            $expected = $stack[\count($stack) - 1];
+            if ($ch === $expected) {
+                \array_pop($stack);
+                if ($stack === []) {
+                    return [\substr($subject, $start + 1, $i - $start - 1), $i + 1];
+                }
+            }
+
+            $i++;
+        }
+
+        throw new ClarityException("Unterminated '{$open}' segment in expression.");
+    }
+
+    private function findTopLevelChar(string $subject, string $needle): int|false
+    {
+        $len = \strlen($subject);
+        $inSingle = false;
+        $inDouble = false;
+        $stack = [];
+        $pairs = ['(' => ')', '[' => ']', '{' => '}'];
+
+        for ($i = 0; $i < $len; $i++) {
+            $ch = $subject[$i];
+
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $i++;
+                continue;
+            }
+
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+                continue;
+            }
+
+            if ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+                continue;
+            }
+
+            if ($inSingle || $inDouble) {
+                continue;
+            }
+
+            if (isset($pairs[$ch])) {
+                $stack[] = $pairs[$ch];
+                continue;
+            }
+
+            if ($stack !== [] && $ch === $stack[\count($stack) - 1]) {
+                \array_pop($stack);
+                continue;
+            }
+
+            if ($stack === [] && $ch === $needle) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+
+    /**
+     * Parse a registered-function call starting at the opening '(' in $expr
+     * and return the compiled PHP expression plus the new position after ')'.
+     *
+     * Each argument is compiled as a full Clarity expression (pipelines and
+     * nested function calls work inside arguments). Named arguments use the
+     * Clarity `name=expression` syntax and are emitted as PHP named arguments
+     * (`name: phpExpr`).
+     *
+     * Generated code: $this->__fn['name']($phpArg1, name2: $phpArg2, ...)
+     *
+     * @param string $name      The function name (already validated as registered).
+     * @param string $expr      The full expression string being compiled.
+     * @param int    $openParen Position of the '(' character in $expr.
+     * @param int    $len       Length of $expr.
+     * @return array{0: string, 1: int}  [phpCallExpression, indexAfterClosingParen]
+     */
+    private function buildFunctionCallInExpr(string $name, string $expr, int $openParen, int $len): array
+    {
+        $i = $openParen + 1; // skip '('
+        $argStart = $i;
+        $depth = 1;
+        $inSingle = false;
+        $inDouble = false;
+
+        while ($i < $len && $depth > 0) {
+            $ch = $expr[$i];
+            if (($inSingle || $inDouble) && $ch === '\\' && ($i + 1) < $len) {
+                $i += 2;
+                continue;
+            }
+            if ($ch === "'" && !$inDouble) {
+                $inSingle = !$inSingle;
+            } elseif ($ch === '"' && !$inSingle) {
+                $inDouble = !$inDouble;
+            } elseif (!$inSingle && !$inDouble) {
+                if ($ch === '(') {
+                    $depth++;
+                } elseif ($ch === ')') {
+                    $depth--;
+                    if ($depth === 0) {
+                        break;
+                    }
+                }
+            }
+            $i++;
+        }
+
+        $argsRaw = \substr($expr, $argStart, $i - $argStart);
+        $i++; // consume closing ')'
+
+        switch ($name) {
+            case 'context':
+                if (\trim($argsRaw) !== '') {
+                    throw new ClarityException('context() does not accept any arguments.');
+                }
+                return ['$vars', $i];
+            case 'include':
+                $this->autoEscape = false;
+                break;
+        }
+
+        $safeName = "'" . \addslashes($name) . "'";
+        $call = "\$this->__fn[{$safeName}](";
+
+        if (\trim($argsRaw) !== '') {
+            $argList = $this->splitRespectingStrings($argsRaw, ',');
+            $call .= \implode(', ', $this->compileArgList($argList));
+        }
+
+        $call .= ')';
+        if ($this->functionRegistry?->isCustomFunction($name)) {
+            $call = '($this->__cast)(' . $call . ')';
+        }
+        return [$call, $i];
+    }
 
     private array $varChainCache = [];
     private const IDENT_RE = '/^[A-Za-z_][A-Za-z0-9_]*$/';
@@ -671,11 +1038,11 @@ class Tokenizer
      */
     private const CALLABLE_ARG_FILTERS = ['map' => true, 'filter' => true, 'reduce' => true];
 
-    private ?FilterRegistry $filterRegistry = null;
+    private ?FunctionRegistry $functionRegistry = null;
 
-    public function setFilterRegistry(FilterRegistry $registry): void
+    public function setFilterRegistry(FunctionRegistry $registry): void
     {
-        $this->filterRegistry = $registry;
+        $this->functionRegistry = $registry;
     }
 
     /**
@@ -693,81 +1060,63 @@ class Tokenizer
     }
 
     /**
-     * Return parameter metadata for a filter callable, skipping the first
-     * parameter ($value).  Each element:
-     *   ['name' => string, 'optional' => bool, 'defaultCode' => string|null]
-     * Returns null when reflection is impossible (e.g. built-in functions).
+     * Compile a list of raw argument strings (already split on `,`) to PHP expressions.
      *
-     * @return list<array{name:string,optional:bool,defaultCode:string|null}>|null
+     * Named arguments (`identifier=expression`) are emitted as PHP named arguments
+     * (`identifier: phpExpr`), letting PHP validate parameter names and arity at
+     * runtime. This means function and filter signatures can change without requiring
+     * template recompilation.
+     *
+     * Positional arguments are compiled as full Clarity expressions (pipelines and
+     * nested function calls are supported).
+     *
+     * A positional argument after a named argument is rejected at compile time to
+     * prevent generating syntactically invalid PHP.
+     *
+     * @param  string[] $argList Raw argument strings (already split on ',').
+     * @return string[] Compiled PHP argument strings, ready to join with ', '.
      */
-    private function getFilterParamInfos(string $filterName): ?array
+    private function compileArgList(array $argList): array
     {
-        if ($this->filterRegistry === null) {
-            return null;
-        }
-        $filters = $this->filterRegistry->all();
-        if (!isset($filters[$filterName])) {
-            return null;
-        }
-        $callable = $filters[$filterName];
-        try {
-            $rf = match (true) {
-                $callable instanceof \Closure
-                => new \ReflectionFunction($callable),
-                \is_array($callable)
-                => new \ReflectionMethod($callable[0], $callable[1]),
-                \is_string($callable) && \str_contains($callable, '::')
-                => new \ReflectionMethod(...\explode('::', $callable, 2)),
-                \is_string($callable) && \function_exists($callable)
-                => new \ReflectionFunction($callable),
-                \is_object($callable)
-                => new \ReflectionMethod($callable, '__invoke'),
-                default => null,
-            };
-        } catch (\ReflectionException) {
-            return null;
-        }
-        if ($rf === null) {
-            return null;
-        }
-        $params = $rf->getParameters();
-        \array_shift($params); // skip leading $value parameter
-        $infos = [];
-        foreach ($params as $p) {
-            $defaultCode = null;
-            if ($p->isOptional()) {
-                try {
-                    $defaultCode = \var_export($p->getDefaultValue(), true);
-                } catch (\ReflectionException) {
-                    // Cannot extract default (internal function, etc.) — leave null
-                }
+        $result = [];
+        $seenNamed = false;
+        foreach ($argList as $arg) {
+            $arg = \trim($arg);
+            if (\str_starts_with($arg, '...')) {
+                throw new ClarityException('Spread operator is only allowed inside array and object literals.');
             }
-            $infos[] = [
-                'name' => $p->getName(),
-                'optional' => $p->isOptional(),
-                'defaultCode' => $defaultCode,
-            ];
+            $named = $this->parseNamedArg($arg);
+            if ($named !== null) {
+                $seenNamed = true;
+                $result[] = $named['name'] . ': ' . $this->processCondition($named['expr']);
+            } else {
+                if ($seenNamed) {
+                    throw new ClarityException(
+                        "Positional argument after named argument in argument list: '{$arg}'"
+                    );
+                }
+                $result[] = $this->processCondition($arg);
+            }
         }
-        return $infos;
+        return $result;
     }
 
     /**
-     * Build a PHP filter call:  $__f['name']($value, arg1, arg2)
+     * Build a PHP filter call:  $this->__fl['name']($value, arg1, name2: arg2)
      *
      * For map / filter / reduce the first argument must be either:
      *   - a lambda expression:  param => expression
      *   - a filter reference:   'filterName' or "filterName"
      * Bare variable names are rejected at compile time.
      *
-     * Named arguments (identifier=expression) are resolved to positional via
-     * reflection at compile time, so the emitted PHP retains zero-overhead
-     * positional calls.
+     * Named arguments (`identifier=expression`) are emitted directly as PHP named
+     * arguments (`identifier: phpExpr`). PHP validates names and arity at runtime.
      *
      * @param string $filterSegment Clarity filter segment e.g. 'number(2)' or 'upper'
      * @param string $phpValue      Already-converted PHP expression for the input value.
      * @return string PHP call expression.
      */
-    public function buildFilterCall(string $filterSegment, string $phpValue, bool &$isRaw = false): string
+    public function buildFilterCall(string $filterSegment, string $phpValue): string
     {
         if (\preg_match(self::RE_FILTER, $filterSegment, $m)) {
             $name = $m[1];
@@ -777,128 +1126,40 @@ class Tokenizer
         }
 
         if ($name === 'raw') {
-            $isRaw = true;
+            $this->autoEscape = false;
             return $phpValue;
         }
 
         $safeName = "'" . \addslashes($name) . "'";
-        $call = "\$__f[{$safeName}]({$phpValue}";
+        $call = "\$this->__fl[{$safeName}]({$phpValue}";
 
         if ($args !== '') {
             $argList = $this->splitRespectingStrings($args, ',');
             $isCallableFilter = isset(self::CALLABLE_ARG_FILTERS[$name]);
 
-            // Detect whether any named arguments are present.
-            // Named args are not supported for callable-arg filters (map/filter/reduce)
-            // because their first arg uses a special lambda/filter-reference syntax.
-            $hasNamedArgs = false;
-            if (!$isCallableFilter) {
-                foreach ($argList as $arg) {
-                    if ($this->parseNamedArg(\trim($arg)) !== null) {
-                        $hasNamedArgs = true;
-                        break;
-                    }
-                }
-            }
-
-            if ($hasNamedArgs) {
-                // Validate: positional args may not follow named args
-                $seenNamed = false;
-                foreach ($argList as $arg) {
-                    $isNamed = $this->parseNamedArg(\trim($arg)) !== null;
-                    if ($isNamed) {
-                        $seenNamed = true;
-                    } elseif ($seenNamed) {
-                        throw new ClarityException(
-                            "Positional argument after named argument in filter '{$name}'"
-                        );
-                    }
-                }
-
-                // Resolve parameter names via reflection
-                $paramInfos = $this->getFilterParamInfos($name);
-                if ($paramInfos === null) {
-                    throw new ClarityException(
-                        "Cannot use named arguments for filter '{$name}': "
-                        . 'parameter names are not available via reflection'
-                    );
-                }
-
-                // Separate positional and named args into their PHP expressions
-                $positional = [];
-                $named = [];
-                foreach ($argList as $arg) {
-                    $parsed = $this->parseNamedArg(\trim($arg));
-                    if ($parsed === null) {
-                        $positional[] = $this->convertVarsAndOps(\trim($arg));
+            if ($isCallableFilter) {
+                // map/filter/reduce: first arg is a lambda/filter-ref, rest are positional only.
+                foreach ($argList as $i => $arg) {
+                    $arg = \trim($arg);
+                    $call .= ', ';
+                    if ($i === 0) {
+                        $call .= $this->compileCallableArg($arg, $name);
                     } else {
-                        $named[$parsed['name']] = $this->convertVarsAndOps($parsed['expr']);
+                        $call .= $this->processCondition($arg);
                     }
-                }
-
-                // Place positional args first, then named args at their reflected positions
-                $result = $positional;
-                foreach ($named as $paramName => $phpExpr) {
-                    $pos = null;
-                    foreach ($paramInfos as $i => $info) {
-                        if ($info['name'] === $paramName) {
-                            $pos = $i;
-                            break;
-                        }
-                    }
-                    if ($pos === null) {
-                        throw new ClarityException(
-                            "Unknown named argument '{$paramName}' for filter '{$name}'"
-                        );
-                    }
-                    if (isset($result[$pos])) {
-                        throw new ClarityException(
-                            "Argument '{$paramName}' is provided more than once for filter '{$name}'"
-                        );
-                    }
-                    $result[$pos] = $phpExpr;
-                }
-
-                // Fill any gaps between filled positions using reflected defaults
-                if (!empty($result)) {
-                    $maxPos = \max(\array_keys($result));
-                    for ($i = 0; $i <= $maxPos; $i++) {
-                        if (!isset($result[$i])) {
-                            if (!isset($paramInfos[$i])) {
-                                throw new ClarityException(
-                                    "Missing argument at position " . ($i + 1) . " for filter '{$name}'"
-                                );
-                            }
-                            if (!$paramInfos[$i]['optional'] || $paramInfos[$i]['defaultCode'] === null) {
-                                throw new ClarityException(
-                                    "Cannot skip required argument '{$paramInfos[$i]['name']}' for filter '{$name}'"
-                                );
-                            }
-                            $result[$i] = $paramInfos[$i]['defaultCode'];
-                        }
-                    }
-                }
-
-                \ksort($result);
-                foreach ($result as $phpArg) {
-                    $call .= ', ' . $phpArg;
                 }
             } else {
-                // Original behaviour: purely positional arguments
-                $argIndex = 0;
-                foreach ($argList as $arg) {
-                    $arg = \trim($arg);
-                    if ($isCallableFilter && $argIndex === 0) {
-                        $call .= ', ' . $this->compileCallableArg($arg, $name);
-                    } else {
-                        $call .= ', ' . $this->convertVarsAndOps($arg);
-                    }
-                    $argIndex++;
+                // Standard filter: emit args directly; named args become PHP named args.
+                foreach ($this->compileArgList($argList) as $phpArg) {
+                    $call .= ', ' . $phpArg;
                 }
             }
         }
 
         $call .= ')';
+        if ($this->functionRegistry?->isCustomFilter($name)) {
+            $call = '($this->__cast)(' . $call . ')';
+        }
         return $call;
     }
 
@@ -925,7 +1186,7 @@ class Tokenizer
                         "Filter reference must be a plain identifier, got: '{$refName}'"
                     );
                 }
-                return "\$__f['" . \addslashes($refName) . "']";
+                return "\$this->__fl['" . \addslashes($refName) . "']";
             }
         }
 
@@ -988,7 +1249,7 @@ class Tokenizer
      * - The body is compiled as a full Clarity expression (including filter
      *   pipelines) with the parameter name(s) treated as local variables,
      *   while all other identifiers are resolved from the captured $vars.
-     * - Both $vars and $__f (the filter registry) are captured by value so
+     * - Both $vars and $this->__fl (the filter registry) are captured by value so
      *   the closure can access outer template variables and other filters.
      *
      * @param string $arg      The full lambda string (e.g. 'item => item.name').
@@ -1022,7 +1283,7 @@ class Tokenizer
             $signature .= ', mixed $value';
         }
 
-        return "static function({$signature}) use (\$vars, \$__f): mixed { return {$phpBody}; }";
+        return "function({$signature}) use (\$vars): mixed { return {$phpBody}; }";
     }
 
     private const RE_FILTER_NAME = '/^([a-zA-Z_][a-zA-Z0-9_]*)/';
@@ -1037,4 +1298,5 @@ class Tokenizer
         }
         return '';
     }
+
 }
