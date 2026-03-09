@@ -8,7 +8,7 @@
                 {{ $item }}
                 <div class="extras">
                     @for ($j = 0; $j < 10; $j++)
-                        <span>{{ mb_strtoupper($item . '-' . $j) }}</span>
+                        <span>{{ $item . '-' . $j }}</span>
                     @endfor
                 </div>
             </li>

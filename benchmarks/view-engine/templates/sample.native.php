@@ -9,7 +9,7 @@ echo $this->renderPartial('partials/header', ['title' => $title, 'items' => $ite
             <?php echo esc_html($item); ?>
             <div class="extras">
                 <?php for ($j = 0; $j < 10; $j++): ?>
-                    <span><?php echo esc_html(mb_strtoupper($item . '-' . $j)); ?></span>
+                    <span><?php echo esc_html($item . '-' . $j); ?></span>
                 <?php endfor; ?>
             </div>
             </li>

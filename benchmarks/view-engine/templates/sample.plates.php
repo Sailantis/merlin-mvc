@@ -7,7 +7,7 @@
             <?php echo $this->e($item); ?>
             <div class="extras">
                 <?php for ($j = 0; $j < 10; $j++): ?>
-                    <span><?php echo $this->e(mb_strtoupper($item . '-' . $j)); ?></span>
+                    <span><?php echo $this->e($item . '-' . $j); ?></span>
                 <?php endfor; ?>
             </div>
             </li>
