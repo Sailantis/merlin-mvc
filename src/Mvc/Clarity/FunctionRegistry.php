@@ -235,9 +235,9 @@ class FunctionRegistry
 
         $this->filters['trim'] = static fn(mixed $v): string => trim((string) $v);
 
-        $this->filters['upper'] = static fn(mixed $v): string => \mb_strtoupper((string) $v);
+        $this->filters['upper'] = 'mb_strtoupper';
 
-        $this->filters['lower'] = static fn(mixed $v): string => \mb_strtolower((string) $v);
+        $this->filters['lower'] = 'mb_strtolower';
 
         $this->filters['capitalize'] = static function (mixed $v): string {
             $s = (string) $v;
@@ -250,11 +250,9 @@ class FunctionRegistry
         $this->filters['title'] = static fn(mixed $v): string =>
             \mb_convert_case((string) $v, \MB_CASE_TITLE);
 
-        $this->filters['nl2br'] = static fn(mixed $v): string =>
-            \nl2br((string) $v);
+        $this->filters['nl2br'] = 'nl2br';
 
-        $this->filters['replace'] = static fn(mixed $v, string $search, string $replace = ''): string =>
-            \str_replace($search, $replace, (string) $v);
+        $this->filters['replace'] = 'str_replace';
 
         $this->filters['split'] = static fn(mixed $v, string $delimiter, int $limit = \PHP_INT_MAX): array =>
             \explode($delimiter, (string) $v, $limit);
@@ -273,7 +271,7 @@ class FunctionRegistry
 
         $this->filters['format'] = static fn(mixed $v, mixed ...$args): string => \sprintf((string) $v, ...$args);
 
-        $this->filters['abs'] = static fn(mixed $v): int|float => \abs($v + 0);
+        $this->filters['abs'] = 'abs';
 
         $this->filters['round'] = static fn(mixed $v, int $precision = 0): float => \round((float) $v, $precision);
 
@@ -341,8 +339,7 @@ class FunctionRegistry
         $this->filters['keys'] = static fn(mixed $v): array =>
             \is_array($v) ? \array_keys($v) : [];
 
-        $this->filters['merge'] = static fn(mixed $v, array $other = []): array =>
-            \array_merge((array) $v, $other);
+        $this->filters['merge'] = 'array_merge';
 
         $this->filters['sort'] = static function (mixed $v): array {
             $arr = (array) $v;
