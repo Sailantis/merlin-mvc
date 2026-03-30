@@ -342,6 +342,16 @@ $router->controller('UserController', function (Router $r) {
 $router->middleware('auth', function (Router $r) {
     $r->add('GET', '/account', 'AccountController::indexAction');
 });
+
+// Inline middleware – push group(s) onto the stack without a callback
+// Applies to all routes registered after this call within the enclosing group
+$router->prefix('/admin', function (Router $r) {
+    $r->use('auth');
+    $r->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
+
+    $r->use(['log', 'metrics']);
+    $r->add('POST', '/users', 'Admin\UserController::createAction');
+});
 ```
 
 ### Custom Parameter Types

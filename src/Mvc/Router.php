@@ -211,8 +211,10 @@ class Router
             throw new InvalidArgumentException('Prefix cannot be empty');
         }
         $this->prefixGroupStack[] = trim($prefix, '/');
+        $middlewareCountBefore = count($this->middlewareGroupStack);
         $callback($this);
         array_pop($this->prefixGroupStack);
+        $this->middlewareGroupStack = array_slice($this->middlewareGroupStack, 0, $middlewareCountBefore);
     }
 
     /**
@@ -246,6 +248,35 @@ class Router
     }
 
     /**
+     * Add middleware group(s) to the current stack without defining a new group. This is useful for applying middleware to specific routes or groups without needing to wrap them in a separate callback. The middleware group(s) will be applied to all routes defined after this call until the end of the current group or the next call to `middleware()`. You can use this method multiple times within the same group to apply different middleware to different sets of routes.
+     *
+     * @param string|array $name Middleware group name(s) to add to the current stack
+     * @return static For method chaining
+     *
+     * @example
+     * $router->prefix('/admin', function($r) {
+     *     $r->use('auth');
+     *     $r->add('GET', '/dashboard', 'Admin::dashboard');
+     *     $r->add('GET', '/users', 'Admin::users');
+     *
+     *     $r->use(['log', 'metrics']);
+     *     $r->add('POST', '/users', 'Admin::createUser');
+     * });
+     */
+    public function use(string|array $name): static
+    {
+        if (is_string($name)) {
+            $this->middlewareGroupStack[] = $name;
+        } else {
+            foreach ($name as $n) {
+                $this->middlewareGroupStack[] = $n;
+            }
+        }
+
+        return $this;
+    }
+
+    /**
      * Define a group of routes that share a common namespace for their handlers. This allows you to organize related controllers together and avoid repeating the same namespace for each route handler. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The namespace is automatically prepended to all route handlers defined within the group. You can also nest groups within groups for more complex route hierarchies. Namespaces that start with a backslash will be treated as absolute and will not be prefixed with the parent group namespace.
      *
      * @param string $namespace Namespace prefix for the group (e.g., "Admin")
@@ -265,9 +296,11 @@ class Router
         if ($namespace[0] !== '\\') {
             $namespace = end($this->namespaceGroupStack) . '\\' . $namespace;
         }
+        $middlewareCountBefore = count($this->middlewareGroupStack);
         $this->namespaceGroupStack[] = $namespace;
         $callback($this);
         array_pop($this->namespaceGroupStack);
+        $this->middlewareGroupStack = array_slice($this->middlewareGroupStack, 0, $middlewareCountBefore);
     }
 
     /**

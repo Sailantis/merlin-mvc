@@ -225,6 +225,25 @@ $router->middleware(['auth', 'admin'], function (Router $r) {
 });
 ```
 
+### Inline middleware with `use()`
+
+`use()` pushes one or more middleware groups onto the current stack **without** a wrapping callback. Middleware added this way applies to every route defined after the call, until the end of the enclosing group (or `prefix()` / `namespace()` / `middleware()` callback). This is useful when you need to apply middleware to only a subset of routes within a group:
+
+```php
+$router->prefix('/admin', function (Router $r) {
+    // All routes below inherit 'auth'
+    $r->use('auth');
+    $r->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
+    $r->add('GET', '/users',     'Admin\UserController::listAction');
+
+    // Additional middleware from this point forward
+    $r->use(['log', 'metrics']);
+    $r->add('POST', '/users', 'Admin\UserController::createAction');
+});
+```
+
+> **Note:** Unlike `middleware()`, `use()` does not scope added groups to a callback. The groups remain on the stack for the lifetime of the surrounding group closure. To apply middleware to only a subset of routes, prefer `middleware()` with a callback or arrange your `use()` calls carefully.
+
 Groups can be nested:
 
 ```php
