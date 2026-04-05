@@ -491,11 +491,18 @@ $ctx->dbManager()->set('default',
 // Configure services
 $ctx->view()->setViewPath(__DIR__ . '/views');   // ClarityEngine is the default
 
+// Register application services as instances or lazy factories
+$ctx->set(App\Services\StripeService::class, new App\Services\StripeService());
+$ctx->set(App\Services\BillingService::class, fn() => new App\Services\BillingService());
+
 // Access services anywhere
 $ctx = AppContext::instance();
 $request = $ctx->request();
 $cookies = $ctx->cookies();
+$stripe = $ctx->get(App\Services\StripeService::class);
 ```
+
+Registered callables are treated as zero-argument lazy factories. They are executed on first lookup and the returned object is cached for the rest of the request lifecycle.
 
 ### Middleware Pipeline
 

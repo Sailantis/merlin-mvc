@@ -223,7 +223,7 @@ $dispatcher->addMiddleware(new CorsMiddleware());
 
 ### Named Middleware Groups
 
-Define groups on the `Dispatcher` and attach them to routes with `Router::middleware()`:
+Define groups on the `Dispatcher` and attach them inline with `Router::middleware()`:
 
 ```php
 // bootstrap
@@ -231,14 +231,12 @@ $dispatcher->defineMiddlewareGroup('auth', [new AuthMiddleware()]);
 $dispatcher->defineMiddlewareGroup('admin', [new AuthMiddleware(), new RoleMiddleware('admin')]);
 
 // routing
-$router->middleware('auth', function (Router $r) {
-    $r->add('GET', '/account', 'AccountController::indexAction');
-});
+$router->middleware('auth');
+$router->add('GET', '/account', 'AccountController::indexAction');
 
-$router->middleware('admin', function (Router $r) {
-    $r->add('GET',    '/admin/users',      'Admin\UserController::indexAction');
-    $r->add('DELETE', '/admin/users/{id}', 'Admin\UserController::deleteAction');
-});
+$router->middleware('admin');
+$router->add('GET',    '/admin/users',      'Admin\UserController::indexAction');
+$router->add('DELETE', '/admin/users/{id}', 'Admin\UserController::deleteAction');
 ```
 
 ### Controller-Level Middleware

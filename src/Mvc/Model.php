@@ -466,6 +466,10 @@ abstract class Model
 				unset($values[$field]);
 				continue;
 			}
+			if ($values[$field] === null) {
+				unset($values[$field]);
+				continue;
+			}
 			if (isset($missingMap[$field])) {
 				unset($missingMap[$field]);
 			}

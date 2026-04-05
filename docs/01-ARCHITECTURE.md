@@ -33,11 +33,11 @@ Built-in lazy service accessors:
 | `dbManager()` | `Merlin\Db\DatabaseManager`                            |
 | `route()`     | `Merlin\ResolvedRoute\|null` – populated by Dispatcher |
 
-Custom services can be registered with `$ctx->set($id, $service)` and retrieved with `$ctx->get($id)`. Auto-wiring is supported: unregistered class names are instantiated via reflection with their constructor dependencies resolved recursively from the container.
+Custom services can be registered with `$ctx->set($id, new MyService())` or `$ctx->set($id, fn() => new MyService())` and retrieved with `$ctx->get($id)`. Registered callables are treated as zero-argument lazy factories and cached on first resolution. Auto-wiring is supported: unregistered class names are instantiated via reflection with their constructor dependencies resolved recursively from the container.
 
 ### MVC Layer
 
-- `Router` matches URI + method to route patterns, extracting typed parameters; supports named routes, groups (`prefix()`, `namespace()`, `controller()`, `middleware()`), and custom parameter validators
+- `Router` matches URI + method to route patterns, extracting typed parameters; supports named routes, inline or scoped groups (`prefix()`, `namespace()`, `controller()`, `middleware()`), and custom parameter validators
 - `Dispatcher` is instantiated without arguments; obtains `AppContext` internally. It resolves controllers via DI (`AppContext::get()`), runs the global and per-route middleware pipeline, injects action parameters (route vars or DI), and stores resolved route info via `AppContext::setRoute()`
 - `Controller` provides access to request/context plus `beforeAction`/`afterAction` lifecycle hooks and controller-level middleware declarations
 - `ViewEngine` renders templates, layouts, and namespaced views; supports global view variables and partial rendering
@@ -144,7 +144,7 @@ The CLI entry point is the built-in `ModelSyncTask`; the same `SyncRunner` API c
 ## Extensibility Points
 
 - Router custom parameter validators via `addType()`
-- Router route groups via `prefix()`, `namespace()`, `controller()`, and `middleware()`
+- Router route groups via inline or scoped `prefix()`, `namespace()`, `controller()`, and `middleware()`
 - Dispatcher middleware groups and controller factory
 - Model overrides: `source()`, `schema()`, `idFields()`, `readConnection()`, `writeConnection()`
 - Query SQL escape hatches via `Sql` nodes (`Sql::bind()` for PDO-bound params)

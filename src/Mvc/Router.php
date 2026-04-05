@@ -91,17 +91,6 @@ class Router
             $pattern = "$prefix/" . ltrim($pattern, '/');
         }
 
-        if (!empty($this->namespaceGroupStack)) {
-            $namespace = end($this->namespaceGroupStack);
-            if (\is_string($handler)) {
-                $handler = "$namespace\\$handler";
-            } elseif (empty($handler['namespace'])) {
-                $handler['namespace'] = $namespace;
-            } else {
-                $handler['namespace'] = $namespace . '\\' . $handler['namespace'];
-            }
-        }
-
         if (!empty($this->controllerGroupStack)) {
             $controller = implode('', $this->controllerGroupStack);
             if (\is_string($handler)) {
@@ -113,6 +102,17 @@ class Router
                 }
             } elseif (empty($handler['controller'])) {
                 $handler['controller'] = $controller;
+            }
+        }
+
+        if (!empty($this->namespaceGroupStack)) {
+            $namespace = end($this->namespaceGroupStack);
+            if (\is_string($handler)) {
+                $handler = "$namespace\\$handler";
+            } elseif (empty($handler['namespace'])) {
+                $handler['namespace'] = $namespace;
+            } else {
+                $handler['namespace'] = $namespace . '\\' . $handler['namespace'];
             }
         }
 
@@ -193,136 +193,180 @@ class Router
         return $path;
     }
 
+    protected function snapshotGroupStacks(): array
+    {
+        return [
+            'middleware' => \count($this->middlewareGroupStack),
+            'prefix' => \count($this->prefixGroupStack),
+            'namespace' => \count($this->namespaceGroupStack),
+            'controller' => \count($this->controllerGroupStack),
+        ];
+    }
+
+    protected function restoreGroupStacks(array $snapshot): void
+    {
+        $this->middlewareGroupStack = \array_slice($this->middlewareGroupStack, 0, $snapshot['middleware']);
+        $this->prefixGroupStack = \array_slice($this->prefixGroupStack, 0, $snapshot['prefix']);
+        $this->namespaceGroupStack = \array_slice($this->namespaceGroupStack, 0, $snapshot['namespace']);
+        $this->controllerGroupStack = \array_slice($this->controllerGroupStack, 0, $snapshot['controller']);
+    }
+
+    protected function pushGroupValues(array &$stack, string|array $values): void
+    {
+        if (\is_string($values)) {
+            $stack[] = $values;
+            return;
+        }
+
+        foreach ($values as $value) {
+            $stack[] = $value;
+        }
+    }
+
     /**
-     * Define a group of routes that share a common URI prefix. This allows you to organize related routes together and avoid repeating the same prefix for each route. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The prefix is automatically prepended to all routes defined within the group. You can also nest groups within groups for more complex route hierarchies.
+     * Define a group of routes that share a common URI prefix. When a callback is supplied, the prefix is scoped to that callback and the router restores the previous group state afterward. When omitted, the prefix stays on the stack for subsequent routes.
      *
      * @param string $prefix URI prefix for the group (e.g., "/admin")
-     * @param callable $callback Function that receives the router instance to define routes within the group
+     * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
+     * @return static For method chaining
      *
      * @example
-     * $router->prefix('/admin', function($r) {
-     *     $r->add('GET', '/dashboard', 'Admin::dashboard');
-     *     $r->add('GET', '/users', 'Admin::users');
-     * });
+     * $router->prefix('/admin');
+     * $router->add('GET', '/dashboard', 'Admin::dashboard');
      */
-    public function prefix(string $prefix, callable $callback): void
+    public function prefix(string $prefix, ?callable $callback = null): static
     {
         if (empty($prefix)) {
             throw new InvalidArgumentException('Prefix cannot be empty');
         }
-        $this->prefixGroupStack[] = trim($prefix, '/');
-        $middlewareCountBefore = count($this->middlewareGroupStack);
-        $callback($this);
-        array_pop($this->prefixGroupStack);
-        $this->middlewareGroupStack = array_slice($this->middlewareGroupStack, 0, $middlewareCountBefore);
-    }
 
-    /**
-     * Add group of middleware to be applied to all routes defined within the group. This allows you to easily apply common middleware (e.g., authentication, logging) to related routes without having to specify the middleware for each controller individually. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. Middleware groups can be nested within other groups, and middleware from outer groups will be applied to inner groups as well.
-     *
-     * @param string|array $name Middleware group name (e.g., "auth")
-     * @param callable $callback Function that receives the router instance to define routes within the group
-     *
-     * @example
-     * $router->middleware('auth', function($r) {
-     *     $r->add('GET', '/admin/dashboard', 'Admin::dashboard');
-     *     $r->add('GET', '/admin/users', 'Admin::users');
-     * });
-     */
-    public function middleware(string|array $name, callable $callback): void
-    {
-        if (\is_string($name)) {
-            if (empty($name)) {
-                throw new InvalidArgumentException('Middleware group name cannot be empty');
-            }
-            $count = 1;
-            $this->middlewareGroupStack[] = $name;
-        } else {
-            $count = \count($name);
-            foreach ($name as $n) {
-                $this->middlewareGroupStack[] = $n;
-            }
+        if ($callback === null) {
+            $this->prefixGroupStack[] = trim($prefix, '/');
+            return $this;
         }
-        $callback($this);
-        array_splice($this->middlewareGroupStack, -$count);
-    }
 
-    /**
-     * Add middleware group(s) to the current stack without defining a new group. This is useful for applying middleware to specific routes or groups without needing to wrap them in a separate callback. The middleware group(s) will be applied to all routes defined after this call until the end of the current group or the next call to `middleware()`. You can use this method multiple times within the same group to apply different middleware to different sets of routes.
-     *
-     * @param string|array $name Middleware group name(s) to add to the current stack
-     * @return static For method chaining
-     *
-     * @example
-     * $router->prefix('/admin', function($r) {
-     *     $r->use('auth');
-     *     $r->add('GET', '/dashboard', 'Admin::dashboard');
-     *     $r->add('GET', '/users', 'Admin::users');
-     *
-     *     $r->use(['log', 'metrics']);
-     *     $r->add('POST', '/users', 'Admin::createUser');
-     * });
-     */
-    public function use(string|array $name): static
-    {
-        if (is_string($name)) {
-            $this->middlewareGroupStack[] = $name;
-        } else {
-            foreach ($name as $n) {
-                $this->middlewareGroupStack[] = $n;
-            }
+        $snapshot = $this->snapshotGroupStacks();
+        $this->prefixGroupStack[] = trim($prefix, '/');
+
+        try {
+            $callback($this);
+        } finally {
+            $this->restoreGroupStacks($snapshot);
         }
 
         return $this;
     }
 
     /**
-     * Define a group of routes that share a common namespace for their handlers. This allows you to organize related controllers together and avoid repeating the same namespace for each route handler. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The namespace is automatically prepended to all route handlers defined within the group. You can also nest groups within groups for more complex route hierarchies. Namespaces that start with a backslash will be treated as absolute and will not be prefixed with the parent group namespace.
+    * Add group of middleware to be applied to all routes defined within the group. When a callback is supplied, the middleware groups are scoped to that callback and the router restores the previous stack afterward. When omitted, the middleware stays on the active stack for subsequent routes.
      *
-     * @param string $namespace Namespace prefix for the group (e.g., "Admin")
-     * @param callable $callback Function that receives the router instance to define routes within the group
+     * @param string|array $name Middleware group name (e.g., "auth")
+     * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
+     * @return static For method chaining
      *
      * @example
-     * $router->namespace('Admin', function($r) {
-     *     $r->add('GET', '/dashboard', 'Dashboard::view');
-     *     $r->add('GET', '/users', 'UserController::list');
-     * });
+     * $router->middleware('auth');
+     * $router->add('GET', '/admin/dashboard', 'Admin::dashboard');
      */
-    public function namespace(string $namespace, callable $callback): void
+    public function middleware(string|array $name, ?callable $callback = null): static
     {
-        if (empty($namespace)) {
-            throw new InvalidArgumentException('Namespace cannot be empty');
+        if (\is_string($name)) {
+            if (empty($name)) {
+                throw new InvalidArgumentException('Middleware group name cannot be empty');
+            }
         }
-        if ($namespace[0] !== '\\') {
-            $namespace = end($this->namespaceGroupStack) . '\\' . $namespace;
+
+        if ($callback === null) {
+            $this->pushGroupValues($this->middlewareGroupStack, $name);
+            return $this;
         }
-        $middlewareCountBefore = count($this->middlewareGroupStack);
-        $this->namespaceGroupStack[] = $namespace;
-        $callback($this);
-        array_pop($this->namespaceGroupStack);
-        $this->middlewareGroupStack = array_slice($this->middlewareGroupStack, 0, $middlewareCountBefore);
+
+        $snapshot = $this->snapshotGroupStacks();
+        $this->pushGroupValues($this->middlewareGroupStack, $name);
+
+        try {
+            $callback($this);
+        } finally {
+            $this->restoreGroupStacks($snapshot);
+        }
+
+        return $this;
     }
 
     /**
-     * Define a group of routes that share a common controller. This allows you to organize related controllers together and avoid repeating the same controller name for each route handler. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The controller is automatically added to all route handlers defined within the group. You can also nest groups within groups for more complex route hierarchies.
+     * Define a group of routes that share a common namespace for their handlers. When a callback is supplied, the namespace is scoped to that callback and the router restores the previous group state afterward. When omitted, the namespace stays on the stack for subsequent routes.
      *
-     * @param string $controller Controller name for the group (e.g., "Admin")
-     * @param callable $callback Function that receives the router instance to define routes within the group
+     * @param string $namespace Namespace prefix for the group (e.g., "Admin")
+     * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
+     * @return static For method chaining
      *
      * @example
-     * $router->controller('Admin', function($r) {
-     *     $r->add('GET', '/dashboard', '::view');
-     *     $r->add('GET', '/users', '::list');
-     * });
+     * $router->namespace('Admin');
+     * $router->add('GET', '/dashboard', 'Dashboard::view');
      */
-    public function controller(string $controller, callable $callback): void
+    public function namespace(string $namespace, ?callable $callback = null): static
+    {
+        $namespace = rtrim($namespace, '\\');
+        if ($namespace === '') {
+            throw new InvalidArgumentException('Namespace cannot be empty');
+        }
+
+        if ($namespace[0] !== '\\') {
+            $parentNamespace = end($this->namespaceGroupStack);
+            if ($parentNamespace !== false && $parentNamespace !== null && $parentNamespace !== '') {
+                $namespace = trim((string) $parentNamespace, '\\') . '\\' . $namespace;
+            }
+        }
+
+        if ($callback === null) {
+            $this->namespaceGroupStack[] = $namespace;
+            return $this;
+        }
+
+        $snapshot = $this->snapshotGroupStacks();
+        $this->namespaceGroupStack[] = $namespace;
+
+        try {
+            $callback($this);
+        } finally {
+            $this->restoreGroupStacks($snapshot);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Define a group of routes that share a common controller. When a callback is supplied, the controller is scoped to that callback and the router restores the previous group state afterward. When omitted, the controller stays on the stack for subsequent routes.
+     *
+     * @param string $controller Controller name for the group (e.g., "Admin")
+     * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
+     * @return static For method chaining
+     *
+     * @example
+     * $router->controller('Admin');
+     * $router->add('GET', '/dashboard', '::view');
+     */
+    public function controller(string $controller, ?callable $callback = null): static
     {
         if (empty($controller)) {
             throw new InvalidArgumentException('Controller name cannot be empty');
         }
+
+        if ($callback === null) {
+            $this->controllerGroupStack[] = $controller;
+            return $this;
+        }
+
+        $snapshot = $this->snapshotGroupStacks();
         $this->controllerGroupStack[] = $controller;
-        $callback($this);
-        array_pop($this->controllerGroupStack);
+
+        try {
+            $callback($this);
+        } finally {
+            $this->restoreGroupStacks($snapshot);
+        }
+
+        return $this;
     }
 
     protected function storeRoute(string $method, array $tokens, string|array|null $handler, array $groups): void
@@ -729,19 +773,25 @@ class Router
             $override = [];
             $handler = trim($handler);
             if ($handler !== '') {
-                $namespacePart = strstr($handler, '\\', true);
-                if ($namespacePart !== false) {
-                    $override['namespace'] = $namespacePart;
-                    $handler = substr($handler, strlen($namespacePart) + 1);
+                $action = null;
+                $actionSeparator = strrpos($handler, '::');
+                if ($actionSeparator !== false) {
+                    $action = substr($handler, $actionSeparator + 2);
+                    $handler = substr($handler, 0, $actionSeparator);
                 }
-                $controllerPart = strstr($handler, '::', true);
-                if ($controllerPart === false) {
-                    $override['controller'] = $handler;
-                } else {
-                    if ($controllerPart !== '') {
-                        $override['controller'] = $controllerPart;
+
+                if ($handler !== '') {
+                    $namespaceSeparator = strrpos($handler, '\\');
+                    if ($namespaceSeparator !== false) {
+                        $override['namespace'] = substr($handler, 0, $namespaceSeparator);
+                        $override['controller'] = substr($handler, $namespaceSeparator + 1);
+                    } else {
+                        $override['controller'] = $handler;
                     }
-                    $override['action'] = substr((string) strstr($handler, '::'), 2);
+                }
+
+                if ($action !== null) {
+                    $override['action'] = $action;
                 }
             }
         }

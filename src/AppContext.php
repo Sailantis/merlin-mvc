@@ -19,17 +19,21 @@ class AppContext
 
     protected function registerDefaultServices(): void
     {
-        $this->services = [
-            Session::class => [$this, 'session'],
-            Cookies::class => [$this, 'cookies'],
-            HttpRequest::class => [$this, 'request'],
-            ViewEngine::class => [$this, 'view'],
-            DatabaseManager::class => [$this, 'dbManager'],
+        $this->serviceDefinitions = [
+            Session::class => fn() => $this->session(),
+            Cookies::class => fn() => $this->cookies(),
+            HttpRequest::class => fn() => $this->request(),
+            ViewEngine::class => fn() => $this->view(),
+            DatabaseManager::class => fn() => $this->dbManager(),
             AppContext::class => fn() => $this,
         ];
+
+        $this->serviceInstances = [];
     }
 
-    protected array $services = [];
+    protected array $serviceDefinitions = [];
+
+    protected array $serviceInstances = [];
 
     protected ?HttpRequest $request = null;
 
@@ -98,6 +102,8 @@ class AppContext
     public function setView(ViewEngine $engine): static
     {
         $this->view = $engine;
+        $this->serviceDefinitions[ViewEngine::class] = $engine;
+        $this->serviceInstances[ViewEngine::class] = $engine;
         return $this;
     }
 
@@ -150,6 +156,8 @@ class AppContext
     public function setSession(Session $session): void
     {
         $this->session = $session;
+        $this->serviceDefinitions[Session::class] = $session;
+        $this->serviceInstances[Session::class] = $session;
     }
 
     /**
@@ -173,14 +181,24 @@ class AppContext
     // --- Service Container ---
 
     /**
-     * Register a service instance in the context.
+     * Register a service instance or lazy factory in the context.
      *
-     * @param string $id The identifier for the service (usually the class name).
-     * @param object $service The service instance to register.
+     * Registered callables are treated as zero-argument factories. They are invoked on
+     * first resolution and their returned object is cached for subsequent lookups.
+     *
+     * @param string          $id      The identifier for the service (usually the class name).
+     * @param callable|object|null $service Optional service instance or zero-argument factory to register.
      */
-    public function set(string $id, object $service): void
+    public function set(string $id, callable|object|null $service = null): void
     {
-        $this->services[$id] = $service;
+        $service ??= $id;
+        $this->serviceDefinitions[$id] = $service;
+        unset($this->serviceInstances[$id]);
+
+        if (is_object($service) && !is_callable($service)) {
+            $this->syncKnownServiceProperty($id, $service);
+            $this->serviceInstances[$id] = $service;
+        }
     }
 
     /**
@@ -191,11 +209,15 @@ class AppContext
      */
     public function has(string $id): bool
     {
-        return isset($this->services[$id]);
+        return isset($this->serviceDefinitions[$id]);
     }
 
     /**
-     * Get a service instance from the context. If the service is not registered but the identifier is a class name, it will attempt to auto-wire and instantiate it.
+     * Get a service instance from the context.
+     *
+     * If the service is registered as a callable, it will be invoked lazily once and the
+     * returned object will be cached. If the service is not registered but the identifier
+     * is a class name, it will attempt to auto-wire and instantiate it.
      *
      * @param string $id The identifier of the service to retrieve.
      * @return object The service instance associated with the given identifier.
@@ -203,45 +225,139 @@ class AppContext
      */
     public function get(string $id): object
     {
-        if (isset($this->services[$id])) {
-            return $this->services[$id];
+        $service = $this->resolveRegisteredService($id, allowNull: false);
+        if ($service !== null) {
+            return $service;
         }
 
         if (class_exists($id)) {
-            return $this->services[$id] = $this->build($id);
+            $service = $this->build($id);
+            $this->serviceDefinitions[$id] = $service;
+            $this->serviceInstances[$id] = $service;
+            $this->syncKnownServiceProperty($id, $service);
+            return $service;
         }
 
         throw new RuntimeException("Service not found: $id");
     }
 
     /**
-     * Try to get a service instance from the context. If the service is not registered but the identifier is a class name, it will attempt to auto-wire and instantiate it. Returns null if the service is not found and cannot be auto-wired.
+     * Try to get a service instance from the context.
+     *
+     * If the service is registered as a callable, it will be invoked lazily once and the
+     * returned object will be cached. If the service is not registered but the identifier
+     * is a class name, it will attempt to auto-wire and instantiate it. Returns null if
+     * the service is not found, or if a registered factory currently resolves to null.
      *
      * @param string $id The identifier of the service to retrieve.
      * @return object|null The service instance associated with the given identifier, or null if not found.
      */
     public function tryGet(string $id): ?object
     {
-        if (isset($this->services[$id])) {
-            return $this->services[$id];
+        $service = $this->resolveRegisteredService($id, allowNull: true);
+        if ($service !== null || $this->has($id)) {
+            return $service;
         }
 
         if (class_exists($id)) {
-            return $this->services[$id] = $this->build($id);
+            $service = $this->build($id);
+            $this->serviceDefinitions[$id] = $service;
+            $this->serviceInstances[$id] = $service;
+            $this->syncKnownServiceProperty($id, $service);
+            return $service;
         }
 
         return null;
     }
 
     /**
-     * Get a service instance from the context if it exists, or null if it does not exist. This method does not attempt to auto-wire or instantiate classes.
+     * Get a registered service instance if it exists, or null if it does not.
+     *
+     * Registered factories are resolved lazily. This method does not attempt to auto-wire
+     * or instantiate classes that have not been registered explicitly.
      *
      * @param string $id The identifier of the service to retrieve.
      * @return object|null The service instance associated with the given identifier, or null if not found.
      */
     public function getOrNull(string $id): ?object
     {
-        return $this->services[$id] ?? null;
+        return $this->resolveRegisteredService($id, allowNull: true);
+    }
+
+    protected function resolveRegisteredService(string $id, bool $allowNull): ?object
+    {
+        if (isset($this->serviceInstances[$id])) {
+            return $this->serviceInstances[$id];
+        }
+
+        $definition = $this->serviceDefinitions[$id] ?? null;
+
+        if ($definition === null) {
+            return null;
+        }
+
+        if (is_string($definition) && class_exists($definition)) {
+            $service = $this->build($definition);
+            $this->serviceDefinitions[$id] = $service;
+            $this->serviceInstances[$id] = $service;
+            $this->syncKnownServiceProperty($id, $service);
+            return $service;
+        }
+
+        if (!is_callable($definition)) {
+            $this->syncKnownServiceProperty($id, $definition);
+            return $this->serviceInstances[$id] = $definition;
+        }
+
+        $service = $definition();
+
+        if ($service === null) {
+            if ($allowNull) {
+                return null;
+            }
+
+            throw new RuntimeException("Service factory for $id did not return an object");
+        }
+
+        if (!is_object($service)) {
+            throw new RuntimeException("Service factory for $id did not return an object");
+        }
+
+        $this->syncKnownServiceProperty($id, $service);
+
+        return $this->serviceInstances[$id] = $service;
+    }
+
+    protected function syncKnownServiceProperty(string $id, object $service): void
+    {
+        if ($id === HttpRequest::class && $service instanceof HttpRequest) {
+            $this->request = $service;
+            return;
+        }
+
+        if ($id === ViewEngine::class && $service instanceof ViewEngine) {
+            $this->view = $service;
+            return;
+        }
+
+        if ($id === Session::class && $service instanceof Session) {
+            $this->session = $service;
+            return;
+        }
+
+        if ($id === Cookies::class && $service instanceof Cookies) {
+            $this->cookies = $service;
+            return;
+        }
+
+        if ($id === Router::class && $service instanceof Router) {
+            $this->router = $service;
+            return;
+        }
+
+        if ($id === DatabaseManager::class && $service instanceof DatabaseManager) {
+            $this->dbManager = $service;
+        }
     }
 
     protected function build(string $class): object
@@ -280,8 +396,13 @@ class AppContext
 
                 // If service is registered
                 if ($this->has($t)) {
-                    $args[] = $this->get($t);
-                    continue 2; // next parameter
+                    $service = $this->getOrNull($t);
+                    if ($service !== null) {
+                        $args[] = $service;
+                        continue 2; // next parameter
+                    }
+
+                    continue;
                 }
 
                 // If class exists -> auto-wire

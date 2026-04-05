@@ -26,6 +26,85 @@ class RouterModernContractTest extends TestCase
         $this->assertArrayNotHasKey('params', $result);
     }
 
+    public function testInlinePrefixAndMiddlewareApplyToSubsequentRoutesAndScopedGroupsRestoreState(): void
+    {
+        $router = (new Router())
+            ->middleware('auth')
+            ->prefix('/admin');
+
+        $router->prefix('/reports', function (Router $router): void {
+            $router->middleware('audit');
+            $router->add('GET', '/dashboard', 'Admin::dashboard');
+        });
+
+        $router->add('GET', '/profile', 'Account::profile');
+
+        $dashboard = $router->match('/admin/reports/dashboard');
+        $profile = $router->match('/admin/profile');
+
+        $this->assertNotNull($dashboard);
+        $this->assertSame(['auth', 'audit'], $dashboard['groups']);
+
+        $this->assertNotNull($profile);
+        $this->assertSame(['auth'], $profile['groups']);
+    }
+
+    public function testInlineNamespaceAppliesAndScopedNamespaceRestoresState(): void
+    {
+        $router = (new Router())->namespace('Admin');
+
+        $router->namespace('Api', function (Router $router): void {
+            $router->add('GET', '/users', 'UserController::list');
+        });
+
+        $router->add('GET', '/dashboard', 'DashboardController::view');
+
+        $users = $router->match('/users');
+        $dashboard = $router->match('/dashboard');
+
+        $this->assertNotNull($users);
+        $this->assertSame(
+            ['namespace' => 'Admin\\Api', 'controller' => 'UserController', 'action' => 'list'],
+            $users['override']
+        );
+
+        $this->assertNotNull($dashboard);
+        $this->assertSame(
+            ['namespace' => 'Admin', 'controller' => 'DashboardController', 'action' => 'view'],
+            $dashboard['override']
+        );
+    }
+
+    public function testNamespaceOnlyRouteKeepsRelativeNamespaceOverride(): void
+    {
+        $router = new Router();
+
+        $router->prefix('/phpthunder', function (Router $router): void {
+            $router->namespace('PhpThunder');
+            $router->add('GET', '/');
+        });
+
+        $result = $router->match('/phpthunder');
+
+        $this->assertNotNull($result);
+        $this->assertSame(['namespace' => 'PhpThunder'], $result['override']);
+    }
+
+    public function testInlineControllerAppliesToSubsequentRoutes(): void
+    {
+        $router = (new Router())->controller('UserController');
+
+        $router->add('GET', '/profile', '::show');
+
+        $result = $router->match('/profile');
+
+        $this->assertNotNull($result);
+        $this->assertSame(
+            ['controller' => 'UserController', 'action' => 'show'],
+            $result['override']
+        );
+    }
+
     public function testOptionalTypedSegmentMatchesWithAndWithoutValue(): void
     {
         $router = new Router();

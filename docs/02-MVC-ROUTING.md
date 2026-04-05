@@ -192,69 +192,41 @@ $router->add('GET', '/users/settings', 'UserController::settingsAction'); // sco
 
 ## Prefix, Namespace, Controller, and Middleware Groups
 
-Organize related routes with common prefixes, shared namespaces, a common controller, or middleware. Groups can be nested freely.
+Use the grouping methods in two ways:
+
+- Callback form: the group is temporary and the router restores the previous state when the callback returns.
+- Inline form: omit the callback and the group stays active for subsequent routes in the current routing setup.
 
 ```php
-// URL prefix
-$router->prefix('/admin', function (Router $r) {
-    $r->add('GET', '/users', 'AdminController::usersAction');
-});
+// Inline middleware applies to later routes
+$router->middleware('auth');
+$router->add('GET', '/account', 'AccountController::indexAction');
 
-// Namespace prefix — prepended to handlers inside the group
-$router->namespace('Admin', function (Router $r) {
-    $r->add('GET', '/dashboard', 'DashboardController::viewAction');
-    // resolves to Admin\DashboardController::viewAction
-    $r->add('GET', '/users',     'UserController::listAction');
-});
+// Inline prefix applies to later routes
+$router->prefix('/admin');
+$router->add('GET', '/dashboard', 'AdminController::indexAction');
 
-// Controller group — all routes share the same controller
-$router->controller('UserController', function (Router $r) {
-    $r->add('GET',  '/users',       '::listAction');
-    $r->add('POST', '/users',       '::createAction');
-    $r->add('GET',  '/users/{id}',  '::viewAction');
-});
+// Inline namespace is prepended to later handlers
+$router->namespace('Admin');
+$router->add('GET', '/users', 'UserController::listAction');
 
-// Middleware group — name must match a group registered in Dispatcher
-$router->middleware('auth', function (Router $r) {
-    $r->add('GET', '/dashboard', 'DashboardController::indexAction');
-});
+// Inline controller supplies the controller part for later handlers
+$router->controller('UserController');
+$router->add('GET', '/users', '::listAction');
 
-// Apply multiple middleware groups at once
+// Scoped callback forms still work when you want temporary grouping
 $router->middleware(['auth', 'admin'], function (Router $r) {
     $r->add('DELETE', '/users/{id:int}', 'UserController::deleteAction');
 });
-```
 
-### Inline middleware with `use()`
-
-`use()` pushes one or more middleware groups onto the current stack **without** a wrapping callback. Middleware added this way applies to every route defined after the call, until the end of the enclosing group (or `prefix()` / `namespace()` / `middleware()` callback). This is useful when you need to apply middleware to only a subset of routes within a group:
-
-```php
-$router->prefix('/admin', function (Router $r) {
-    // All routes below inherit 'auth'
-    $r->use('auth');
-    $r->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
-    $r->add('GET', '/users',     'Admin\UserController::listAction');
-
-    // Additional middleware from this point forward
-    $r->use(['log', 'metrics']);
-    $r->add('POST', '/users', 'Admin\UserController::createAction');
-});
-```
-
-> **Note:** Unlike `middleware()`, `use()` does not scope added groups to a callback. The groups remain on the stack for the lifetime of the surrounding group closure. To apply middleware to only a subset of routes, prefer `middleware()` with a callback or arrange your `use()` calls carefully.
-
-Groups can be nested:
-
-```php
 $router->prefix('/api', function (Router $r) {
-    $r->namespace('Api', function (Router $r) {
-        $r->middleware('auth', function (Router $r) {
-            $r->add('GET', '/orders', 'OrderController::listAction');
-        });
-    });
+    $r->namespace('Api');
+    $r->middleware('auth');
+    $r->add('GET', '/orders', 'OrderController::listAction');
 });
 ```
+
+Inline groups can be combined, and callback-scoped groups automatically restore the previous stack when they finish.
 
 ## Dispatcher Configuration
 
@@ -352,8 +324,10 @@ use Merlin\AppContext;
 use App\Services\Greeter;
 
 $ctx = AppContext::instance();
-// Register Greeter as a lazy service. It will be instantiated when first requested.
+// Register Greeter as a lazy service. It will be instantiated once, on first request.
 $ctx->set(Greeter::class, fn() => new Greeter());
+// Or register an already-built singleton instance.
+// $ctx->set(Greeter::class, new Greeter());
 ```
 
 #### 3. Inject and Use in a Controller Action

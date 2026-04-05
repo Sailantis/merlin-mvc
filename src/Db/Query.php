@@ -207,7 +207,11 @@ class Query extends Condition
      */
     public function table(string $name, ?string $alias = null): static
     {
-        $this->model = null;
+        if (self::$useModels && !isset(self::$modelMapping)) {
+			$this->model = self::getModel($name);
+        } else {
+    		$this->model = null;
+        }
         $this->table = $this->protectIdentifier($name, self::PI_TABLE, $alias);
         $this->forceSelect = false;
         return $this;
@@ -232,6 +236,9 @@ class Query extends Condition
             $this->subQueryBindings = $source->getBindings() + $this->subQueryBindings;
             $this->forceSelect = true; // Force SELECT mode for subqueries
         } else {
+            if (self::$useModels && !isset(self::$modelMapping)) {
+                $this->model = self::getModel($source);
+            }
             $sql = $this->protectIdentifier($source, self::PI_TABLE, $alias);
             $this->forceSelect = false;
         }
@@ -1077,7 +1084,7 @@ class Query extends Condition
         $statement .= ') VALUES ';
 
         // Use bind parameters if set, otherwise set values directly
-        if (isset($this->manualBindings)) {
+        if (!empty($this->manualBindings)) {
             $statement .= '(:';
             $statement .= implode(',:', $columns);
             $statement .= ')';
@@ -1094,7 +1101,7 @@ class Query extends Condition
                     if ($value instanceof Sql) {
                         $statement .= $this->serializeScalar($value);
                     } else {
-                        $statement .= $this->serializeScalar($value);
+                        $statement .= $value;
                     }
                 }
                 $statement .= ')';
@@ -1172,7 +1179,7 @@ class Query extends Condition
                         $valSep = ',';
                     }
                 }
-            } elseif (isset($this->manualBindings)) {
+            } elseif (!empty($this->manualBindings)) {
                 foreach ($columns as $column) {
                     $statement .= $valSep;
                     $statement .= $this->protectIdentifier($column);

@@ -525,9 +525,8 @@ $dispatcher->defineMiddlewareGroup('api', [
     new App\Middleware\ApiKeyMiddleware(['key-abc', 'key-xyz']),
 ]);
 
-$router->middleware('api', function (Router $r) {
-    $r->add('GET', '/api/users', 'Api\UserController::indexAction');
-});
+$router->middleware('api');
+$router->add('GET', '/api/users', 'Api\UserController::indexAction');
 ```
 
 ## 19) Encrypting Sensitive Data

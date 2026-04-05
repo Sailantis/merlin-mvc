@@ -220,10 +220,19 @@ class TestPdoStatement extends \PDOStatement
 {
     protected array $results = [];
     protected int $position = 0;
+    protected int $fetchMode = \PDO::FETCH_BOTH;
+    protected ?string $fetchClass = null;
 
     public function __construct(array $results = [])
     {
         $this->results = $results;
+    }
+
+    public function setFetchMode($mode, ...$args): bool
+    {
+        $this->fetchMode = $mode;
+        $this->fetchClass = $mode === \PDO::FETCH_CLASS && isset($args[0]) ? (string)$args[0] : null;
+        return true;
     }
 
     public function execute(?array $params = null): bool
@@ -239,8 +248,18 @@ class TestPdoStatement extends \PDOStatement
         }
 
         $row = $this->results[$this->position++];
+		$mode = $mode === \PDO::FETCH_BOTH ? $this->fetchMode : $mode;
 
         switch ($mode) {
+            case \PDO::FETCH_CLASS:
+				if ($this->fetchClass === null) {
+					return false;
+				}
+				$object = new $this->fetchClass();
+				foreach ($row as $key => $value) {
+					$object->$key = $value;
+				}
+				return $object;
             case \PDO::FETCH_ASSOC:
                 return $row;
             case \PDO::FETCH_NUM:

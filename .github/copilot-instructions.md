@@ -319,38 +319,25 @@ $router->urlFor('user.view', ['id' => 5], ['tab' => 'profile']); // '/users/5?ta
 ### Route Groups and Middleware
 
 ```php
-// Prefix group
-$router->prefix('/admin', function (Router $r) {
-    $r->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
-    $r->add('GET', '/users',     'Admin\UserController::indexAction');
-});
+// Inline prefix
+$router->prefix('/admin');
+$router->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
 
-// Namespace group – prepended to handler strings inside the callback
-$router->namespace('Admin', function (Router $r) {
-    $r->add('GET', '/dashboard', 'DashboardController::indexAction');
-    $r->add('GET', '/users',     'UserController::indexAction');
-});
+// Inline namespace
+$router->namespace('Admin');
+$router->add('GET', '/users', 'UserController::indexAction');
 
-// Controller group – all routes inside share the same controller
-$router->controller('UserController', function (Router $r) {
-    $r->add('GET',  '/users',      '::listAction');
-    $r->add('POST', '/users',      '::createAction');
-    $r->add('GET',  '/users/{id}', '::viewAction');
-});
+// Inline controller
+$router->controller('UserController');
+$router->add('GET', '/users', '::listAction');
 
-// Middleware group (name must match a group defined in Dispatcher)
-$router->middleware('auth', function (Router $r) {
-    $r->add('GET', '/account', 'AccountController::indexAction');
-});
+// Inline middleware (name must match a group defined in Dispatcher)
+$router->middleware('auth');
+$router->add('GET', '/account', 'AccountController::indexAction');
 
-// Inline middleware – push group(s) onto the stack without a callback
-// Applies to all routes registered after this call within the enclosing group
-$router->prefix('/admin', function (Router $r) {
-    $r->use('auth');
-    $r->add('GET', '/dashboard', 'Admin\DashboardController::indexAction');
-
-    $r->use(['log', 'metrics']);
-    $r->add('POST', '/users', 'Admin\UserController::createAction');
+// Scoped groups still work when you want temporary grouping
+$router->middleware(['auth', 'admin'], function (Router $r) {
+    $r->add('GET', '/users/{id}', 'UserController::deleteAction');
 });
 ```
 

@@ -50,6 +50,18 @@ class Response
     }
 
     /**
+     * Set multiple response headers.
+     *
+     * @param array $headers Associative array of headers (e.g. ["Content-Type" => "application/json"]).
+     * @return $this
+     */
+    public function setHeaders(array $headers): static
+    {
+        $this->headers = [...$this->headers, ...$headers];
+        return $this;
+    }
+
+    /**
      * Append text to the response body.
      *
      * @param string $text Content to append.

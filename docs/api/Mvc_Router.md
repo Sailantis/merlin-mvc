@@ -139,123 +139,119 @@ Generate a URL for a named route, substituting parameters as needed.
 
 ---
 
-### prefix() · [source](../../src/Mvc/Router.php#L208)
+### prefix() · [source](../../src/Mvc/Router.php#L237)
 
-`public function prefix(string $prefix, callable $callback): void`
+`public function prefix(string $prefix, callable|null $callback = null): static`
 
-Define a group of routes that share a common URI prefix. This allows you to organize related routes together and avoid repeating the same prefix for each route. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The prefix is automatically prepended to all routes defined within the group. You can also nest groups within groups for more complex route hierarchies.
+Define a group of routes that share a common URI prefix. When a callback is supplied, the prefix is scoped to that callback and the router restores the previous group state afterward. When omitted, the prefix stays on the stack for subsequent routes.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$prefix` | string | - | URI prefix for the group (e.g., "/admin") |
-| `$callback` | callable | - | Function that receives the router instance to define routes within the group |
+| `$callback` | callable\|null | `null` | Optional callback that receives the router instance to define routes within the group |
 
 **➡️ Return value**
 
-- Type: void
+- Type: static
+- Description: For method chaining
 
 **💡 Example**
 
 ```php
-$router->prefix('/admin', function($r) {
-    $r->add('GET', '/dashboard', 'Admin::dashboard');
-    $r->add('GET', '/users', 'Admin::users');
-});
+$router->prefix('/admin');
+$router->add('GET', '/dashboard', 'Admin::dashboard');
 ```
 
 
 ---
 
-### middleware() · [source](../../src/Mvc/Router.php#L230)
+### middleware() · [source](../../src/Mvc/Router.php#L271)
 
-`public function middleware(array|string $name, callable $callback): void`
+`public function middleware(array|string $name, callable|null $callback = null): static`
 
-Add group of middleware to be applied to all routes defined within the group. This allows you to easily apply common middleware (e.g., authentication, logging) to related routes without having to specify the middleware for each controller individually. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. Middleware groups can be nested within other groups, and middleware from outer groups will be applied to inner groups as well.
+Add group of middleware to be applied to all routes defined within the group. When a callback is supplied, the middleware groups are scoped to that callback and the router restores the previous stack afterward. When omitted, the middleware stays on the active stack for subsequent routes.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$name` | array\|string | - | Middleware group name (e.g., "auth") |
-| `$callback` | callable | - | Function that receives the router instance to define routes within the group |
+| `$callback` | callable\|null | `null` | Optional callback that receives the router instance to define routes within the group |
 
 **➡️ Return value**
 
-- Type: void
+- Type: static
+- Description: For method chaining
 
 **💡 Example**
 
 ```php
-$router->middleware('auth', function($r) {
-    $r->add('GET', '/admin/dashboard', 'Admin::dashboard');
-    $r->add('GET', '/admin/users', 'Admin::users');
-});
+$router->middleware('auth');
+$router->add('GET', '/admin/dashboard', 'Admin::dashboard');
 ```
 
 
 ---
 
-### namespace() · [source](../../src/Mvc/Router.php#L260)
+### namespace() · [source](../../src/Mvc/Router.php#L307)
 
-`public function namespace(string $namespace, callable $callback): void`
+`public function namespace(string $namespace, callable|null $callback = null): static`
 
-Define a group of routes that share a common namespace for their handlers. This allows you to organize related controllers together and avoid repeating the same namespace for each route handler. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The namespace is automatically prepended to all route handlers defined within the group. You can also nest groups within groups for more complex route hierarchies. Namespaces that start with a backslash will be treated as absolute and will not be prefixed with the parent group namespace.
+Define a group of routes that share a common namespace for their handlers. When a callback is supplied, the namespace is scoped to that callback and the router restores the previous group state afterward. When omitted, the namespace stays on the stack for subsequent routes.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$namespace` | string | - | Namespace prefix for the group (e.g., "Admin") |
-| `$callback` | callable | - | Function that receives the router instance to define routes within the group |
+| `$callback` | callable\|null | `null` | Optional callback that receives the router instance to define routes within the group |
 
 **➡️ Return value**
 
-- Type: void
+- Type: static
+- Description: For method chaining
 
 **💡 Example**
 
 ```php
-$router->namespace('Admin', function($r) {
-    $r->add('GET', '/dashboard', 'Dashboard::view');
-    $r->add('GET', '/users', 'UserController::list');
-});
+$router->namespace('Admin');
+$router->add('GET', '/dashboard', 'Dashboard::view');
 ```
 
 
 ---
 
-### controller() · [source](../../src/Mvc/Router.php#L285)
+### controller() · [source](../../src/Mvc/Router.php#L344)
 
-`public function controller(string $controller, callable $callback): void`
+`public function controller(string $controller, callable|null $callback = null): static`
 
-Define a group of routes that share a common controller. This allows you to organize related controllers together and avoid repeating the same controller name for each route handler. The callback function receives the router instance as an argument, allowing you to define routes within the group using the same `add()` method. The controller is automatically added to all route handlers defined within the group. You can also nest groups within groups for more complex route hierarchies.
+Define a group of routes that share a common controller. When a callback is supplied, the controller is scoped to that callback and the router restores the previous group state afterward. When omitted, the controller stays on the stack for subsequent routes.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$controller` | string | - | Controller name for the group (e.g., "Admin") |
-| `$callback` | callable | - | Function that receives the router instance to define routes within the group |
+| `$callback` | callable\|null | `null` | Optional callback that receives the router instance to define routes within the group |
 
 **➡️ Return value**
 
-- Type: void
+- Type: static
+- Description: For method chaining
 
 **💡 Example**
 
 ```php
-$router->controller('Admin', function($r) {
-    $r->add('GET', '/dashboard', '::view');
-    $r->add('GET', '/users', '::list');
-});
+$router->controller('Admin');
+$router->add('GET', '/dashboard', '::view');
 ```
 
 
 ---
 
-### match() · [source](../../src/Mvc/Router.php#L519)
+### match() · [source](../../src/Mvc/Router.php#L591)
 
 `public function match(string $uri, string $method = 'GET'): array|null`
 

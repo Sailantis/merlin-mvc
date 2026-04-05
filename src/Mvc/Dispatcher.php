@@ -301,8 +301,13 @@ class Dispatcher
 
                     // If type is registered in AppContext, use it
                     if ($context->has($t)) {
-                        $args[] = $context->get($t);
-                        continue 2; // next parameter
+                        $service = $context->getOrNull($t);
+                        if ($service !== null) {
+                            $args[] = $service;
+                            continue 2; // next parameter
+                        }
+
+                        continue;
                     }
 
                     // If type is a class → Auto-Wiring

@@ -2,12 +2,15 @@
 namespace Merlin\Tests\Mvc;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
+require_once __DIR__ . '/PhpThunder/AuthController.php';
 
 use Merlin\AppContext;
+use Merlin\Http\Session;
 use Merlin\Http\Response;
 use Merlin\Mvc\Controller;
 use Merlin\Mvc\Dispatcher;
 use Merlin\Mvc\MiddlewareInterface;
+use Merlin\Mvc\Router;
 use PHPUnit\Framework\TestCase;
 // --- Helper controllers / middleware (top-level declarations) ---
 
@@ -120,6 +123,14 @@ class DynamicTargetController extends Controller
     }
 }
 
+class NullableSessionActionController extends Controller
+{
+    public function act(?Session $session = null)
+    {
+        return $session === null ? 'no-session' : 'has-session';
+    }
+}
+
 class RoutingStateController extends Controller
 {
     public function fromOverride($id = null, $args = null, ...$params)
@@ -226,6 +237,61 @@ class DispatcherTest extends TestCase
         $this->assertEquals('CORE-A-C-GR-G', $this->responseBody($res));
     }
 
+    public function testNamespaceOnlyRouteFallsBackToDefaultControllerAndAction(): void
+    {
+        $context = new AppContext();
+        AppContext::setInstance($context);
+
+        $router = new Router();
+        $router->prefix('/phpthunder', function (Router $router): void {
+            $router->namespace('PhpThunder');
+            $router->add('GET', '/');
+        });
+
+        $route = $router->match('/phpthunder');
+
+        $this->assertNotNull($route);
+        $this->assertSame(['namespace' => 'PhpThunder'], $route['override']);
+
+        $disp = new Dispatcher();
+        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+
+        $res = $disp->dispatch($route);
+
+        $this->assertEquals('php-thunder-home', $this->responseBody($res));
+    }
+
+    public function testScopedControllerInsideNamespaceResolvesToRequestedController(): void
+    {
+        $context = new AppContext();
+        AppContext::setInstance($context);
+
+        $router = new Router();
+        $router->prefix('/phpthunder', function (Router $router): void {
+            $router->namespace('PhpThunder');
+            $router->controller('AuthController', function (Router $router): void {
+                $router->add(['GET', 'POST'], '/login', '::loginAction');
+                $router->add('GET', '/logout', '::logoutAction');
+            });
+        });
+
+        $route = $router->match('/phpthunder/login', 'POST');
+
+        $this->assertNotNull($route);
+        $this->assertSame([
+            'namespace' => 'PhpThunder',
+            'controller' => 'AuthController',
+            'action' => 'loginAction',
+        ], $route['override']);
+
+        $disp = new Dispatcher();
+        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+
+        $res = $disp->dispatch($route);
+
+        $this->assertEquals('auth-login', $this->responseBody($res));
+    }
+
     public function testDynamicVarsAddSuffixesButOverrideDoesNot(): void
     {
         $disp = new Dispatcher();
@@ -323,6 +389,17 @@ class DispatcherTest extends TestCase
         $this->assertNotNull($stored);
         $this->assertSame([42, null, 'x', 'y'], $stored->params);
         $this->assertSame(['x', 'y'], $stored->vars['params']);
+    }
+
+    public function testNullableRegisteredServiceFallsBackToNullInActionInjection(): void
+    {
+        $context = new AppContext();
+        AppContext::setInstance($context);
+        $disp = new Dispatcher();
+
+        $res = $disp->dispatch($this->routeWithOverride(NullableSessionActionController::class, 'act'));
+
+        $this->assertEquals('no-session', $this->responseBody($res));
     }
 
     /** @dataProvider reservedActionProvider */

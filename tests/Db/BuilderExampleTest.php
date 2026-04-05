@@ -164,4 +164,27 @@ class BuilderExampleTest extends TestCase
         // MySQL uses backticks for identifiers
         $this->assertStringContainsString('`users`', $sql);
     }
+
+    public function testInsertValuesInlineEscapedLiterals(): void
+    {
+        $db = new TestPgDatabase();
+
+        $sql = $db->builder()
+            ->returnSql()
+            ->table('users')
+            ->values([
+                'name' => 'Alice',
+                'email' => 'alice@example.com',
+                'age' => null,
+            ])
+            ->insert();
+
+        $this->assertStringContainsString('INSERT INTO "users"', $sql);
+        $this->assertStringContainsString("'Alice'", $sql);
+        $this->assertStringContainsString("'alice@example.com'", $sql);
+        $this->assertStringContainsString('NULL', $sql);
+        $this->assertStringNotContainsString(':name', $sql);
+        $this->assertStringNotContainsString(":email", $sql);
+        $this->assertStringNotContainsString("'NULL'", $sql);
+    }
 }
