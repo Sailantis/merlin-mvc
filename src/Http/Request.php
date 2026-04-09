@@ -1,406 +1,140 @@
-<?php /** @noinspection PhpUnused */
+<?php declare(strict_types=1);
 
 namespace Merlin\Http;
 
-/**
- * HTTP Request class
- */
+use RuntimeException;
+
 class Request
 {
-	/**
-	 * Get the raw request body
-	 * Caches the body since php://input can only be read once
-	 * @return string
-	 */
-	public function getRequestBody(): bool|string
-	{
-		static $body = null;
-		if ($body === null) {
-			$body = file_get_contents('php://input');
-		}
-		return $body;
-	}
+    private array $server;
+    private array $get;
+    private array $post;
+    private array $files;
+    private ?string $rawBody = null;
+    private bool $trustProxyHeaders;
+    private array $request;
 
-	/**
-	 * Get and parse JSON request body
-	 * @param bool $assoc When true, returns associative arrays. When false, returns objects
-	 * @return mixed Returns the parsed JSON data, or null on error
-	 * @throws \RuntimeException if the JSON body cannot be parsed
-	 */
-	public function getJsonBody($assoc = true): mixed
-	{
-		$body = $this->getRequestBody();
-		$jsonBody = json_decode($body, $assoc);
-		if (json_last_error() !== JSON_ERROR_NONE) {
-			throw new \RuntimeException('Failed to parse JSON body: ' . json_last_error_msg());
-		}
-		return $jsonBody;
-	}
+    public function __construct(
+        array $server = null,
+        array $get = null,
+        array $post = null,
+        array $files = null,
+        bool $trustProxyHeaders = false
+    ) {
+        $this->server = $server ?? $_SERVER;
+        $this->get = $get ?? $_GET;
+        $this->post = $post ?? $_POST;
+        $this->files = $files ?? $_FILES;
+        $this->trustProxyHeaders = $trustProxyHeaders;
+        // GET < POST (explicit order, independent of php.ini)
+        $this->request = [...$this->get, ...$this->post];
+    }
 
-	/**
-	 * Get a parameter from the request (GET, POST, COOKIE, etc.)
-	 * @param ?string $name
-	 * @param mixed $defaultValue
-	 * @return mixed
-	 */
-	public function get(?string $name = null, mixed $defaultValue = null): mixed
-	{
-		return isset($name) ? (isset($_REQUEST[$name]) ? $_REQUEST[$name] : $defaultValue) : $_REQUEST;
-	}
+    // -------------------------
+    // Body / JSON
+    // -------------------------
+    public function getBody(): string
+    {
+        if ($this->rawBody === null) {
+            $this->rawBody = (string) @file_get_contents('php://input');
+        }
+        return $this->rawBody;
+    }
 
-	/**
-	 * Get a POST parameter from the request
-	 * @param ?string $name
-	 * @param mixed $defaultValue
-	 * @return mixed
-	 */
-	public function getPost(?string $name = null, mixed $defaultValue = null): mixed
-	{
-		return isset($name) ? (isset($_POST[$name]) ? $_POST[$name] : $defaultValue) : $_POST;
-	}
+    /**
+     * @param bool $assoc
+     * @return mixed
+     * @throws RuntimeException
+     */
+    public function getJsonBody(bool $assoc = true): mixed
+    {
+        $body = $this->getBody();
+        if ($body === '') {
+            return null;
+        }
+        try {
+            $data = json_decode($body, $assoc, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new RuntimeException('Failed to parse JSON body: ' . $e->getMessage(), 0, $e);
+        }
+        return $data;
+    }
 
-	/**
-	 * Get a query parameter from the request
-	 * @param ?string $name
-	 * @param mixed $defaultValue
-	 * @return mixed
-	 */
-	public function getQuery(?string $name = null, mixed $defaultValue = null): mixed
-	{
-		return isset($name) ? (isset($_GET[$name]) ? $_GET[$name] : $defaultValue) : $_GET;
-	}
+    // -------------------------
+    // Parameter accessors (modern, short)
+    // -------------------------
+    public function input(?string $name = null, mixed $default = null): mixed
+    {
+        if ($name === null) {
+            return $this->request;
+        }
+        return $this->request[$name] ?? $default;
+    }
 
-	/**
-	 * Get a server variable from the request
-	 * @param ?string $name
-	 * @param mixed $defaultValue
-	 * @return mixed
-	 */
-	public function getServer(?string $name = null, mixed $defaultValue = null): mixed
-	{
-		return isset($name) ? (isset($_SERVER[$name]) ? $_SERVER[$name] : $defaultValue) : $_SERVER;
-	}
+    public function query(?string $name = null, mixed $default = null): mixed
+    {
+        if ($name === null) {
+            return $this->get;
+        }
+        return $this->get[$name] ?? $default;
+    }
 
-	/**
-	 * Get the HTTP method of the request, accounting for method overrides in POST requests
-	 * @return string
-	 */
-	public function getMethod(): string
-	{
-		$requestMethod = 'GET';
-		if (isset($_SERVER['REQUEST_METHOD'])) {
-			$requestMethod = $_SERVER['REQUEST_METHOD'];
-		}
+    public function post(?string $name = null, mixed $default = null): mixed
+    {
+        if ($name === null) {
+            return $this->post;
+        }
+        return $this->post[$name] ?? $default;
+    }
 
-		if ($requestMethod === 'POST') {
-			if (isset($_SERVER['X_HTTP_METHOD_OVERRIDE'])) {
-				$requestMethod = strtoupper($_SERVER['X_HTTP_METHOD_OVERRIDE']);
-			}
-		}
+    public function server(?string $name = null, mixed $default = null): mixed
+    {
+        if ($name === null) {
+            return $this->server;
+        }
+        return $this->server[$name] ?? $default;
+    }
 
-		return $requestMethod;
-	}
+    // -------------------------
+    // Has checks
+    // -------------------------
+    public function hasInput(string $name): bool
+    {
+        return isset($this->request[$name]);
+    }
 
-	/**
-	 * Get the request scheme (http or https)
-	 * @return string
-	 */
-	public function getScheme(): string
-	{
-		return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http';
-	}
+    public function hasQuery(string $name): bool
+    {
+        return isset($this->get[$name]);
+    }
 
-	/**
-	 * Get the server name from the request
-	 * @return string
-	 */
-	public function getServerName(): string
-	{
-		return isset($_SERVER['SERVER_NAME']) ? $_SERVER['SERVER_NAME'] : 'localhost';
-	}
+    public function hasPost(string $name): bool
+    {
+        return isset($this->post[$name]);
+    }
 
-	/**
-	 * Get the server IP address
-	 * @return string
-	 */
-	public function getServerAddr(): string
-	{
-		return isset($_SERVER['SERVER_ADDR']) ? $_SERVER['SERVER_ADDR'] : gethostbyname('localhost');
-	}
+    // -------------------------
+    // Method / scheme / host / port / uri / path
+    // -------------------------
+    public function getMethod(): string
+    {
+        $method = strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
 
-	/**
-	 * Get the host from the request, accounting for Host header and server variables
-	 * @return string
-	 */
-	public function getHttpHost(): string
-	{
-		if (!empty($_SERVER['HTTP_HOST'])) {
-			return $_SERVER['HTTP_HOST'];
-		}
-		if (!empty($_SERVER['SERVER_NAME'])) {
-			return $_SERVER['SERVER_NAME'];
-		}
-		if (!empty($_SERVER['SERVER_ADDR'])) {
-			return $_SERVER['SERVER_ADDR'];
-		}
-		return '';
-	}
+        // Header override (common variants)
+        $override = $this->server['HTTP_X_HTTP_METHOD_OVERRIDE'] ?? $this->server['X_HTTP_METHOD_OVERRIDE'] ?? $this->server['HTTP_X_METHOD_OVERRIDE'] ?? null;
+        if ($method === 'POST' && $override) {
+            return strtoupper($override);
+        }
 
-	/**
-	 * Get the port number from the request, accounting for standard ports and Host header
-	 * @return int
-	 */
-	public function getPort(): int
-	{
-		if (!empty($_SERVER['HTTP_HOST'])) {
-			$host = $_SERVER['HTTP_HOST'];
-			$index = strrpos($host, ':');
-			if ($index !== false) {
-				return (int) substr($host, $index + 1);
-			}
-			return $this->isSecure() ? 443 : 80;
-		}
-		return (int) ($_SERVER['SERVER_PORT'] ?? 0);
-	}
+        // Body override (e.g. _method)
+        if ($method === 'POST' && isset($this->post['_method'])) {
+            return strtoupper((string)$this->post['_method']);
+        }
 
-	/**
-	 * Get the Content-Type header from the request
-	 * @return string
-	 */
-	public function getContentType(): string
-	{
-		if (isset($_SERVER['CONTENT_TYPE'])) {
-			return $_SERVER['CONTENT_TYPE'];
-		}
-		return '';
-	}
+        return $method;
+    }
 
-	/**
-	 * Get the client's IP address, optionally trusting proxy headers
-	 * @param bool $trustForwardedHeader
-	 * @return string|bool
-	 */
-	public function getClientAddress(bool $trustForwardedHeader = false): string|bool
-	{
-		// return IP given by proxy?
-
-		if ($trustForwardedHeader) {
-			if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-				$address = $_SERVER['HTTP_X_FORWARDED_FOR'];
-			} elseif (!empty($_SERVER['HTTP_CLIENT_IP'])) {
-				$address = $_SERVER['HTTP_CLIENT_IP'];
-			}
-		}
-
-		if (empty($address)) {
-			$address = $_SERVER["REMOTE_ADDR"];
-		}
-
-		if (!isset($address)) {
-			return false;
-		}
-
-		if (strpos($address, ",") !== false) {
-			// client address has multiples parts, return only first part
-			return explode(",", $address)[0];
-		}
-
-		return $address;
-	}
-
-	/**
-	 * Get the request URI
-	 * @return string
-	 */
-	public function getUri(): string
-	{
-		return $_SERVER['REQUEST_URI'] ?? '/';
-	}
-
-	/**
-	 * Get the request path (URI without query string)
-	 * @return string
-	 */
-	public function getPath(): string
-	{
-		return parse_url($this->getUri(), PHP_URL_PATH) ?: '/';
-	}
-
-
-	/**
-	 * Get the User-Agent header from the request
-	 * @return string
-	 */
-	public function getUserAgent(): string
-	{
-		return $_SERVER['HTTP_USER_AGENT'] ?? '';
-	}
-
-	protected final function _getQualityHeader(string $serverIndex, string $name, bool $sort): array
-	{
-		// Accept: text/html, application/xhtml+xml, application/xml;q=0.9, image/webp, */*;q=0.8
-		// Accept-Language: fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5
-		$returnedParts = [];
-		$lastQuality = 1;
-		$needSort = false;
-		if (isset($_SERVER[$serverIndex])) {
-			foreach (explode(',', $_SERVER[$serverIndex]) as $item) {
-				$headerParts = [];
-				foreach (explode(';', $item) as $part) {
-					$part = trim($part);
-					$index = strpos($part, '=');
-					if ($index === false) {
-						$headerParts[$name] = $part;
-						$headerParts['quality'] = 1.0;
-					} elseif ($index === 1 && $part[0] === 'q') {
-						$quality = (float) substr($part, 2);
-						$headerParts['quality'] = $quality;
-						$needSort = $quality > $lastQuality;
-						$lastQuality = $quality;
-					} else {
-						$headerParts[substr($part, 0, $index)] = substr($part, $index + 1);
-					}
-				}
-				$returnedParts[] = $headerParts;
-			}
-		}
-		if ($sort && $needSort) {
-			usort(
-				$returnedParts,
-				fn($a, $b) => (int) ($b['quality'] * 100) <=> (int) ($a['quality'] * 100)
-			);
-		}
-		return $returnedParts;
-	}
-
-	/**
-	 * Gets an array with mime/types and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT"]
-	 * @return array
-	 */
-	public function getAcceptableContent(bool $sort = false): array
-	{
-		return $this->_getQualityHeader('HTTP_ACCEPT', 'accept', $sort);
-	}
-
-	/**
-	 * Gets best mime/type accepted by the browser/client from _SERVER["HTTP_ACCEPT"]
-	 * @return string
-	 */
-	public function getBestAccept(): string
-	{
-		return $this->getAcceptableContent(true)[0]['accept'] ?? '';
-	}
-
-	/**
-	 * Gets a charsets array and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT_CHARSET"]
-	 * @return array
-	 */
-	public function getClientCharsets(bool $sort = false): array
-	{
-		return $this->_getQualityHeader("HTTP_ACCEPT_CHARSET", 'charset', $sort);
-	}
-
-	/**
-	 * Gets best charset accepted by the browser/client from _SERVER["HTTP_ACCEPT_CHARSET"]
-	 * @return string
-	 */
-	public function getBestCharset(): string
-	{
-		return $this->getClientCharsets(true)[0]['charset'] ?? '';
-	}
-
-	/**
-	 * Gets languages array and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT_LANGUAGE"]
-	 */
-	public function getLanguages(bool $sort = false): array
-	{
-		return $this->_getQualityHeader("HTTP_ACCEPT_LANGUAGE", 'language', $sort);
-	}
-
-	/**
-	 * Gets best language accepted by the browser/client from _SERVER["HTTP_ACCEPT_LANGUAGE"]
-	 */
-	public function getBestLanguage(): string
-	{
-		return $this->getLanguages(true)[0]['language'] ?? '';
-	}
-
-	/**
-	 * Gets auth info accepted by the browser/client from $_SERVER['PHP_AUTH_USER']
-	 * @return array|null
-	 */
-	public function getBasicAuth(): array|null
-	{
-		if (isset($_SERVER["PHP_AUTH_USER"]) && isset($_SERVER["PHP_AUTH_PW"])) {
-			return [
-				'username' => $_SERVER["PHP_AUTH_USER"],
-				'password' => $_SERVER["PHP_AUTH_PW"],
-			];
-		}
-		return null;
-	}
-
-	/**
-	 * Gets auth info accepted by the browser/client from $_SERVER['PHP_AUTH_DIGEST']
-	 * @return array|null
-	 */
-	public function getDigestAuth(): array|null
-	{
-		if (isset($_SERVER["PHP_AUTH_DIGEST"])) {
-			if (preg_match_all("#(\\w+)=(['\"]?)([^'\" ,]+)\\2#", $_SERVER["PHP_AUTH_DIGEST"], $matches, 2)) {
-				$auth = [];
-				foreach ($matches as $match) {
-					$auth[$match[1]] = $match[3];
-				}
-				return $auth;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Checks whether request has been made using AJAX
-	 * @return bool
-	 */
-	public function isAjax(): bool
-	{
-		// JSON-Requests (fetch, axios, modern Clients)
-		if (
-			isset($_SERVER['CONTENT_TYPE']) &&
-			str_contains($_SERVER['CONTENT_TYPE'], 'application/json')
-		) {
-			return true;
-		}
-
-		// JSON-Requests (fetch, axios, modern Clients)
-		if (
-			isset($_SERVER['HTTP_ACCEPT']) &&
-			str_contains($_SERVER['HTTP_ACCEPT'], 'application/json')
-		) {
-			return true;
-		}
-
-		// Classic jQuery-Header (if set)
-		if (
-			isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-			$_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest'
-		) {
-			return true;
-		}
-
-		return false;
-	}
-
-	/**
-	 * Checks whether request has been made using HTTPS
-	 * @return bool
-	 */
-	public function isSecure(): bool
-	{
-		return isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-	}
-
-	/**
+    /**
 	 * Checks whether the request method is POST
 	 * @return bool
 	 */
@@ -409,110 +143,372 @@ class Request
 		return $this->getMethod() === 'POST';
 	}
 
-	/**
-	 * Checks whether a parameter is present in the combined request data ($_REQUEST)
-	 * @param string $name Parameter name
+    public function getScheme(): string
+    {
+        $https = $this->server['HTTPS'] ?? null;
+        if ($https && strtolower($https) !== 'off') {
+            return 'https';
+        }
+        if ($this->trustProxyHeaders && !empty($this->server['HTTP_X_FORWARDED_PROTO'])) {
+            return explode(',', $this->server['HTTP_X_FORWARDED_PROTO'])[0];
+        }
+        return 'http';
+    }
+
+    /**
+	 * Checks whether request has been made using HTTPS
 	 * @return bool
 	 */
-	public function has($name): bool
+	public function isSecure(): bool
 	{
-		return isset($_REQUEST[$name]);
+		return $this->getScheme() === 'https';
 	}
 
-	/**
-	 * Checks whether a parameter is present in the POST data ($_POST)
-	 * @param string $name Parameter name
-	 * @return bool
-	 */
-	public function hasPost($name): bool
-	{
-		return isset($_POST[$name]);
-	}
+    public function getHost(): string
+    {
+        if ($this->trustProxyHeaders && !empty($this->server['HTTP_X_FORWARDED_HOST'])) {
+            return explode(',', $this->server['HTTP_X_FORWARDED_HOST'])[0];
+        }
+        if (!empty($this->server['HTTP_HOST'])) {
+            return $this->server['HTTP_HOST'];
+        }
+        if (!empty($this->server['SERVER_NAME'])) {
+            return $this->server['SERVER_NAME'];
+        }
+        return 'localhost';
+    }
 
-	/**
-	 * Checks whether a parameter is present in the query string ($_GET)
-	 * @param string $name Parameter name
-	 * @return bool
-	 */
-	public function hasQuery($name): bool
-	{
-		return isset($_GET[$name]);
-	}
+    public function getPort(): int
+    {
+        // Host header may include port
+        $host = $this->server['HTTP_HOST'] ?? '';
+        if ($host !== '' && str_contains($host, ':')) {
+            $parts = explode(':', $host);
+            $port = (int) end($parts);
+            if ($port > 0) {
+                return $port;
+            }
+        }
 
-	/**
-	 * Checks whether a server variable is present in $_SERVER
-	 * @param string $name Server variable name
-	 * @return bool
-	 */
-	public function hasServer($name): bool
-	{
-		return isset($_SERVER[$name]);
-	}
+        if ($this->trustProxyHeaders && !empty($this->server['HTTP_X_FORWARDED_PORT'])) {
+            return (int) explode(',', $this->server['HTTP_X_FORWARDED_PORT'])[0];
+        }
 
-	// File uploads
+        return (int) ($this->server['SERVER_PORT'] ?? ($this->getScheme() === 'https' ? 443 : 80));
+    }
 
-	protected function getNormalizedFiles(): array
-	{
-		static $normalized = null;
+    public function getUri(): string
+    {
+        return $this->server['REQUEST_URI'] ?? '/';
+    }
 
-		if ($normalized === null) {
-			foreach ($_FILES as $field => $data) {
-				if (\is_array($data['name'])) {
-					$files = [];
-					foreach ($data['name'] as $i => $name) {
-						$files[] = new UploadedFile(
-							$name,
-							$data['type'][$i],
-							$data['tmp_name'][$i],
-							$data['error'][$i],
-							$data['size'][$i]
-						);
-					}
-					$normalized[$field] = $files;
-				} else {
-					$normalized[$field] = new UploadedFile(
-						$data['name'],
-						$data['type'],
-						$data['tmp_name'],
-						$data['error'],
-						$data['size']
-					);
-				}
-			}
-		}
+    public function getPath(): string
+    {
+        $path = parse_url($this->getUri(), PHP_URL_PATH);
+        return $path === false || $path === null ? '/' : $path;
+    }
 
-		return $normalized;
-	}
+    // -------------------------
+    // Client IP
+    // -------------------------
+    public function getClientIp(bool $trustForwarded = false): string|false
+    {
+        // 1) Proxy headers allowed?
+        if ($trustForwarded && $this->trustProxyHeaders) {
 
-	/**
-	 * Get an uploaded file for a given key. Returns an UploadedFile object or null if no file was uploaded for the key.
-	 * @param string $key
-	 * @return UploadedFile|null
-	 */
-	public function getFile(string $key): ?UploadedFile
-	{
-		$files = $this->getNormalizedFiles();
-		$value = $files[$key] ?? null;
+            // RFC 7239: Forwarded: for=...
+            if (!empty($this->server['HTTP_FORWARDED'])) {
+                $ip = $this->extractFromForwarded($this->server['HTTP_FORWARDED']);
+                if ($ip) {
+                    return $ip;
+                }
+            }
+            
+            // X-Forwarded-For: may contain multiple IPs
+            $xff = $this->server['HTTP_X_FORWARDED_FOR'] ?? null;
 
-		if ($value instanceof UploadedFile) {
-			return $value;
-		}
+            if ($xff) {
+                // First hop
+                $first = trim(explode(',', $xff)[0]);
 
-		return $value[0] ?? null;
-	}
+                // IPv6 with port: [2001:db8::1]:1234
+                if (str_starts_with($first, '[')) {
+                    $end = strpos($first, ']');
+                    if ($end !== false) {
+                        return substr($first, 1, $end - 1);
+                    }
+                }
+
+                // Remove trailing :port if present
+                return preg_replace('/:\d+$/', '', $first);
+            }
+
+            // Fallback: HTTP_X_REAL_IP
+            $ip = $this->server['HTTP_X_REAL_IP'] ?? null;
+        }
+
+        // 2) Default: REMOTE_ADDR
+        if (!isset($ip)) {
+            $ip = $this->server['REMOTE_ADDR'] ?? null;
+        }
+
+        return $ip ? trim($ip) : false;
+    }
+
+    private function extractFromForwarded(string $header): ?string
+    {
+        // Split multiple forwarded entries: for=1.2.3.4;proto=https, for=5.6.7.8
+        $parts = explode(',', $header);
+
+        // We only care about the first hop
+        $first = trim($parts[0]);
+
+        // Extract key-value pairs (for=..., proto=..., host=...)
+        // Example: for="[2001:db8::1]:1234";proto=https
+        foreach (explode(';', $first) as $pair) {
+            $pair = trim($pair);
+
+            if (stripos($pair, 'for=') === 0) {
+                $value = trim(substr($pair, 4)); // remove "for="
+
+                // Remove surrounding quotes
+                $value = trim($value, "\"'");
+
+                // IPv6 in brackets: [2001:db8::1]:1234
+                if (str_starts_with($value, '[')) {
+                    $end = strpos($value, ']');
+                    if ($end !== false) {
+                        return substr($value, 1, $end - 1);
+                    }
+                }
+
+                // Remove trailing :port if present
+                return preg_replace('/:\d+$/', '', $value);
+            }
+        }
+
+        return null;
+    }
 
 
-	/**
-	 * Get uploaded files for a given key. Returns an array of UploadedFile objects, even if only one file was uploaded.
-	 * @param string $key
-	 * @return UploadedFile[]
-	 */
-	public function getFiles(string $key): array
-	{
-		$files = $this->getNormalizedFiles();
-		$value = $files[$key] ?? null;
+    // -------------------------
+    // Content negotiation
+    // -------------------------
+    public function getAcceptableContent(bool $sort = false): array
+    {
+        return $this->parseQualityHeader('HTTP_ACCEPT', 'accept', $sort);
+    }
 
-		return \is_array($value) ? $value : ($value ? [$value] : []);
-	}
+    public function getBestAccept(): string
+    {
+        return $this->getAcceptableContent(true)[0]['accept'] ?? '';
+    }
 
+    public function getLanguages(bool $sort = false): array
+    {
+        return $this->parseQualityHeader('HTTP_ACCEPT_LANGUAGE', 'language', $sort);
+    }
+
+    public function getBestLanguage(): string
+    {
+        return $this->getLanguages(true)[0]['language'] ?? '';
+    }
+
+    private function parseQualityHeader(string $serverKey, string $name, bool $sort): array
+    {
+        $result = [];
+        $header = $this->server[$serverKey] ?? '';
+        if ($header === '') {
+            return $result;
+        }
+
+        foreach (explode(',', $header) as $part) {
+            $part = trim($part);
+            if ($part === '') {
+                continue;
+            }
+            $segments = explode(';', $part);
+            $value = array_shift($segments);
+            $quality = 1.0;
+            $params = [];
+            foreach ($segments as $seg) {
+                $seg = trim($seg);
+                if (str_starts_with($seg, 'q=')) {
+                    $quality = (float) substr($seg, 2);
+                } elseif (str_contains($seg, '=')) {
+                    [$k, $v] = explode('=', $seg, 2);
+                    $params[trim($k)] = trim($v);
+                }
+            }
+            $entry = [...['quality' => $quality, $name => $value], ...$params];
+            $result[] = $entry;
+        }
+
+        if ($sort) {
+            usort($result, fn($a, $b) => $b['quality'] <=> $a['quality']);
+        }
+
+        return $result;
+    }
+
+    // -------------------------
+    // JSON / AJAX helpers
+    // -------------------------
+    public function isJson(): bool
+    {
+        $ct = $this->server['CONTENT_TYPE'] ?? '';
+        if ($ct !== '' && str_contains($ct, 'application/json')) {
+            return true;
+        }
+        $accept = $this->server['HTTP_ACCEPT'] ?? '';
+        if ($accept !== '' && str_contains($accept, 'application/json')) {
+            return true;
+        }
+        return false;
+    }
+
+    /** @deprecated Use isJson() */
+    public function isAjax(): bool
+    {
+        if ($this->isJson()) {
+            return true;
+        }
+        return ($this->server['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
+    }
+
+    public function getBasicAuth(): ?array
+    {
+        // Default: PHP_AUTH_USER / PHP_AUTH_PW (Apache, built-in server)
+        if (isset($this->server['PHP_AUTH_USER'], $this->server['PHP_AUTH_PW'])) {
+            return [
+                'username' => $this->server['PHP_AUTH_USER'],
+                'password' => $this->server['PHP_AUTH_PW'],
+            ];
+        }
+
+        // Fallback: Authorization Header (often Nginx + PHP-FPM)
+        $auth = $this->server['HTTP_AUTHORIZATION']
+            ?? $this->server['REDIRECT_HTTP_AUTHORIZATION']
+            ?? null;
+
+        if ($auth && str_starts_with(strtolower($auth), 'basic ')) {
+            $decoded = base64_decode(substr($auth, 6), true);
+
+            if ($decoded && str_contains($decoded, ':')) {
+                [$user, $pass] = explode(':', $decoded, 2);
+                return [
+                    'username' => $user,
+                    'password' => $pass,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    public function getBearerToken(): ?string
+    {
+        // 1) Standard: Authorization header
+        $auth = $this->server['HTTP_AUTHORIZATION']
+            ?? $this->server['REDIRECT_HTTP_AUTHORIZATION']
+            ?? null;
+
+        if (!$auth) {
+            return null;
+        }
+
+        // Normalize
+        $auth = trim($auth);
+
+        // 2) Must start with "Bearer "
+        if (stripos($auth, 'Bearer ') !== 0) {
+            return null;
+        }
+
+        // 3) Extract token
+        $token = trim(substr($auth, 7));
+
+        return $token !== '' ? $token : null;
+    }
+
+
+    // -------------------------
+    // Files handling
+    // -------------------------
+    private ?array $normalizedFiles = null;
+
+    private function normalizeFiles(): array
+    {
+        if ($this->normalizedFiles !== null) {
+            return $this->normalizedFiles;
+        }
+
+        $normalized = [];
+        foreach ($this->files as $field => $data) {
+            if (!isset($data['name'])) {
+                continue;
+            }
+            if (is_array($data['name'])) {
+                $items = [];
+                $count = count($data['name']);
+                for ($i = 0; $i < $count; $i++) {
+                    $items[] = new UploadedFile(
+                        $data['name'][$i] ?? '',
+                        $data['type'][$i] ?? '',
+                        $data['tmp_name'][$i] ?? '',
+                        $data['error'][$i] ?? UPLOAD_ERR_NO_FILE,
+                        $data['size'][$i] ?? 0
+                    );
+                }
+                $normalized[$field] = $items;
+            } else {
+                $normalized[$field] = new UploadedFile(
+                    $data['name'],
+                    $data['type'] ?? '',
+                    $data['tmp_name'] ?? '',
+                    $data['error'] ?? UPLOAD_ERR_NO_FILE,
+                    $data['size'] ?? 0
+                );
+            }
+        }
+
+        $this->normalizedFiles = $normalized;
+        return $normalized;
+    }
+
+    public function getFile(string $key): ?UploadedFile
+    {
+        $files = $this->normalizeFiles();
+        $value = $files[$key] ?? null;
+        if ($value instanceof UploadedFile) {
+            return $value;
+        }
+        if (is_array($value) && count($value) > 0) {
+            return $value[0];
+        }
+        return null;
+    }
+
+    /**
+     * @return UploadedFile[]
+     */
+    public function getFiles(string $key): array
+    {
+        $files = $this->normalizeFiles();
+        $value = $files[$key] ?? null;
+        if ($value === null) {
+            return [];
+        }
+        return is_array($value) ? $value : [$value];
+    }
+
+    public function getUserAgent(): string
+    {
+        return $this->server['HTTP_USER_AGENT'] ?? '';
+    }
+
+    public function getContentType(): string
+    {
+        return $this->server['CONTENT_TYPE'] ?? '';
+    }
 }

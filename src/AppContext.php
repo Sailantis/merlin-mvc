@@ -117,7 +117,6 @@ class AppContext
         return $this->cookies ??= new Cookies();
     }
 
-
     /**
      * Get the DatabaseManager instance. If it doesn't exist, it will be created.
      *
