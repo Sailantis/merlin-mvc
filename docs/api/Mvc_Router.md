@@ -223,7 +223,7 @@ $router->add('GET', '/dashboard', 'Dashboard::view');
 
 ---
 
-### controller() · [source](../../src/Mvc/Router.php#L344)
+### controller() · [source](../../src/Mvc/Router.php#L349)
 
 `public function controller(string $controller, callable|null $callback = null): static`
 
@@ -251,7 +251,7 @@ $router->add('GET', '/dashboard', '::view');
 
 ---
 
-### match() · [source](../../src/Mvc/Router.php#L591)
+### match() · [source](../../src/Mvc/Router.php#L596)
 
 `public function match(string $uri, string $method = 'GET'): array|null`
 

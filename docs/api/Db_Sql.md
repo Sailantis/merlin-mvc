@@ -353,7 +353,7 @@ Get bind parameters associated with this node
 
 ---
 
-### toSql() · [source](../../src/Db/Sql.php#L321)
+### toSql() · [source](../../src/Db/Sql.php#L319)
 
 `public function toSql(string $driver, callable $serialize, callable|null $protectIdentifier = null): string`
 
@@ -375,7 +375,7 @@ Serialize node to SQL string
 
 ---
 
-### __toString() · [source](../../src/Db/Sql.php#L488)
+### __toString() · [source](../../src/Db/Sql.php#L486)
 
 `public function __toString(): string`
 

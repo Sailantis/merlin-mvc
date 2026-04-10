@@ -2,27 +2,51 @@
 
 **Full name:** [Merlin\Http\Request](../../src/Http/Request.php)
 
-HTTP Request class
+Class Request
+A simple HTTP request handler that abstracts away PHP's superglobals and provides convenient methods to access request data.
+
+It also handles method overrides, proxy headers, content negotiation, and file uploads in a consistent way.
 
 ## 🚀 Public methods
 
-### getRequestBody() · [source](../../src/Http/Request.php#L15)
+### __construct() · [source](../../src/Http/Request.php#L25)
 
-`public function getRequestBody(): string|bool`
+`public function __construct(array|null $server = null, array|null $get = null, array|null $post = null, array|null $files = null, bool $trustProxyHeaders = false): mixed`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$server` | array\|null | `null` |  |
+| `$get` | array\|null | `null` |  |
+| `$post` | array\|null | `null` |  |
+| `$files` | array\|null | `null` |  |
+| `$trustProxyHeaders` | bool | `false` |  |
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+---
+
+### getBody() · [source](../../src/Http/Request.php#L47)
+
+`public function getBody(): string`
 
 Get the raw request body
 Caches the body since php://input can only be read once
 
 **➡️ Return value**
 
-- Type: string|bool
+- Type: string
 
 
 ---
 
-### getJsonBody() · [source](../../src/Http/Request.php#L30)
+### getJsonBody() · [source](../../src/Http/Request.php#L61)
 
-`public function getJsonBody(mixed $assoc = true): mixed`
+`public function getJsonBody(bool $assoc = true): mixed`
 
 Get and parse JSON request body
 
@@ -30,7 +54,7 @@ Get and parse JSON request body
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$assoc` | mixed | `true` | When true, returns associative arrays. When false, returns objects |
+| `$assoc` | bool | `true` | When true, returns associative arrays. When false, returns objects |
 
 **➡️ Return value**
 
@@ -44,18 +68,18 @@ Get and parse JSON request body
 
 ---
 
-### get() · [source](../../src/Http/Request.php#L46)
+### input() · [source](../../src/Http/Request.php#L81)
 
-`public function get(string|null $name = null, mixed $defaultValue = null): mixed`
+`public function input(string|null $name = null, mixed $default = null): mixed`
 
-Get a parameter from the request (GET, POST, COOKIE, etc.)
+Get an input parameter from the request (POST takes precedence over GET)
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$name` | string\|null | `null` |  |
-| `$defaultValue` | mixed | `null` |  |
+| `$default` | mixed | `null` |  |
 
 **➡️ Return value**
 
@@ -64,29 +88,9 @@ Get a parameter from the request (GET, POST, COOKIE, etc.)
 
 ---
 
-### getPost() · [source](../../src/Http/Request.php#L57)
+### query() · [source](../../src/Http/Request.php#L95)
 
-`public function getPost(string|null $name = null, mixed $defaultValue = null): mixed`
-
-Get a POST parameter from the request
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$name` | string\|null | `null` |  |
-| `$defaultValue` | mixed | `null` |  |
-
-**➡️ Return value**
-
-- Type: mixed
-
-
----
-
-### getQuery() · [source](../../src/Http/Request.php#L68)
-
-`public function getQuery(string|null $name = null, mixed $defaultValue = null): mixed`
+`public function query(string|null $name = null, mixed $default = null): mixed`
 
 Get a query parameter from the request
 
@@ -95,7 +99,7 @@ Get a query parameter from the request
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$name` | string\|null | `null` |  |
-| `$defaultValue` | mixed | `null` |  |
+| `$default` | mixed | `null` |  |
 
 **➡️ Return value**
 
@@ -104,9 +108,29 @@ Get a query parameter from the request
 
 ---
 
-### getServer() · [source](../../src/Http/Request.php#L79)
+### post() · [source](../../src/Http/Request.php#L109)
 
-`public function getServer(string|null $name = null, mixed $defaultValue = null): mixed`
+`public function post(string|null $name = null, mixed $default = null): mixed`
+
+Get a POST parameter from the request
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string\|null | `null` |  |
+| `$default` | mixed | `null` |  |
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+---
+
+### server() · [source](../../src/Http/Request.php#L123)
+
+`public function server(string|null $name = null, mixed $default = null): mixed`
 
 Get a server variable from the request
 
@@ -115,7 +139,7 @@ Get a server variable from the request
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$name` | string\|null | `null` |  |
-| `$defaultValue` | mixed | `null` |  |
+| `$default` | mixed | `null` |  |
 
 **➡️ Return value**
 
@@ -124,7 +148,58 @@ Get a server variable from the request
 
 ---
 
-### getMethod() · [source](../../src/Http/Request.php#L88)
+### hasInput() · [source](../../src/Http/Request.php#L134)
+
+`public function hasInput(string $name): bool`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - |  |
+
+**➡️ Return value**
+
+- Type: bool
+
+
+---
+
+### hasQuery() · [source](../../src/Http/Request.php#L139)
+
+`public function hasQuery(string $name): bool`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - |  |
+
+**➡️ Return value**
+
+- Type: bool
+
+
+---
+
+### hasPost() · [source](../../src/Http/Request.php#L144)
+
+`public function hasPost(string $name): bool`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - |  |
+
+**➡️ Return value**
+
+- Type: bool
+
+
+---
+
+### getMethod() · [source](../../src/Http/Request.php#L153)
 
 `public function getMethod(): string`
 
@@ -137,291 +212,7 @@ Get the HTTP method of the request, accounting for method overrides in POST requ
 
 ---
 
-### getScheme() · [source](../../src/Http/Request.php#L108)
-
-`public function getScheme(): string`
-
-Get the request scheme (http or https)
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getServerName() · [source](../../src/Http/Request.php#L117)
-
-`public function getServerName(): string`
-
-Get the server name from the request
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getServerAddr() · [source](../../src/Http/Request.php#L126)
-
-`public function getServerAddr(): string`
-
-Get the server IP address
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getHttpHost() · [source](../../src/Http/Request.php#L135)
-
-`public function getHttpHost(): string`
-
-Get the host from the request, accounting for Host header and server variables
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getPort() · [source](../../src/Http/Request.php#L153)
-
-`public function getPort(): int`
-
-Get the port number from the request, accounting for standard ports and Host header
-
-**➡️ Return value**
-
-- Type: int
-
-
----
-
-### getContentType() · [source](../../src/Http/Request.php#L170)
-
-`public function getContentType(): string`
-
-Get the Content-Type header from the request
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getClientAddress() · [source](../../src/Http/Request.php#L183)
-
-`public function getClientAddress(bool $trustForwardedHeader = false): string|bool`
-
-Get the client's IP address, optionally trusting proxy headers
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$trustForwardedHeader` | bool | `false` |  |
-
-**➡️ Return value**
-
-- Type: string|bool
-
-
----
-
-### getUri() · [source](../../src/Http/Request.php#L215)
-
-`public function getUri(): string`
-
-Get the request URI
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getPath() · [source](../../src/Http/Request.php#L224)
-
-`public function getPath(): string`
-
-Get the request path (URI without query string)
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getUserAgent() · [source](../../src/Http/Request.php#L234)
-
-`public function getUserAgent(): string`
-
-Get the User-Agent header from the request
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getAcceptableContent() · [source](../../src/Http/Request.php#L280)
-
-`public function getAcceptableContent(bool $sort = false): array`
-
-Gets an array with mime/types and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT"]
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$sort` | bool | `false` |  |
-
-**➡️ Return value**
-
-- Type: array
-
-
----
-
-### getBestAccept() · [source](../../src/Http/Request.php#L289)
-
-`public function getBestAccept(): string`
-
-Gets best mime/type accepted by the browser/client from _SERVER["HTTP_ACCEPT"]
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getClientCharsets() · [source](../../src/Http/Request.php#L298)
-
-`public function getClientCharsets(bool $sort = false): array`
-
-Gets a charsets array and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT_CHARSET"]
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$sort` | bool | `false` |  |
-
-**➡️ Return value**
-
-- Type: array
-
-
----
-
-### getBestCharset() · [source](../../src/Http/Request.php#L307)
-
-`public function getBestCharset(): string`
-
-Gets best charset accepted by the browser/client from _SERVER["HTTP_ACCEPT_CHARSET"]
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getLanguages() · [source](../../src/Http/Request.php#L315)
-
-`public function getLanguages(bool $sort = false): array`
-
-Gets languages array and their quality accepted by the browser/client from _SERVER["HTTP_ACCEPT_LANGUAGE"]
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$sort` | bool | `false` |  |
-
-**➡️ Return value**
-
-- Type: array
-
-
----
-
-### getBestLanguage() · [source](../../src/Http/Request.php#L323)
-
-`public function getBestLanguage(): string`
-
-Gets best language accepted by the browser/client from _SERVER["HTTP_ACCEPT_LANGUAGE"]
-
-**➡️ Return value**
-
-- Type: string
-
-
----
-
-### getBasicAuth() · [source](../../src/Http/Request.php#L332)
-
-`public function getBasicAuth(): array|null`
-
-Gets auth info accepted by the browser/client from $_SERVER['PHP_AUTH_USER']
-
-**➡️ Return value**
-
-- Type: array|null
-
-
----
-
-### getDigestAuth() · [source](../../src/Http/Request.php#L347)
-
-`public function getDigestAuth(): array|null`
-
-Gets auth info accepted by the browser/client from $_SERVER['PHP_AUTH_DIGEST']
-
-**➡️ Return value**
-
-- Type: array|null
-
-
----
-
-### isAjax() · [source](../../src/Http/Request.php#L365)
-
-`public function isAjax(): bool`
-
-Checks whether request has been made using AJAX
-
-**➡️ Return value**
-
-- Type: bool
-
-
----
-
-### isSecure() · [source](../../src/Http/Request.php#L398)
-
-`public function isSecure(): bool`
-
-Checks whether request has been made using HTTPS
-
-**➡️ Return value**
-
-- Type: bool
-
-
----
-
-### isPost() · [source](../../src/Http/Request.php#L407)
+### isPost() · [source](../../src/Http/Request.php#L175)
 
 `public function isPost(): bool`
 
@@ -434,17 +225,24 @@ Checks whether the request method is POST
 
 ---
 
-### has() · [source](../../src/Http/Request.php#L417)
+### getScheme() · [source](../../src/Http/Request.php#L184)
 
-`public function has(mixed $name): bool`
+`public function getScheme(): string`
 
-Checks whether a parameter is present in the combined request data ($_REQUEST)
+Get the request scheme (http or https)
 
-**🧭 Parameters**
+**➡️ Return value**
 
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$name` | mixed | - | Parameter name |
+- Type: string
+
+
+---
+
+### isSecure() · [source](../../src/Http/Request.php#L200)
+
+`public function isSecure(): bool`
+
+Checks whether request has been made using HTTPS
 
 **➡️ Return value**
 
@@ -453,17 +251,214 @@ Checks whether a parameter is present in the combined request data ($_REQUEST)
 
 ---
 
-### hasPost() · [source](../../src/Http/Request.php#L427)
+### getHost() · [source](../../src/Http/Request.php#L209)
 
-`public function hasPost(mixed $name): bool`
+`public function getHost(): string`
 
-Checks whether a parameter is present in the POST data ($_POST)
+Get the host name of the request, accounting for proxy headers and Host header
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getPort() · [source](../../src/Http/Request.php#L227)
+
+`public function getPort(): int`
+
+Get the port number of the request, accounting for proxy headers and Host header
+
+**➡️ Return value**
+
+- Type: int
+
+
+---
+
+### getUri() · [source](../../src/Http/Request.php#L250)
+
+`public function getUri(): string`
+
+Get the full URI of the request
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getPath() · [source](../../src/Http/Request.php#L259)
+
+`public function getPath(): string`
+
+Get the path component of the request URI (without query string)
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getClientIp() · [source](../../src/Http/Request.php#L270)
+
+`public function getClientIp(bool $trustForwarded = false): string|false`
+
+Get the client IP address, accounting for proxy headers if trusted
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$name` | mixed | - | Parameter name |
+| `$trustForwarded` | bool | `false` |  |
+
+**➡️ Return value**
+
+- Type: string|false
+
+
+---
+
+### getAcceptableContent() · [source](../../src/Http/Request.php#L354)
+
+`public function getAcceptableContent(bool $sort = false): array`
+
+Get the list of acceptable content types from the Accept header, with quality factors
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$sort` | bool | `false` | Whether to sort by quality (highest first) |
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of ['accept' => string, 'quality' => float, ...] entries
+
+
+---
+
+### getBestAccept() · [source](../../src/Http/Request.php#L363)
+
+`public function getBestAccept(): string`
+
+Get the best acceptable content type from the Accept header
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getLanguages() · [source](../../src/Http/Request.php#L373)
+
+`public function getLanguages(bool $sort = false): array`
+
+Get the list of acceptable languages from the Accept-Language header, with quality factors
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$sort` | bool | `false` | Whether to sort by quality (highest first) |
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of ['language' => string, 'quality' => float, ...] entries
+
+
+---
+
+### getBestLanguage() · [source](../../src/Http/Request.php#L382)
+
+`public function getBestLanguage(): string`
+
+Get the best acceptable language from the Accept-Language header
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getEncodings() · [source](../../src/Http/Request.php#L392)
+
+`public function getEncodings(bool $sort = false): array`
+
+Get the list of acceptable encodings from the Accept-Encoding header, with quality factors
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$sort` | bool | `false` | Whether to sort by quality (highest first) |
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of ['encoding' => string, 'quality' => float, ...] entries
+
+
+---
+
+### getBestEncoding() · [source](../../src/Http/Request.php#L401)
+
+`public function getBestEncoding(): string`
+
+Get the best acceptable encoding from the Accept-Encoding header
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getCharsets() · [source](../../src/Http/Request.php#L411)
+
+`public function getCharsets(bool $sort = false): array`
+
+Get the list of acceptable charsets from the Accept-Charset header, with quality factors
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$sort` | bool | `false` | Whether to sort by quality (highest first) |
+
+**➡️ Return value**
+
+- Type: array
+- Description: An array of ['charset' => string, 'quality' => float, ...] entries
+
+
+---
+
+### getBestCharset() · [source](../../src/Http/Request.php#L420)
+
+`public function getBestCharset(): string`
+
+Get the best acceptable charset from the Accept-Charset header
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### isJson() · [source](../../src/Http/Request.php#L466)
+
+`public function isJson(): bool`
+
+Checks whether the request expects a JSON response based on Content-Type or Accept headers
 
 **➡️ Return value**
 
@@ -472,49 +467,79 @@ Checks whether a parameter is present in the POST data ($_POST)
 
 ---
 
-### hasQuery() · [source](../../src/Http/Request.php#L437)
+### isAjax() · [source](../../src/Http/Request.php#L484)
 
-`public function hasQuery(mixed $name): bool`
+`public function isAjax(): bool`
 
-Checks whether a parameter is present in the query string ($_GET)
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$name` | mixed | - | Parameter name |
+Checks whether the request is an AJAX request based on X-Requested-With header or if it expects JSON
 
 **➡️ Return value**
 
 - Type: bool
+- Description: <br>@deprecated Use isJson()
 
 
 ---
 
-### hasServer() · [source](../../src/Http/Request.php#L447)
+### getBasicAuth() · [source](../../src/Http/Request.php#L496)
 
-`public function hasServer(mixed $name): bool`
+`public function getBasicAuth(): array|null`
 
-Checks whether a server variable is present in $_SERVER
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$name` | mixed | - | Server variable name |
+Get Basic Auth credentials from the request, accounting for different server configurations
 
 **➡️ Return value**
 
-- Type: bool
+- Type: array|null
+- Description: Returns ['username' => string, 'password' => string] or null if not present
 
 
 ---
 
-### getFile() · [source](../../src/Http/Request.php#L492)
+### getBearerToken() · [source](../../src/Http/Request.php#L530)
+
+`public function getBearerToken(): string|null`
+
+Get Bearer token from the Authorization header
+
+**➡️ Return value**
+
+- Type: string|null
+- Description: Returns the token string or null if not present
+
+
+---
+
+### getUserAgent() · [source](../../src/Http/Request.php#L560)
+
+`public function getUserAgent(): string`
+
+Get the User-Agent string from the request headers
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getContentType() · [source](../../src/Http/Request.php#L569)
+
+`public function getContentType(): string`
+
+Get the Content-Type header from the request
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### getFile() · [source](../../src/Http/Request.php#L622)
 
 `public function getFile(string $key): Merlin\Http\UploadedFile|null`
 
-Get an uploaded file for a given key. Returns an UploadedFile object or null if no file was uploaded for the key.
+Get the first uploaded file for a given field name, or null if not present
 
 **🧭 Parameters**
 
@@ -529,11 +554,11 @@ Get an uploaded file for a given key. Returns an UploadedFile object or null if 
 
 ---
 
-### getFiles() · [source](../../src/Http/Request.php#L510)
+### getFiles() · [source](../../src/Http/Request.php#L640)
 
 `public function getFiles(string $key): array`
 
-Get uploaded files for a given key. Returns an array of UploadedFile objects, even if only one file was uploaded.
+Get all uploaded files for a given field name, or an empty array if not present
 
 **🧭 Parameters**
 

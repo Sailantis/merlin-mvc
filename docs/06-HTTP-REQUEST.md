@@ -17,20 +17,20 @@ $request = $this->request();
 All input accessors accept an optional name and default value. Omit the name to get the full array.
 
 ```php
-// $_REQUEST (GET + POST + COOKIE)
-$q       = $request->get('q');
-$all     = $request->get();
+// Input ($_GET + $_POST)
+$q       = $request->input('q');
+$all     = $request->input();
 
 // Query string ($_GET)
-$page    = $request->getQuery('page', 1);
-$allGet  = $request->getQuery();
+$page    = $request->query('page', 1);
+$allGet  = $request->query();
 
 // POST body ($_POST)
-$email   = $request->getPost('email');
-$allPost = $request->getPost();
+$email   = $request->post('email');
+$allPost = $request->post();
 
 // Raw $_SERVER value
-$ua = $request->getServer('HTTP_USER_AGENT', '');
+$ua = $request->server('HTTP_USER_AGENT', '');
 ```
 
 ### Checking Parameter Existence
@@ -38,9 +38,9 @@ $ua = $request->getServer('HTTP_USER_AGENT', '');
 Use the `has*` helpers instead of comparing the return value to `null`, since a field might legitimately hold `null` or `0`.
 
 ```php
-$request->has('token');        // isset in $_REQUEST
-$request->hasPost('_method');  // isset in $_POST
+$request->hasInput('token');        // isset in $_GET + $_POST
 $request->hasQuery('page');    // isset in $_GET
+$request->hasPost('_method');  // isset in $_POST
 $request->hasServer('HTTPS');  // isset in $_SERVER
 ```
 
@@ -55,6 +55,7 @@ $path   = $request->getPath();     // '/users/5'
 
 $request->isPost();    // true when method is POST
 $request->isSecure();  // true when HTTPS
+$request->isJson();    // true for Content-Type: application/json or Accept: application/json
 $request->isAjax();    // true for fetch/axios/jQuery XHR (see note below)
 ```
 
@@ -67,14 +68,12 @@ $request->isAjax();    // true for fetch/axios/jQuery XHR (see note below)
 ## Server and Client Information
 
 ```php
-$host       = $request->getHttpHost();          // 'example.com' or 'example.com:8080'
+$host       = $request->getHost();          // 'example.com' or 'example.com:8080'
 $scheme     = $request->getScheme();            // 'http' or 'https'
 $port       = $request->getPort();              // 443
-$serverName = $request->getServerName();        // $_SERVER['SERVER_NAME']
-$serverAddr = $request->getServerAddr();        // server IP address
 $userAgent  = $request->getUserAgent();
-$clientIp   = $request->getClientAddress();     // REMOTE_ADDR
-$clientIp   = $request->getClientAddress(true); // trust X-Forwarded-For / HTTP_CLIENT_IP
+$clientIp   = $request->getClientIp();     // REMOTE_ADDR
+$clientIp   = $request->getClientIp(true); // trust X-Forwarded-For / HTTP_CLIENT_IP
 
 $contentType = $request->getContentType();
 ```
@@ -107,7 +106,7 @@ Each entry in the returned arrays contains the value and its `quality` key (0–
 ## JSON Body
 
 ```php
-$raw  = $request->getRequestBody();      // raw php://input string (cached)
+$raw  = $request->getBody();             // raw php://input string (cached)
 $data = $request->getJsonBody();         // decoded as associative array (default)
 $obj  = $request->getJsonBody(false);    // decoded as stdClass objects
 ```
@@ -123,9 +122,9 @@ $obj  = $request->getJsonBody(false);    // decoded as stdClass objects
 $auth = $request->getBasicAuth();
 // ['username' => '...', 'password' => '...'] or null
 
-// HTTP Digest Auth
-$digest = $request->getDigestAuth();
-// parsed digest array or null
+// Any HTTP auth scheme (e.g. "Bearer", "Digest", "Custom")
+$auth = $request->getAuthorization();
+// ['scheme' => '...', 'token' => '...'] or null
 ```
 
 ---
@@ -173,7 +172,7 @@ class UserController extends \Merlin\Mvc\Controller
             return ['ok' => false, 'error' => 'email is required'];
         }
 
-        $email = $request->getPost('email');
+        $email = $request->post('email');
         User::create(['email' => $email]);
 
         return ['ok' => true];

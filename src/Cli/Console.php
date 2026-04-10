@@ -4,6 +4,16 @@ namespace Merlin\Cli;
 
 use ReflectionClass;
 
+/**
+ * Main Console class for registering and dispatching CLI tasks.
+ *
+ * Tasks are PHP classes that extend the base Task class and define public methods
+ * ending with "Action". These methods can be invoked as CLI commands.
+ *
+ * The Console class supports automatic discovery of task classes in specified
+ * namespaces and directories, as well as a built-in help system that extracts
+ * descriptions from doc comments.
+ */
 class Console
 {
     protected array $namespaces = ['App\\Tasks'];

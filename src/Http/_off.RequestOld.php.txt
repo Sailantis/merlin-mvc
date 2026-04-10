@@ -5,7 +5,7 @@ namespace Merlin\Http;
 /**
  * HTTP Request class
  */
-class Request
+class RequestOld
 {
 	/**
 	 * Get the raw request body

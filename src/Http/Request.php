@@ -4,6 +4,11 @@ namespace Merlin\Http;
 
 use RuntimeException;
 
+/**
+ * Class Request
+ * A simple HTTP request handler that abstracts away PHP's superglobals and provides convenient methods to access request data.
+ * It also handles method overrides, proxy headers, content negotiation, and file uploads in a consistent way.
+ */
 class Request
 {
     private array $server;
@@ -14,13 +19,17 @@ class Request
     private bool $trustProxyHeaders;
     private array $request;
 
+    /** @var array<string, UploadedFile>|null */
+    private ?array $normalizedFiles = null;
+
     public function __construct(
         array $server = null,
         array $get = null,
         array $post = null,
         array $files = null,
         bool $trustProxyHeaders = false
-    ) {
+    )
+    {
         $this->server = $server ?? $_SERVER;
         $this->get = $get ?? $_GET;
         $this->post = $post ?? $_POST;
@@ -30,9 +39,11 @@ class Request
         $this->request = [...$this->get, ...$this->post];
     }
 
-    // -------------------------
-    // Body / JSON
-    // -------------------------
+    /**
+     * Get the raw request body
+     * Caches the body since php://input can only be read once
+     * @return string
+     */
     public function getBody(): string
     {
         if ($this->rawBody === null) {
@@ -42,9 +53,10 @@ class Request
     }
 
     /**
-     * @param bool $assoc
-     * @return mixed
-     * @throws RuntimeException
+     * Get and parse JSON request body
+     * @param bool $assoc When true, returns associative arrays. When false, returns objects
+     * @return mixed Returns the parsed JSON data, or null on error
+     * @throws \RuntimeException if the JSON body cannot be parsed
      */
     public function getJsonBody(bool $assoc = true): mixed
     {
@@ -60,9 +72,12 @@ class Request
         return $data;
     }
 
-    // -------------------------
-    // Parameter accessors (modern, short)
-    // -------------------------
+    /**
+     * Get an input parameter from the request (POST takes precedence over GET)
+     * @param ?string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function input(?string $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
@@ -71,6 +86,12 @@ class Request
         return $this->request[$name] ?? $default;
     }
 
+    /**
+     * Get a query parameter from the request
+     * @param ?string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function query(?string $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
@@ -79,6 +100,12 @@ class Request
         return $this->get[$name] ?? $default;
     }
 
+    /**
+     * Get a POST parameter from the request
+     * @param ?string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function post(?string $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
@@ -87,6 +114,12 @@ class Request
         return $this->post[$name] ?? $default;
     }
 
+    /**
+     * Get a server variable from the request
+     * @param ?string $name
+     * @param mixed $default
+     * @return mixed
+     */
     public function server(?string $name = null, mixed $default = null): mixed
     {
         if ($name === null) {
@@ -113,9 +146,10 @@ class Request
         return isset($this->post[$name]);
     }
 
-    // -------------------------
-    // Method / scheme / host / port / uri / path
-    // -------------------------
+    /**
+     * Get the HTTP method of the request, accounting for method overrides in POST requests
+     * @return string
+     */
     public function getMethod(): string
     {
         $method = strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
@@ -135,14 +169,18 @@ class Request
     }
 
     /**
-	 * Checks whether the request method is POST
-	 * @return bool
-	 */
-	public function isPost(): bool
-	{
-		return $this->getMethod() === 'POST';
-	}
+     * Checks whether the request method is POST
+     * @return bool
+     */
+    public function isPost(): bool
+    {
+        return $this->getMethod() === 'POST';
+    }
 
+    /**
+     * Get the request scheme (http or https)
+     * @return string
+     */
     public function getScheme(): string
     {
         $https = $this->server['HTTPS'] ?? null;
@@ -156,14 +194,18 @@ class Request
     }
 
     /**
-	 * Checks whether request has been made using HTTPS
-	 * @return bool
-	 */
-	public function isSecure(): bool
-	{
-		return $this->getScheme() === 'https';
-	}
+     * Checks whether request has been made using HTTPS
+     * @return bool
+     */
+    public function isSecure(): bool
+    {
+        return $this->getScheme() === 'https';
+    }
 
+    /**
+     * Get the host name of the request, accounting for proxy headers and Host header
+     * @return string
+     */
     public function getHost(): string
     {
         if ($this->trustProxyHeaders && !empty($this->server['HTTP_X_FORWARDED_HOST'])) {
@@ -178,6 +220,10 @@ class Request
         return 'localhost';
     }
 
+    /**
+     * Get the port number of the request, accounting for proxy headers and Host header
+     * @return int
+     */
     public function getPort(): int
     {
         // Host header may include port
@@ -197,20 +243,30 @@ class Request
         return (int) ($this->server['SERVER_PORT'] ?? ($this->getScheme() === 'https' ? 443 : 80));
     }
 
+    /**
+     * Get the full URI of the request
+     * @return string
+     */
     public function getUri(): string
     {
         return $this->server['REQUEST_URI'] ?? '/';
     }
 
+    /**
+     * Get the path component of the request URI (without query string)
+     * @return string
+     */
     public function getPath(): string
     {
         $path = parse_url($this->getUri(), PHP_URL_PATH);
         return $path === false || $path === null ? '/' : $path;
     }
 
-    // -------------------------
-    // Client IP
-    // -------------------------
+    /**
+     * Get the client IP address, accounting for proxy headers if trusted
+     * @param bool $trustForwarded
+     * @return string|false
+     */
     public function getClientIp(bool $trustForwarded = false): string|false
     {
         // 1) Proxy headers allowed?
@@ -223,7 +279,7 @@ class Request
                     return $ip;
                 }
             }
-            
+
             // X-Forwarded-For: may contain multiple IPs
             $xff = $this->server['HTTP_X_FORWARDED_FOR'] ?? null;
 
@@ -290,28 +346,80 @@ class Request
         return null;
     }
 
-
-    // -------------------------
-    // Content negotiation
-    // -------------------------
+    /**
+     * Get the list of acceptable content types from the Accept header, with quality factors
+     * @param bool $sort Whether to sort by quality (highest first)
+     * @return array An array of ['accept' => string, 'quality' => float, ...] entries
+     */
     public function getAcceptableContent(bool $sort = false): array
     {
         return $this->parseQualityHeader('HTTP_ACCEPT', 'accept', $sort);
     }
 
+    /**
+     * Get the best acceptable content type from the Accept header
+     * @return string
+     */
     public function getBestAccept(): string
     {
         return $this->getAcceptableContent(true)[0]['accept'] ?? '';
     }
 
+    /**
+     * Get the list of acceptable languages from the Accept-Language header, with quality factors
+     * @param bool $sort Whether to sort by quality (highest first)
+     * @return array An array of ['language' => string, 'quality' => float, ...] entries
+     */
     public function getLanguages(bool $sort = false): array
     {
         return $this->parseQualityHeader('HTTP_ACCEPT_LANGUAGE', 'language', $sort);
     }
 
+    /**
+     * Get the best acceptable language from the Accept-Language header
+     * @return string
+     */
     public function getBestLanguage(): string
     {
         return $this->getLanguages(true)[0]['language'] ?? '';
+    }
+
+    /**
+     * Get the list of acceptable encodings from the Accept-Encoding header, with quality factors
+     * @param bool $sort Whether to sort by quality (highest first)
+     * @return array An array of ['encoding' => string, 'quality' => float, ...] entries
+     */
+    public function getEncodings(bool $sort = false): array
+    {
+        return $this->parseQualityHeader('HTTP_ACCEPT_ENCODING', 'encoding', $sort);
+    }
+
+    /**
+     * Get the best acceptable encoding from the Accept-Encoding header
+     * @return string
+     */
+    public function getBestEncoding(): string
+    {
+        return $this->getEncodings(true)[0]['encoding'] ?? '';
+    }
+
+    /**
+     * Get the list of acceptable charsets from the Accept-Charset header, with quality factors
+     * @param bool $sort Whether to sort by quality (highest first)
+     * @return array An array of ['charset' => string, 'quality' => float, ...] entries
+     */
+    public function getCharsets(bool $sort = false): array
+    {
+        return $this->parseQualityHeader('HTTP_ACCEPT_CHARSET', 'charset', $sort);
+    }
+
+    /**
+     * Get the best acceptable charset from the Accept-Charset header
+     * @return string
+     */
+    public function getBestCharset(): string
+    {
+        return $this->getCharsets(true)[0]['charset'] ?? '';
     }
 
     private function parseQualityHeader(string $serverKey, string $name, bool $sort): array
@@ -351,9 +459,10 @@ class Request
         return $result;
     }
 
-    // -------------------------
-    // JSON / AJAX helpers
-    // -------------------------
+    /**
+     * Checks whether the request expects a JSON response based on Content-Type or Accept headers
+     * @return bool
+     */
     public function isJson(): bool
     {
         $ct = $this->server['CONTENT_TYPE'] ?? '';
@@ -367,7 +476,10 @@ class Request
         return false;
     }
 
-    /** @deprecated Use isJson() */
+    /**
+     * Checks whether the request is an AJAX request based on X-Requested-With header or if it expects JSON
+     * @return bool
+     */
     public function isAjax(): bool
     {
         if ($this->isJson()) {
@@ -376,6 +488,10 @@ class Request
         return ($this->server['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
     }
 
+    /**
+     * Get Basic Auth credentials from the request, accounting for different server configurations
+     * @return array|null Returns ['username' => string, 'password' => string] or null if not present
+     */
     public function getBasicAuth(): ?array
     {
         // Default: PHP_AUTH_USER / PHP_AUTH_PW (Apache, built-in server)
@@ -406,9 +522,12 @@ class Request
         return null;
     }
 
-    public function getBearerToken(): ?string
+    /**
+     * Get any HTTP auth scheme from the Authorization header
+     * @return array|null Returns ['scheme' => string, 'token' => string] or null if not present
+     */
+    public function getAuthorization(): ?array
     {
-        // 1) Standard: Authorization header
         $auth = $this->server['HTTP_AUTHORIZATION']
             ?? $this->server['REDIRECT_HTTP_AUTHORIZATION']
             ?? null;
@@ -417,25 +536,38 @@ class Request
             return null;
         }
 
-        // Normalize
-        $auth = trim($auth);
-
-        // 2) Must start with "Bearer "
-        if (stripos($auth, 'Bearer ') !== 0) {
+        $parts = explode(' ', $auth, 2);
+        if (count($parts) !== 2) {
             return null;
         }
 
-        // 3) Extract token
-        $token = trim(substr($auth, 7));
-
-        return $token !== '' ? $token : null;
+        return [
+            'scheme' => $parts[0],
+            'token' => $parts[1],
+        ];
+    }
+    
+    /** 
+     * Get the User-Agent string from the request headers
+     * @return string
+     */
+    public function getUserAgent(): string
+    {
+        return $this->server['HTTP_USER_AGENT'] ?? '';
     }
 
+    /** 
+     * Get the Content-Type header from the request
+     * @return string
+     */
+    public function getContentType(): string
+    {
+        return $this->server['CONTENT_TYPE'] ?? '';
+    }
 
     // -------------------------
     // Files handling
     // -------------------------
-    private ?array $normalizedFiles = null;
 
     private function normalizeFiles(): array
     {
@@ -476,6 +608,11 @@ class Request
         return $normalized;
     }
 
+    /** 
+     * Get the first uploaded file for a given field name, or null if not present
+     * @param string $key
+     * @return UploadedFile|null
+     */
     public function getFile(string $key): ?UploadedFile
     {
         $files = $this->normalizeFiles();
@@ -489,7 +626,9 @@ class Request
         return null;
     }
 
-    /**
+    /** 
+     * Get all uploaded files for a given field name, or an empty array if not present
+     * @param string $key
      * @return UploadedFile[]
      */
     public function getFiles(string $key): array
@@ -500,15 +639,5 @@ class Request
             return [];
         }
         return is_array($value) ? $value : [$value];
-    }
-
-    public function getUserAgent(): string
-    {
-        return $this->server['HTTP_USER_AGENT'] ?? '';
-    }
-
-    public function getContentType(): string
-    {
-        return $this->server['CONTENT_TYPE'] ?? '';
     }
 }

@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\DiffOperation](../../src/Sync/ModelDiff.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$property` · [source](../../src/Sync/ModelDiff.php)
 

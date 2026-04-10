@@ -11,6 +11,7 @@ use RuntimeException;
 class DatabaseManager
 {
     protected array $factories = [];
+    /** @var array<string, Database> Cached Database instances for each role */
     protected array $instances = [];
 
     protected ?string $defaultRole = null;

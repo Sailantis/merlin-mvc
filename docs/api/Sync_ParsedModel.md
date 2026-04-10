@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\ParsedModel](../../src/Sync/ModelParser.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$filePath` · [source](../../src/Sync/ModelParser.php)
 - `public` string `$className` · [source](../../src/Sync/ModelParser.php)

@@ -4,7 +4,7 @@
 
 Configuration options that control the behavior of the model-sync process.
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` bool `$generateAccessors` · [source](../../src/Sync/SyncOptions.php)
 - `public` string `$fieldVisibility` · [source](../../src/Sync/SyncOptions.php)

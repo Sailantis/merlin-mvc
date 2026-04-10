@@ -264,8 +264,6 @@ class Sql
     /**
      * Serialize PostgreSQL array recursively for multi-dimensional support
      * 
-     * @param string $driver Database driver
-     * @param callable $serialize Serialization callback
      * @return string PostgreSQL array literal
      */
     protected function serializePgArray(): string

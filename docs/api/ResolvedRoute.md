@@ -5,7 +5,7 @@
 ResolvedRoute represents the fully resolved route and execution context
 used by the dispatcher to invoke the matched controller and action.
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public readonly` string|null `$namespace` · [source](../../src/AppContext.php)
 - `public readonly` string `$controller` · [source](../../src/AppContext.php)
@@ -17,7 +17,7 @@ used by the dispatcher to invoke the matched controller and action.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/AppContext.php#L334)
+### __construct() · [source](../../src/AppContext.php#L454)
 
 `public function __construct(string|null $namespace, string $controller, string $action, array $params, array $vars, array $groups, array $override): mixed`
 

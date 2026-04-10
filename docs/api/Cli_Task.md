@@ -7,7 +7,7 @@ Base class for all CLI task classes.
 Extend this class to create a CLI task. Public methods ending in "Action"
 are automatically discoverable by [`Console`](Cli_Console.md).
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` [Console](Cli_Console.md) `$console` · [source](../../src/Cli/Task.php)
 - `public` array `$options` · [source](../../src/Cli/Task.php)

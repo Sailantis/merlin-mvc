@@ -63,7 +63,7 @@ Examples:
   php console.php model-sync make  User                                   # auto-discover App\Models dir
   php console.php model-sync make  User src/Models --namespace=App\\Models --apply
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` [Console](Cli_Console.md) `$console` · [source](../../src/Cli/Tasks/ModelSyncTask.php)
 - `public` array `$options` · [source](../../src/Cli/Tasks/ModelSyncTask.php)

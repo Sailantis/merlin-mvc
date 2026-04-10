@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\AddAccessor](../../src/Sync/ModelDiff.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$phpType` · [source](../../src/Sync/ModelDiff.php)
 - `public` string `$methodName` · [source](../../src/Sync/ModelDiff.php)

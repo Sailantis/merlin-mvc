@@ -70,7 +70,26 @@ Set a response header.
 
 ---
 
-### write() · [source](../../src/Http/Response.php#L58)
+### setHeaders() · [source](../../src/Http/Response.php#L58)
+
+`public function setHeaders(array $headers): static`
+
+Set multiple response headers.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$headers` | array | - | Associative array of headers (e.g. ["Content-Type" => "application/json"]). |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### write() · [source](../../src/Http/Response.php#L70)
 
 `public function write(string $text): static`
 
@@ -89,7 +108,7 @@ Append text to the response body.
 
 ---
 
-### send() · [source](../../src/Http/Response.php#L67)
+### send() · [source](../../src/Http/Response.php#L79)
 
 `public function send(): void`
 
@@ -102,7 +121,7 @@ Send the response: emit the status code, headers, and body.
 
 ---
 
-### json() · [source](../../src/Http/Response.php#L85)
+### json() · [source](../../src/Http/Response.php#L97)
 
 `public static function json(mixed $data, int $status = 200): static`
 
@@ -122,7 +141,7 @@ Create a JSON response.
 
 ---
 
-### text() · [source](../../src/Http/Response.php#L101)
+### text() · [source](../../src/Http/Response.php#L113)
 
 `public static function text(string $text, int $status = 200): static`
 
@@ -142,7 +161,7 @@ Create a plain-text response.
 
 ---
 
-### html() · [source](../../src/Http/Response.php#L117)
+### html() · [source](../../src/Http/Response.php#L129)
 
 `public static function html(string $html, int $status = 200): static`
 
@@ -162,7 +181,7 @@ Create an HTML response.
 
 ---
 
-### redirect() · [source](../../src/Http/Response.php#L133)
+### redirect() · [source](../../src/Http/Response.php#L145)
 
 `public static function redirect(string $url, int $status = 302): static`
 
@@ -182,7 +201,7 @@ Create a redirect response.
 
 ---
 
-### status() · [source](../../src/Http/Response.php#L148)
+### status() · [source](../../src/Http/Response.php#L160)
 
 `public static function status(int $status): static`
 

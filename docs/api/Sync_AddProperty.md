@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\AddProperty](../../src/Sync/ModelDiff.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$type` · [source](../../src/Sync/ModelDiff.php)
 - `public` bool `$nullable` · [source](../../src/Sync/ModelDiff.php)

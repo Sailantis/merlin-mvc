@@ -372,7 +372,7 @@ Update the existing record in the database with any changed fields. This method 
 
 ---
 
-### delete() · [source](../../src/Mvc/Model.php#L514)
+### delete() · [source](../../src/Mvc/Model.php#L518)
 
 `public function delete(): bool`
 
@@ -386,7 +386,7 @@ Delete the model from the database. This method requires that all ID fields are 
 
 ---
 
-### setDefaultRole() · [source](../../src/Mvc/Model.php#L539)
+### setDefaultRole() · [source](../../src/Mvc/Model.php#L543)
 
 `public static function setDefaultRole(string $role): void`
 
@@ -405,7 +405,7 @@ Set both the read and write database role for this model class.
 
 ---
 
-### setDefaultReadRole() · [source](../../src/Mvc/Model.php#L550)
+### setDefaultReadRole() · [source](../../src/Mvc/Model.php#L554)
 
 `public static function setDefaultReadRole(string $role): void`
 
@@ -424,7 +424,7 @@ Set the database role used for SELECT queries on this model class.
 
 ---
 
-### setDefaultWriteRole() · [source](../../src/Mvc/Model.php#L560)
+### setDefaultWriteRole() · [source](../../src/Mvc/Model.php#L564)
 
 `public static function setDefaultWriteRole(string $role): void`
 
@@ -443,7 +443,7 @@ Set the database role used for INSERT/UPDATE/DELETE queries on this model class.
 
 ---
 
-### readConnection() · [source](../../src/Mvc/Model.php#L592)
+### readConnection() · [source](../../src/Mvc/Model.php#L596)
 
 `public function readConnection(): Merlin\Db\Database`
 
@@ -458,7 +458,7 @@ Resolves the configured read role via [`DatabaseManager::getOrDefault()`](Db_Dat
 
 ---
 
-### writeConnection() · [source](../../src/Mvc/Model.php#L605)
+### writeConnection() · [source](../../src/Mvc/Model.php#L609)
 
 `public function writeConnection(): Merlin\Db\Database`
 

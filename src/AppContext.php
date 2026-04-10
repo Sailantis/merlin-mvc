@@ -59,12 +59,12 @@ class AppContext
      */
     public static function instance(): static
     {
-        // Thread-safe PHP 8.0+
         return self::$instance ??= new static();
     }
 
     /**
-     * Set shared instance (affects ALL subclasses)
+     * Set the shared singleton instance (e.g. for testing or multi-context scenarios).
+     * @param AppContext $instance
      */
     public static function setInstance(AppContext $instance): void
     {

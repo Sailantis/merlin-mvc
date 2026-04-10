@@ -8,7 +8,7 @@ This class allows the definition of multiple database connections (e.g. "default
 
 ## 🚀 Public methods
 
-### set() · [source](../../src/Db/DatabaseManager.php#L31)
+### set() · [source](../../src/Db/DatabaseManager.php#L32)
 
 `public function set(string $role, Merlin\Db\Database|callable $factory): static`
 
@@ -28,7 +28,7 @@ Define a database connection for a specific role.
 
 ---
 
-### addGlobalListener() · [source](../../src/Db/DatabaseManager.php#L51)
+### addGlobalListener() · [source](../../src/Db/DatabaseManager.php#L52)
 
 `public function addGlobalListener(callable $listener): static`
 
@@ -50,7 +50,7 @@ Listeners registered after a connection is already resolved will be applied imme
 
 ---
 
-### addListener() · [source](../../src/Db/DatabaseManager.php#L69)
+### addListener() · [source](../../src/Db/DatabaseManager.php#L70)
 
 `public function addListener(string $role, callable $listener): static`
 
@@ -73,7 +73,7 @@ If the role uses a factory that has not been called yet, the listener will be ap
 
 ---
 
-### setDefault() · [source](../../src/Db/DatabaseManager.php#L85)
+### setDefault() · [source](../../src/Db/DatabaseManager.php#L86)
 
 `public function setDefault(string $role): static`
 
@@ -96,7 +96,7 @@ Set the default database role to use when requesting the default connection. By 
 
 ---
 
-### has() · [source](../../src/Db/DatabaseManager.php#L101)
+### has() · [source](../../src/Db/DatabaseManager.php#L102)
 
 `public function has(string $role): bool`
 
@@ -116,7 +116,7 @@ Check if a database role is defined.
 
 ---
 
-### get() · [source](../../src/Db/DatabaseManager.php#L113)
+### get() · [source](../../src/Db/DatabaseManager.php#L114)
 
 `public function get(string $role): Merlin\Db\Database`
 
@@ -140,7 +140,7 @@ Get the Database instance for a specific role.
 
 ---
 
-### getOrDefault() · [source](../../src/Db/DatabaseManager.php#L152)
+### getOrDefault() · [source](../../src/Db/DatabaseManager.php#L153)
 
 `public function getOrDefault(string $role): Merlin\Db\Database`
 
@@ -164,7 +164,7 @@ Get the Database instance for a specific role, or the default if the role is not
 
 ---
 
-### getDefault() · [source](../../src/Db/DatabaseManager.php#L167)
+### getDefault() · [source](../../src/Db/DatabaseManager.php#L168)
 
 `public function getDefault(): Merlin\Db\Database`
 

@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\UpdatePropertyComment](../../src/Sync/ModelDiff.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string|null `$oldComment` · [source](../../src/Sync/ModelDiff.php)
 - `public` string|null `$newComment` · [source](../../src/Sync/ModelDiff.php)

@@ -15,7 +15,7 @@
 
 ---
 
-### instance() · [source](../../src/AppContext.php#L56)
+### instance() · [source](../../src/AppContext.php#L60)
 
 `public static function instance(): static`
 
@@ -28,11 +28,11 @@ Get/create shared singleton instance
 
 ---
 
-### setInstance() · [source](../../src/AppContext.php#L65)
+### setInstance() · [source](../../src/AppContext.php#L69)
 
 `public static function setInstance(Merlin\AppContext $instance): void`
 
-Set shared instance (affects ALL subclasses)
+Set the shared singleton instance (e.g. for testing or multi-context scenarios).
 
 **🧭 Parameters**
 
@@ -47,7 +47,7 @@ Set shared instance (affects ALL subclasses)
 
 ---
 
-### request() · [source](../../src/AppContext.php#L77)
+### request() · [source](../../src/AppContext.php#L81)
 
 `public function request(): Merlin\Http\Request`
 
@@ -61,7 +61,7 @@ Get the HttpRequest instance. If it doesn't exist, it will be created.
 
 ---
 
-### view() · [source](../../src/AppContext.php#L87)
+### view() · [source](../../src/AppContext.php#L91)
 
 `public function view(): Merlin\Mvc\ViewEngine`
 
@@ -75,7 +75,7 @@ Get the active view engine instance. Defaults to ClarityEngine.
 
 ---
 
-### setView() · [source](../../src/AppContext.php#L98)
+### setView() · [source](../../src/AppContext.php#L102)
 
 `public function setView(Merlin\Mvc\ViewEngine $engine): static`
 
@@ -94,7 +94,7 @@ Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
 
 ---
 
-### cookies() · [source](../../src/AppContext.php#L109)
+### cookies() · [source](../../src/AppContext.php#L115)
 
 `public function cookies(): Merlin\Http\Cookies`
 
@@ -108,7 +108,7 @@ Get the Cookies instance. If it doesn't exist, it will be created.
 
 ---
 
-### dbManager() · [source](../../src/AppContext.php#L120)
+### dbManager() · [source](../../src/AppContext.php#L125)
 
 `public function dbManager(): Merlin\Db\DatabaseManager`
 
@@ -122,7 +122,7 @@ Get the DatabaseManager instance. If it doesn't exist, it will be created.
 
 ---
 
-### router() · [source](../../src/AppContext.php#L130)
+### router() · [source](../../src/AppContext.php#L135)
 
 `public function router(): Merlin\Mvc\Router`
 
@@ -136,7 +136,7 @@ Get the Router instance. If it doesn't exist, it will be created.
 
 ---
 
-### session() · [source](../../src/AppContext.php#L140)
+### session() · [source](../../src/AppContext.php#L145)
 
 `public function session(): Merlin\Http\Session|null`
 
@@ -149,7 +149,7 @@ Get the Session instance.
 
 ---
 
-### setSession() · [source](../../src/AppContext.php#L150)
+### setSession() · [source](../../src/AppContext.php#L155)
 
 `public function setSession(Merlin\Http\Session $session): void`
 
@@ -168,7 +168,7 @@ Set the Session instance.
 
 ---
 
-### route() · [source](../../src/AppContext.php#L158)
+### route() · [source](../../src/AppContext.php#L165)
 
 `public function route(): Merlin\ResolvedRoute|null`
 
@@ -181,7 +181,7 @@ Get the current resolved route information.
 
 ---
 
-### setRoute() · [source](../../src/AppContext.php#L168)
+### setRoute() · [source](../../src/AppContext.php#L175)
 
 `public function setRoute(Merlin\ResolvedRoute $route): void`
 
@@ -200,18 +200,21 @@ Set the current resolved route information.
 
 ---
 
-### set() · [source](../../src/AppContext.php#L181)
+### set() · [source](../../src/AppContext.php#L191)
 
-`public function set(string $id, object $service): void`
+`public function set(string $id, callable|object|null $service = null): void`
 
-Register a service instance in the context.
+Register a service instance or lazy factory in the context.
+
+Registered callables are treated as zero-argument factories. They are invoked on
+first resolution and their returned object is cached for subsequent lookups.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$id` | string | - | The identifier for the service (usually the class name). |
-| `$service` | object | - | The service instance to register. |
+| `$service` | callable\|object\|null | `null` | Optional service instance or zero-argument factory to register. |
 
 **➡️ Return value**
 
@@ -220,7 +223,7 @@ Register a service instance in the context.
 
 ---
 
-### has() · [source](../../src/AppContext.php#L192)
+### has() · [source](../../src/AppContext.php#L209)
 
 `public function has(string $id): bool`
 
@@ -240,11 +243,15 @@ Check if a service is registered in the context.
 
 ---
 
-### get() · [source](../../src/AppContext.php#L204)
+### get() · [source](../../src/AppContext.php#L225)
 
 `public function get(string $id): object`
 
-Get a service instance from the context. If the service is not registered but the identifier is a class name, it will attempt to auto-wire and instantiate it.
+Get a service instance from the context.
+
+If the service is registered as a callable, it will be invoked lazily once and the
+returned object will be cached. If the service is not registered but the identifier
+is a class name, it will attempt to auto-wire and instantiate it.
 
 **🧭 Parameters**
 
@@ -264,11 +271,16 @@ Get a service instance from the context. If the service is not registered but th
 
 ---
 
-### tryGet() · [source](../../src/AppContext.php#L223)
+### tryGet() · [source](../../src/AppContext.php#L254)
 
 `public function tryGet(string $id): object|null`
 
-Try to get a service instance from the context. If the service is not registered but the identifier is a class name, it will attempt to auto-wire and instantiate it. Returns null if the service is not found and cannot be auto-wired.
+Try to get a service instance from the context.
+
+If the service is registered as a callable, it will be invoked lazily once and the
+returned object will be cached. If the service is not registered but the identifier
+is a class name, it will attempt to auto-wire and instantiate it. Returns null if
+the service is not found, or if a registered factory currently resolves to null.
 
 **🧭 Parameters**
 
@@ -284,11 +296,14 @@ Try to get a service instance from the context. If the service is not registered
 
 ---
 
-### getOrNull() · [source](../../src/AppContext.php#L242)
+### getOrNull() · [source](../../src/AppContext.php#L281)
 
 `public function getOrNull(string $id): object|null`
 
-Get a service instance from the context if it exists, or null if it does not exist. This method does not attempt to auto-wire or instantiate classes.
+Get a registered service instance if it exists, or null if it does not.
+
+Registered factories are resolved lazily. This method does not attempt to auto-wire
+or instantiate classes that have not been registered explicitly.
 
 **🧭 Parameters**
 

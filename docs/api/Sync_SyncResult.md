@@ -4,7 +4,7 @@
 
 Holds the result of synchronising a single model file against the database schema.
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$filePath` · [source](../../src/Sync/SyncResult.php)
 - `public` string `$className` · [source](../../src/Sync/SyncResult.php)

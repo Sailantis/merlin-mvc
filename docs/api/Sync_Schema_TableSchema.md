@@ -2,7 +2,7 @@
 
 **Full name:** [Merlin\Sync\Schema\TableSchema](../../src/Sync/Schema/SchemaProvider.php)
 
-## 🔐 Public Properties
+## 🌍 Public Properties
 
 - `public` string `$name` · [source](../../src/Sync/Schema/SchemaProvider.php)
 - `public` string|null `$comment` · [source](../../src/Sync/Schema/SchemaProvider.php)
