@@ -1389,6 +1389,7 @@ class Query extends Condition
 
     /**
      * Compile EXISTS statement
+     * @param Database $db
      * @return string
      * @throws LogicException
      */
@@ -1401,6 +1402,7 @@ class Query extends Condition
 
     /**
      * Compile COUNT statement
+     * @param Database $db
      * @return string
      * @throws LogicException
      */

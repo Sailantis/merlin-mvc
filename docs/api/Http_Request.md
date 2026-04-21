@@ -467,7 +467,7 @@ Checks whether the request expects a JSON response based on Content-Type or Acce
 
 ---
 
-### isAjax() · [source](../../src/Http/Request.php#L484)
+### isAjax() · [source](../../src/Http/Request.php#L483)
 
 `public function isAjax(): bool`
 
@@ -476,12 +476,11 @@ Checks whether the request is an AJAX request based on X-Requested-With header o
 **➡️ Return value**
 
 - Type: bool
-- Description: <br>@deprecated Use isJson()
 
 
 ---
 
-### getBasicAuth() · [source](../../src/Http/Request.php#L496)
+### getBasicAuth() · [source](../../src/Http/Request.php#L495)
 
 `public function getBasicAuth(): array|null`
 
@@ -495,21 +494,21 @@ Get Basic Auth credentials from the request, accounting for different server con
 
 ---
 
-### getBearerToken() · [source](../../src/Http/Request.php#L530)
+### getAuthorization() · [source](../../src/Http/Request.php#L529)
 
-`public function getBearerToken(): string|null`
+`public function getAuthorization(): array|null`
 
-Get Bearer token from the Authorization header
+Get any HTTP auth scheme from the Authorization header
 
 **➡️ Return value**
 
-- Type: string|null
-- Description: Returns the token string or null if not present
+- Type: array|null
+- Description: Returns ['scheme' => string, 'token' => string] or null if not present
 
 
 ---
 
-### getUserAgent() · [source](../../src/Http/Request.php#L560)
+### getUserAgent() · [source](../../src/Http/Request.php#L554)
 
 `public function getUserAgent(): string`
 
@@ -522,7 +521,7 @@ Get the User-Agent string from the request headers
 
 ---
 
-### getContentType() · [source](../../src/Http/Request.php#L569)
+### getContentType() · [source](../../src/Http/Request.php#L563)
 
 `public function getContentType(): string`
 
@@ -535,7 +534,7 @@ Get the Content-Type header from the request
 
 ---
 
-### getFile() · [source](../../src/Http/Request.php#L622)
+### getFile() · [source](../../src/Http/Request.php#L616)
 
 `public function getFile(string $key): Merlin\Http\UploadedFile|null`
 
@@ -554,7 +553,7 @@ Get the first uploaded file for a given field name, or null if not present
 
 ---
 
-### getFiles() · [source](../../src/Http/Request.php#L640)
+### getFiles() · [source](../../src/Http/Request.php#L634)
 
 `public function getFiles(string $key): array`
 

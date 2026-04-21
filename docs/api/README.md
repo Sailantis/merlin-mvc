@@ -39,7 +39,6 @@
 - [Cookie](Http_Cookie.md) `Merlin\Http\Cookie`
 - [Cookies](Http_Cookies.md) `Merlin\Http\Cookies`
 - [Request](Http_Request.md) `Merlin\Http\Request`
-- [RequestOld](Http_RequestOld.md) `Merlin\Http\RequestOld`
 - [Response](Http_Response.md) `Merlin\Http\Response`
 - [Session](Http_Session.md) `Merlin\Http\Session`
 - [SessionMiddleware](Http_SessionMiddleware.md) `Merlin\Http\SessionMiddleware`

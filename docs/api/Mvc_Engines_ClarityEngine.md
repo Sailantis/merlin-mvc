@@ -684,7 +684,7 @@ has been set explicitly.
 
 ---
 
-### castToArray() · [source](../../src/Mvc/Engines/ClarityEngine.php#L1005)
+### castToArray() · [source](../../src/Mvc/Engines/ClarityEngine.php#L1045)
 
 `public static function castToArray(mixed $value): mixed`
 

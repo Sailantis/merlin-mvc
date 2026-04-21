@@ -877,7 +877,7 @@ Count rows matching the query
 
 ---
 
-### getBindings() · [source](../../src/Db/Query.php#L1614)
+### getBindings() · [source](../../src/Db/Query.php#L1616)
 
 `public function getBindings(): array`
 
@@ -890,7 +890,7 @@ Get bind parameters
 
 ---
 
-### paginate() · [source](../../src/Db/Query.php#L1626)
+### paginate() · [source](../../src/Db/Query.php#L1628)
 
 `public function paginate(int $page = 1, int $pageSize = 30, bool $reverse = false): Merlin\Db\Paginator`
 
@@ -911,7 +911,7 @@ Create a paginator for the current query
 
 ---
 
-### getRowCount() · [source](../../src/Db/Query.php#L1665)
+### getRowCount() · [source](../../src/Db/Query.php#L1667)
 
 `public function getRowCount(): int`
 

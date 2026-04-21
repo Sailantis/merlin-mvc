@@ -45,7 +45,7 @@ class Sql
     protected const TYPE_SUBQUERY = 13;
 
     protected int $type;
-    protected $value;
+    protected mixed $value;
     protected array $args;
     protected ?string $cast;
     protected array $bindParams = [];

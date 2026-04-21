@@ -8,5 +8,10 @@
   ],
   "php.version": "8.1",
   "php.validate.enable": false,
-  "phpThunder.phpVersion": "8.1"
+  "phpThunder.phpVersion": "8.1",
+  "phpThunder.activeInterpreter": "PHP 8.3",
+  "phpThunder.trace.server": "verbose",
+  "editor.inlayHints.enabled": "on",
+  "editor.semanticHighlighting.enabled": true,
+  "editor.codeLens": true
 }
