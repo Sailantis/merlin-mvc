@@ -63,7 +63,8 @@ class Sql
         mixed $value = null,
         array $args = [],
         ?string $cast = null
-    ) {
+    )
+    {
         $this->type = $type;
         $this->value = $value;
         $this->args = $args;
@@ -263,12 +264,12 @@ class Sql
 
     /**
      * Serialize PostgreSQL array recursively for multi-dimensional support
-     * 
+     *
      * @return string PostgreSQL array literal
      */
     protected function serializePgArray(): string
     {
-        $serializeValue = function ($value) {
+        $serializeValue = function($value) {
             if (\is_null($value)) {
                 return 'NULL';
             }
@@ -276,18 +277,18 @@ class Sql
                 return $value ? 'TRUE' : 'FALSE';
             }
             if (\is_int($value) || \is_float($value)) {
-                return (string) $value;
+                return (string)$value;
             }
 
             // PostgreSQL-compatible escaping for strings
             // Backslash and double quote escape
-            $v = (string) $value;
+            $v = (string)$value;
             $v = str_replace(['\\', '"'], ['\\\\', '\\"'], $v);
 
             return '"' . $v . '"';
         };
 
-        $serializeArray = function ($array) use (&$serializeArray, $serializeValue) {
+        $serializeArray = function($array) use (&$serializeArray, $serializeValue) {
             $result = "";
             $sep = "";
             foreach ($array as $item) {
@@ -307,7 +308,7 @@ class Sql
 
     /**
      * Serialize node to SQL string
-     * 
+     *
      * @param string $driver Database driver (mysql, pgsql, sqlite)
      * @param callable $serialize Callback for serializing scalar values
      *                            Signature: fn(mixed $value, bool $param = false): string
@@ -319,7 +320,7 @@ class Sql
     public function toSql(string $driver, callable $serialize, ?callable $protectIdentifier = null): string
     {
         // Fallback identifier quoting if no protectIdentifier callback provided
-        $quoteIdentifier = $protectIdentifier ?? function (string $identifier) use ($driver): string {
+        $quoteIdentifier = $protectIdentifier ?? function(string $identifier) use ($driver): string {
             if (empty($identifier) || $identifier === '*') {
                 return $identifier;
             }
@@ -341,23 +342,21 @@ class Sql
         $sql = '';
 
         switch ($this->type) {
-            // Column reference - use protectIdentifier for resolution and quoting
-            // This handles Model.column -> table.column resolution when callback is provided
             case static::TYPE_COLUMN:
                 $sql = $quoteIdentifier($this->value);
                 break;
 
-            // Parameter reference - emit :name directly, referencing a named manual binding
+                // Parameter reference - emit :name directly, referencing a named manual binding
             case static::TYPE_PARAM:
                 $sql = ':' . $this->value;
                 break;
 
-            // Raw SQL - pass through as-is
+                // Raw SQL - pass through as-is
             case static::TYPE_RAW:
                 $sql = $this->value;
                 break;
 
-            // Function call - serialize arguments in literal mode by default
+                // Function call - serialize arguments in literal mode by default
             case static::TYPE_FUNC:
                 $sql = $this->value;
                 $sql .= '(';
@@ -378,7 +377,7 @@ class Sql
                 $sql .= ')';
                 break;
 
-            // Type cast - driver-specific syntax
+                // Type cast - driver-specific syntax
             case static::TYPE_CAST:
                 if ($this->value instanceof static) {
                     $expr = $this->value->toSql(
@@ -396,12 +395,12 @@ class Sql
                 }
                 break;
 
-            // PostgreSQL array literal
+                // PostgreSQL array literal
             case static::TYPE_PG_ARRAY:
                 $sql = $this->serializePgArray();
                 break;
 
-            // Comma-separated list (for IN clauses)
+                // Comma-separated list (for IN clauses)
             case static::TYPE_CS_LIST:
                 $sql = '';
                 $sep = '';
@@ -424,7 +423,7 @@ class Sql
                 $sql = $serialize(json_encode($this->value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                 break;
 
-            // String concatenation - driver-specific
+                // String concatenation - driver-specific
             case static::TYPE_CONCAT:
                 $serialized = [];
                 foreach ($this->value as $p) {
@@ -444,8 +443,8 @@ class Sql
                 }
                 break;
 
-            // Composite expression - concatenate with spaces
-            // Treat plain strings as raw SQL tokens for cleaner expressions
+                // Composite expression - concatenate with spaces
+                // Treat plain strings as raw SQL tokens for cleaner expressions
             case static::TYPE_EXPR:
                 $sql = '';
                 $sep = '';
@@ -460,7 +459,7 @@ class Sql
                 }
                 break;
 
-            // Literal value - serialize using provided callback
+                // Literal value - serialize using provided callback
             case static::TYPE_VALUE:
                 $sql = $serialize($this->value);
                 break;

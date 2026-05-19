@@ -40,7 +40,8 @@ class ResultSet implements \Iterator, \Countable
 		?string $sqlStatement = null,
 		?array $boundParams = null,
 		?Model $model = null
-	) {
+	)
+	{
 		$this->db = $connection;
 		$this->statement = $statement;
 		$this->sqlStatement = $sqlStatement;

@@ -241,7 +241,7 @@ class TestPdoStatement extends \PDOStatement
     }
 
     #[\ReturnTypeWillChange]
-    public function fetch($mode = \PDO::FETCH_BOTH, $cursorOrientation = \PDO::FETCH_ORI_NEXT, $cursorOffset = 0)
+    public function fetch(int $mode = \PDO::FETCH_BOTH, int $cursorOrientation = \PDO::FETCH_ORI_NEXT, int $cursorOffset = 0)
     {
         if ($this->position >= count($this->results)) {
             return false;
@@ -273,7 +273,7 @@ class TestPdoStatement extends \PDOStatement
     }
 
     #[\ReturnTypeWillChange]
-    public function fetchAll($mode = \PDO::FETCH_BOTH, ...$args): array
+    public function fetchAll(int $mode = \PDO::FETCH_BOTH, ...$args)
     {
         $result = [];
         while ($row = $this->fetch($mode)) {
@@ -284,7 +284,7 @@ class TestPdoStatement extends \PDOStatement
     }
 
     #[\ReturnTypeWillChange]
-    public function fetchColumn($column = 0)
+    public function fetchColumn(int $column = 0)
     {
         if ($this->position >= count($this->results)) {
             return false;
