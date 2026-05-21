@@ -596,6 +596,10 @@ class Router
     public function match(string $uri, string $method = 'GET'): ?array
     {
         $method = strtoupper($method);
+        // Per RFC 7231: HEAD is identical to GET; route HEAD requests as GET
+        if ($method === 'HEAD') {
+            $method = 'GET';
+        }
         $uri = '/' . trim($uri, '/');
 
         // static
