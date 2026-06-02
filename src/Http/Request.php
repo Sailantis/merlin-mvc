@@ -47,7 +47,7 @@ class Request
     public function getBody(): string
     {
         if ($this->rawBody === null) {
-            $this->rawBody = (string) @file_get_contents('php://input');
+            $this->rawBody = (string)@file_get_contents('php://input');
         }
         return $this->rawBody;
     }
@@ -126,6 +126,19 @@ class Request
             return $this->server;
         }
         return $this->server[$name] ?? $default;
+    }
+
+    /**
+     * Get a request header value
+     * @param string $name The name of the header (case-insensitive)
+     * @param mixed $default The default value to return if the header is not present
+     * @return mixed The header value, or the default if not present
+     */
+    public function header(string $name, mixed $default = null): mixed
+    {
+        // Convert header name to server key format (e.g. "Content-Type" -> "HTTP_CONTENT_TYPE")
+        $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+        return $this->server[$key] ?? $default;
     }
 
     // -------------------------
@@ -230,17 +243,17 @@ class Request
         $host = $this->server['HTTP_HOST'] ?? '';
         if ($host !== '' && str_contains($host, ':')) {
             $parts = explode(':', $host);
-            $port = (int) end($parts);
+            $port = (int)end($parts);
             if ($port > 0) {
                 return $port;
             }
         }
 
         if ($this->trustProxyHeaders && !empty($this->server['HTTP_X_FORWARDED_PORT'])) {
-            return (int) explode(',', $this->server['HTTP_X_FORWARDED_PORT'])[0];
+            return (int)explode(',', $this->server['HTTP_X_FORWARDED_PORT'])[0];
         }
 
-        return (int) ($this->server['SERVER_PORT'] ?? ($this->getScheme() === 'https' ? 443 : 80));
+        return (int)($this->server['SERVER_PORT'] ?? ($this->getScheme() === 'https' ? 443 : 80));
     }
 
     /**
@@ -442,7 +455,7 @@ class Request
             foreach ($segments as $seg) {
                 $seg = trim($seg);
                 if (str_starts_with($seg, 'q=')) {
-                    $quality = (float) substr($seg, 2);
+                    $quality = (float)substr($seg, 2);
                 } elseif (str_contains($seg, '=')) {
                     [$k, $v] = explode('=', $seg, 2);
                     $params[trim($k)] = trim($v);
@@ -546,8 +559,8 @@ class Request
             'token' => $parts[1],
         ];
     }
-    
-    /** 
+
+    /**
      * Get the User-Agent string from the request headers
      * @return string
      */
@@ -556,7 +569,7 @@ class Request
         return $this->server['HTTP_USER_AGENT'] ?? '';
     }
 
-    /** 
+    /**
      * Get the Content-Type header from the request
      * @return string
      */
@@ -608,7 +621,7 @@ class Request
         return $normalized;
     }
 
-    /** 
+    /**
      * Get the first uploaded file for a given field name, or null if not present
      * @param string $key
      * @return UploadedFile|null
@@ -626,7 +639,7 @@ class Request
         return null;
     }
 
-    /** 
+    /**
      * Get all uploaded files for a given field name, or an empty array if not present
      * @param string $key
      * @return UploadedFile[]
