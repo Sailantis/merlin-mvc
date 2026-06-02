@@ -88,8 +88,8 @@ $clarityTemplate = <<<'CLARITY'
 </html>
 CLARITY;
 
-file_put_contents($nativeDir . '/bench.php', $nativeTemplate);
-file_put_contents($clarityDir . '/bench.clarity.html', $clarityTemplate);
+file_put_contents("{$nativeDir}/bench.php", $nativeTemplate);
+file_put_contents("{$clarityDir}/bench.clarity.html", $clarityTemplate);
 
 // ---------------------------------------------------------------------------
 // Engine setup

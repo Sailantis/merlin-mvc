@@ -1,5 +1,5 @@
 {
-  "name": "sailantis/merlin-mvc",
+  "name": "sailantis/merlin-framework",
   "description": "A lightweight, fast PHP framework for building modern MVC web applications and CLI tools. Merlin combines the best ideas from frameworks like Phalcon, CodeIgniter, Laravel and Twig into a minimal yet powerful toolkit.",
   "type": "library",
   "repositories": [

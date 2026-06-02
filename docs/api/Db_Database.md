@@ -32,7 +32,7 @@ Create a new database connection using the provided DSN, credentials and options
 
 ---
 
-### connect() · [source](../../src/Db/Database.php#L83)
+### connect() · [source](../../src/Db/Database.php#L84)
 
 `public function connect(): mixed`
 
@@ -49,7 +49,7 @@ Establish a new PDO connection using the current configuration
 
 ---
 
-### addListener() · [source](../../src/Db/Database.php#L99)
+### addListener() · [source](../../src/Db/Database.php#L100)
 
 `public function addListener(callable $listener): static`
 
@@ -68,7 +68,7 @@ Add an event listener for database events
 
 ---
 
-### setAutoReconnect() · [source](../../src/Db/Database.php#L123)
+### setAutoReconnect() · [source](../../src/Db/Database.php#L124)
 
 `public function setAutoReconnect(bool $enabled = true, int $maxAttempts = 0, float $retryDelay = 1, float $backoffMultiplier = 2, float $maxRetryDelay = 30, bool $jitter = true, callable|null $onReconnect = null): static`
 
@@ -93,7 +93,7 @@ Configure automatic reconnection behavior with detailed options
 
 ---
 
-### getAutoReconnect() · [source](../../src/Db/Database.php#L148)
+### getAutoReconnect() · [source](../../src/Db/Database.php#L150)
 
 `public function getAutoReconnect(): array|bool`
 
@@ -106,17 +106,17 @@ Get auto-reconnect configuration
 
 ---
 
-### query() · [source](../../src/Db/Database.php#L160)
+### query() · [source](../../src/Db/Database.php#L162)
 
-`public function query(string $query, array|null $params = null): PDOStatement|bool`
+`public function query(string $statement, array|null $params = null): PDOStatement|bool`
 
-Execute a SQL query with optional parameters and return the resulting statement or success status.
+Execute a SQL statement with optional parameters and return the resulting statement or success status.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$query` | string | - | SQL query to execute |
+| `$statement` | string | - | SQL statement to execute |
 | `$params` | array\|null | `null` | Optional parameters for prepared statements |
 
 **➡️ Return value**
@@ -130,9 +130,9 @@ Execute a SQL query with optional parameters and return the resulting statement 
 
 ---
 
-### prepare() · [source](../../src/Db/Database.php#L195)
+### prepare() · [source](../../src/Db/Database.php#L197)
 
-`public function prepare(string $query): PDOStatement|bool`
+`public function prepare(string $statement): PDOStatement|bool`
 
 Prepare a SQL statement and return the resulting PDOStatement object.
 
@@ -140,7 +140,7 @@ Prepare a SQL statement and return the resulting PDOStatement object.
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$query` | string | - | SQL query to prepare |
+| `$statement` | string | - | SQL statement to prepare |
 
 **➡️ Return value**
 
@@ -153,7 +153,7 @@ Prepare a SQL statement and return the resulting PDOStatement object.
 
 ---
 
-### execute() · [source](../../src/Db/Database.php#L224)
+### execute() · [source](../../src/Db/Database.php#L226)
 
 `public function execute(array $params = []): PDOStatement|bool`
 
@@ -178,7 +178,7 @@ Execute the most recently prepared statement with the given bound parameters.
 
 ---
 
-### selectRow() · [source](../../src/Db/Database.php#L389)
+### selectRow() · [source](../../src/Db/Database.php#L397)
 
 `public function selectRow(string $query, array|null $params = null, int $fetchMode = 0): array|bool`
 
@@ -199,7 +199,7 @@ Fetch a single row from the database as object, associative array, or numeric ar
 
 ---
 
-### selectAll() · [source](../../src/Db/Database.php#L404)
+### selectAll() · [source](../../src/Db/Database.php#L412)
 
 `public function selectAll(string $query, array|null $params = null, int $fetchMode = 0): array`
 
@@ -220,7 +220,7 @@ Fetch all rows from the database as an array of objects, associative arrays, or 
 
 ---
 
-### rowCount() · [source](../../src/Db/Database.php#L416)
+### rowCount() · [source](../../src/Db/Database.php#L424)
 
 `public function rowCount(): int`
 
@@ -234,7 +234,7 @@ Return the number of rows affected by the last executed statement.
 
 ---
 
-### lastInsertId() · [source](../../src/Db/Database.php#L428)
+### lastInsertId() · [source](../../src/Db/Database.php#L436)
 
 `public function lastInsertId(string|null $table = null, string|null $field = null): string|bool`
 
@@ -257,7 +257,7 @@ For PostgreSQL, pass the table and primary key field to use currval(pg_get_seria
 
 ---
 
-### begin() · [source](../../src/Db/Database.php#L462)
+### begin() · [source](../../src/Db/Database.php#L472)
 
 `public function begin(bool $nesting = true): int|bool`
 
@@ -281,7 +281,7 @@ Begin a new transaction, or create a savepoint if nested transactions are enable
 
 ---
 
-### commit() · [source](../../src/Db/Database.php#L505)
+### commit() · [source](../../src/Db/Database.php#L515)
 
 `public function commit(bool $nesting = true): int|bool`
 
@@ -305,7 +305,7 @@ Commit the current transaction or release the current savepoint (for nested tran
 
 ---
 
-### rollback() · [source](../../src/Db/Database.php#L551)
+### rollback() · [source](../../src/Db/Database.php#L561)
 
 `public function rollback(bool $nesting = true): int|bool`
 
@@ -328,7 +328,7 @@ Rollback the current transaction or to a savepoint if nesting is enabled and sup
 
 ---
 
-### quote() · [source](../../src/Db/Database.php#L596)
+### quote() · [source](../../src/Db/Database.php#L606)
 
 `public function quote(string|null $str): string|bool`
 
@@ -347,7 +347,7 @@ Quote a string for use in a query.
 
 ---
 
-### quoteIdentifier() · [source](../../src/Db/Database.php#L611)
+### quoteIdentifier() · [source](../../src/Db/Database.php#L621)
 
 `public function quoteIdentifier(string|null ...$args): string`
 
@@ -369,7 +369,7 @@ Parts are joined with a dot separator. NULL parts are skipped. "*" is passed thr
 
 ---
 
-### getInternalConnection() · [source](../../src/Db/Database.php#L640)
+### getInternalConnection() · [source](../../src/Db/Database.php#L650)
 
 `public function getInternalConnection(): PDO|null`
 
@@ -383,7 +383,7 @@ Return the underlying PDO connection instance.
 
 ---
 
-### builder() · [source](../../src/Db/Database.php#L649)
+### builder() · [source](../../src/Db/Database.php#L659)
 
 `public function builder(): Merlin\Db\Query`
 
@@ -396,7 +396,7 @@ Create a new Query builder instance associated with this database connection.
 
 ---
 
-### getDriver() · [source](../../src/Db/Database.php#L658)
+### getDriver() · [source](../../src/Db/Database.php#L668)
 
 `public function getDriver(): string`
 

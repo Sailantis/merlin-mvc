@@ -61,7 +61,6 @@ class Console
         'bg-white' => "\033[47m",
     ];
 
-
     public const STYLE_ERROR = ['bg-red', 'white', 'bold'];
     public const STYLE_WARN = ['byellow'];
     public const STYLE_INFO = ['bcyan'];
@@ -89,7 +88,7 @@ class Console
 
     /**
      * Console constructor.
-     * 
+     *
      * @param string|null $scriptName Optional custom script name for help output. Defaults to the basename of argv[0].
      */
     public function __construct(string $scriptName = null)
@@ -99,7 +98,7 @@ class Console
     }
 
     /**
-     * Set global help text that is appended to every help per-task detail 
+     * Set global help text that is appended to every help per-task detail
      * output. Use the same plain-text format as docblock Options sections:
      *
      *   --flag              One-line description
@@ -177,7 +176,6 @@ class Console
         $this->defaultAction = $defaultAction;
     }
 
-
     /** Remove all registered tasks. Useful if you don't want to expose system tasks. */
     public function clearTasks(): void
     {
@@ -230,7 +228,7 @@ class Console
 
         // Hex-Mode?
         if ($g === null && $b === null) {
-            $hex = (string) $r;
+            $hex = (string)$r;
 
             if (str_starts_with($hex, 'bg')) {
                 // Set Background explicitly
@@ -264,7 +262,6 @@ class Console
 
         return "\033[{$code};2;{$r};{$g};{$b}m";
     }
-
 
     /**
      * Apply one or more named ANSI styles or a custom color to a string.
@@ -331,7 +328,7 @@ class Console
         $this->writeln($this->style($text, ...static::STYLE_SUCCESS));
     }
 
-    /** 
+    /**
      * Write a warning message (yellow). Newline is appended automatically.
      */
     public function warn(string $text): void
@@ -339,7 +336,7 @@ class Console
         $this->writeln($this->style($text, ...static::STYLE_WARN));
     }
 
-    /** 
+    /**
      * Write an error message (white on red) to STDERR. Newline is appended automatically.
      */
     public function error(string $text): void
@@ -347,7 +344,7 @@ class Console
         $this->stderrln($this->style($text, ...static::STYLE_ERROR));
     }
 
-    /** 
+    /**
      * Write a muted / dimmed message. Newline is appended automatically.
      */
     public function muted(string $text): void
@@ -441,9 +438,9 @@ class Console
         $method = $this->actionToMethod($actionName);
 
         if (!$method || !\method_exists($task, $method)) {
-            // Only fall back to the default action automatically when no 
+            // Only fall back to the default action automatically when no
             // action was specified, or when this is a single-action task
-            // (so the "action" arg is actually the first positional param). 
+            // (so the "action" arg is actually the first positional param).
             // For multi-action tasks with an unrecognised action name, show
             // task help instead to prevent silently swallowing typos.
             $hasDefault = \method_exists($task, $this->defaultAction);
@@ -769,7 +766,7 @@ class Console
 
             // Actions: action column is printed with 4 leading spaces + 2 spaces before the name
             $actionLabelInner = 22; // base str_pad width used for actions
-            $actionLeft = 2 + 2; // visual indent (leading spaces + inner padding)
+            $actionLeft = 2 + 2;    // visual indent (leading spaces + inner padding)
             $defaultActionLabel = method_exists($class, $this->defaultAction)
                 ? $this->methodToActionName($this->defaultAction)
                 : null;
@@ -916,7 +913,7 @@ class Console
                     $prop = $taskRef->getProperty('showGlobalHelp');
                     $prop->setAccessible(true);
                     // Read default value from class definition (not from an instance)
-                    $showGlobal = (bool) ($prop->hasDefaultValue() ? $prop->getDefaultValue() : true);
+                    $showGlobal = (bool)($prop->hasDefaultValue() ? $prop->getDefaultValue() : true);
                 }
             }
             if ($showGlobal) {
@@ -963,7 +960,7 @@ class Console
         // Detect whether this is a command line (starts with interpreter) or a
         // continuation line (starts with options / placeholders)
         $firstWord = $parts[0] ?? '';
-        $isCommand = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $firstWord);
+        $isCommand = (bool)preg_match('/^php\d*(?:\.exe)?$/i', $firstWord);
 
         $result = $indent;
         $wordIndex = 0; // counts only non-whitespace tokens
@@ -995,10 +992,10 @@ class Console
 
             if ($isCommand) {
                 $result .= match ($wordIndex) {
-                    0 => $this->style($part, ...$this->muteStyles),                   // php
-                    1 => $this->style($part, ...$this->muteStyles),                   // script
-                    2 => $this->style($part, ...$this->taskStyles),         // task
-                    3 => $this->style($part, ...$this->actionStyles),         // action
+                    0 => $this->style($part, ...$this->muteStyles),   // php
+                    1 => $this->style($part, ...$this->muteStyles),   // script
+                    2 => $this->style($part, ...$this->taskStyles),   // task
+                    3 => $this->style($part, ...$this->actionStyles), // action
                     default => $this->highlightCliToken($part),
                 };
             } else {
@@ -1130,13 +1127,15 @@ class Console
 
     protected function registerSimpleAutoload(string $path): void
     {
-        spl_autoload_register(function ($class) use ($path) {
-            $parts = explode('\\', $class);
-            $file = $path . DIRECTORY_SEPARATOR . end($parts) . '.php';
-            if (is_file($file)) {
-                require_once $file;
+        spl_autoload_register(
+            function ($class) use ($path) {
+                $parts = explode('\\', $class);
+                $file = $path . DIRECTORY_SEPARATOR . end($parts) . '.php';
+                if (is_file($file)) {
+                    require_once $file;
+                }
             }
-        });
+        );
     }
 
     protected function splitArgs(array $args): array
@@ -1202,11 +1201,11 @@ class Console
     public function coerceParam(string $param): int|float|bool|null|string
     {
         static $boolMap = [
-        'true' => true,
-        'on' => true,
-        'false' => false,
-        'off' => false,
-        'null' => null,
+            'true' => true,
+            'on' => true,
+            'false' => false,
+            'off' => false,
+            'null' => null,
         ];
 
         if (!$this->coerceParams) {
@@ -1231,12 +1230,12 @@ class Console
 
         // integer
         if (preg_match('/^-?\d+$/', $param)) {
-            return (int) $param;
+            return (int)$param;
         }
 
         // float
         if (preg_match('/^-?\d+\.\d+$/', $param)) {
-            return (float) $param;
+            return (float)$param;
         }
 
         return $param;
@@ -1248,7 +1247,12 @@ class Console
         $doc = preg_replace('/^\s*\*\s?/m', '', $doc);
         $doc = preg_replace('/^\s*[\w-]+\.php/', $scriptName, $doc);
         $doc = str_replace('console.php', $scriptName, $doc);
-        $sections = ['description' => '', 'usage' => '', 'options' => '', 'examples' => '',];
+        $sections = [
+            'description' => '',
+            'usage' => '',
+            'options' => '',
+            'examples' => '',
+        ];
         $current = 'description';
         $doc = str_replace("\r", '', $doc);
         foreach (explode("\n", $doc) as $line) {
@@ -1296,8 +1300,8 @@ class Console
 
         // 1) ENV
         $cols = getenv('COLUMNS');
-        if ($cols !== false && (int) $cols > 0) {
-            $w = (int) $cols;
+        if ($cols !== false && (int)$cols > 0) {
+            $w = (int)$cols;
             return $w;
         }
 
@@ -1307,8 +1311,8 @@ class Console
             if (function_exists('posix_isatty') && @posix_isatty(STDOUT)) {
                 $out = [];
                 @exec('tput cols 2>/dev/null', $out);
-                if (!empty($out) && is_array($out) && (int) $out[0] > 0) {
-                    $w = (int) $out[0];
+                if (!empty($out) && is_array($out) && (int)$out[0] > 0) {
+                    $w = (int)$out[0];
                     return $w;
                 }
             }
@@ -1324,7 +1328,7 @@ class Console
                             if ($columnPos-- > 0) {
                                 continue; // skip until we reach the column number
                             }
-                            $w = (int) $m[1];
+                            $w = (int)$m[1];
                             return $w;
                         }
                     }
@@ -1335,7 +1339,6 @@ class Console
         $w = $default;
         return $w;
     }
-
 
     /**
      * Parse and render the global help text, which may contain multiple named sections.
@@ -1361,7 +1364,7 @@ class Console
         // A header is a line whose trimmed form looks like "Word(s):" with nothing after the colon.
         $headerPattern = '/^([A-Za-z][A-Za-z\s]*):\s*$/';
 
-        $sections = [];          // [['label' => string|null, 'lines' => string[]]]
+        $sections = []; // [['label' => string|null, 'lines' => string[]]]
         $current = ['label' => null, 'lines' => []];
 
         foreach (explode("\n", str_replace("\r", '', $this->globalHelp)) as $line) {
@@ -1455,9 +1458,9 @@ class Console
 
             $trim = preg_replace('/^php\d*(?:\.exe)?\b\s*/i', '', $trim);
             $trim = preg_replace('/^\w+\.php\b\s*/i', '', $trim);
-            $isEntryStart = (bool) preg_match('/^php\d*(?:\.exe)?\b/i', $trim)
-                || (bool) preg_match($taskPattern, $trim);
-            $isContinuation = (bool) preg_match('/^[\[<\-]/', $trim);
+            $isEntryStart = (bool)preg_match('/^php\d*(?:\.exe)?\b/i', $trim)
+                || (bool)preg_match($taskPattern, $trim);
+            $isContinuation = (bool)preg_match('/^[\[<\-]/', $trim);
 
             if ($isEntryStart) {
                 if ($currentEntry !== null) {
@@ -1491,7 +1494,7 @@ class Console
                 continue;
             }
             $parts = preg_split('/\s+/', $item['text']);
-            $isPhp = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $parts[0]);
+            $isPhp = (bool)preg_match('/^php\d*(?:\.exe)?$/i', $parts[0]);
             $actionIdx = $isPhp ? 3 : 1;
             $actionIdx = min($actionIdx, count($parts) - 1);
             $leftParts = array_slice($parts, 0, $actionIdx + 1);
@@ -1535,7 +1538,7 @@ class Console
                     $leftStyled[] = match ($i) {
                         0, 1 => $this->style($tok, ...$this->muteStyles),
                         2 => $this->style($tok, ...$this->taskStyles),
-                        default => $this->style($tok, ...$this->actionStyles),
+                        default => $this->style($tok, ...$this->actionStyles)
                     };
                 } else {
                     $leftStyled[] = $i === 0
@@ -1638,7 +1641,7 @@ class Console
      */
     public function wrapText(string $text, int $width): array
     {
-        $width = max(10, (int) $width);
+        $width = max(10, (int)$width);
         if ($text === '') {
             return [''];
         }

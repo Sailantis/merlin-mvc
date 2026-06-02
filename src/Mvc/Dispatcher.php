@@ -421,6 +421,7 @@ class Dispatcher
      */
     protected function buildPipeline(Controller $controller, string $action, array $params, ?array $groups, AppContext $context): callable
     {
+        /** @var MiddlewareInterface[] $middleware */
         $middleware = [];
 
         // 1) Global Middleware
@@ -473,6 +474,7 @@ class Dispatcher
         $next = $core;
 
         foreach (array_reverse($middleware) as $mw) {
+            /** @var MiddlewareInterface $mw */
             $current = $mw;
             $next = fn() => $current->process($context, $next);
         }
@@ -485,6 +487,8 @@ class Dispatcher
         if ($mw instanceof MiddlewareInterface) {
             return $mw;
         }
+
+        /** @var MiddlewareInterface $instance */
 
         if ($mw instanceof \Closure) {
             $instance = $mw();

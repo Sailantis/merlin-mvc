@@ -6,6 +6,9 @@ use LogicException;
 use RuntimeException;
 use InvalidArgumentException;
 
+/** 
+ * A simple and efficient router for mapping HTTP requests to handlers based on URI patterns and HTTP methods. Supports static routes, typed parameters, optional segments, wildcards, and route groups with shared middleware, namespaces, or controllers. Routes are matched in order of specificity, with static routes taking precedence over dynamic ones. Named routes allow for easy URL generation.
+ */
 class Router
 {
     protected const KIND_STATIC = 1;
@@ -15,9 +18,9 @@ class Router
     protected const KIND_REGEX = 5;
     protected const KIND_REGEX_OPT = 6;
 
-    protected array $static = [];   // [method][path] => ['handler'=>..., 'namespace'=>...]
-    protected array $groups = [];   // [method][firstSegment] => [route, ...]
-    protected array $types = [];    // type validators
+    protected array $static = []; // [method][path] => ['handler'=>..., 'namespace'=>...]
+    protected array $groups = []; // [method][firstSegment] => [route, ...]
+    protected array $types = [];  // type validators
     protected array $middlewareGroupStack = [];
     protected array $prefixGroupStack = [];
     protected array $namespaceGroupStack = [];
@@ -78,11 +81,12 @@ class Router
         string|array|null $method,
         string $pattern,
         string|array|null $handler = null
-    ): static {
+    ): static
+    {
 
         $routeName = null;
         if (\is_array($handler) && isset($handler['name'])) {
-            $routeName = (string) $handler['name'];
+            $routeName = (string)$handler['name'];
             unset($handler['name']);
         }
 
@@ -314,7 +318,7 @@ class Router
         if ($namespace[0] !== '\\') {
             $parentNamespace = end($this->namespaceGroupStack);
             if ($parentNamespace !== false && $parentNamespace !== null && $parentNamespace !== '') {
-                $namespace = trim((string) $parentNamespace, '\\') . '\\' . $namespace;
+                $namespace = trim((string)$parentNamespace, '\\') . '\\' . $namespace;
             }
         }
 
@@ -404,7 +408,7 @@ class Router
     /**
      * Calculate route specificity for automatic priority.
      * Higher score = more specific = checked first.
-     * 
+     *
      * Scoring:
      * - static segment = 3 points
      * - typed param (not '*' or wildcard) = 2 points
@@ -516,7 +520,7 @@ class Router
                     continue;
                 }
 
-                $value = (string) $params[$name];
+                $value = (string)$params[$name];
                 if ($kind === self::KIND_PARAM_OPT) {
                     if (!isset($this->types[$type])) {
                         throw new RuntimeException("Unknown validator: $type");
@@ -539,7 +543,7 @@ class Router
                     throw new RuntimeException("Missing route parameter: $name");
                 }
 
-                $value = (string) $params[$name];
+                $value = (string)$params[$name];
                 if ($kind === self::KIND_PARAM) {
                     if (!isset($this->types[$type])) {
                         throw new RuntimeException("Unknown validator: $type");
@@ -574,7 +578,7 @@ class Router
                 }
 
                 foreach ($wildcardValues as $wildcardValue) {
-                    $segments[] = rawurlencode((string) $wildcardValue);
+                    $segments[] = rawurlencode((string)$wildcardValue);
                 }
             }
         }
@@ -703,10 +707,11 @@ class Router
 
                 switch ($kind) {
                     case self::KIND_STATIC:
-                        if ($name !== $segment)
+                        if ($name !== $segment) {
                             $ok = false;
-                        else
+                        } else {
                             $partIndex++;
+                        }
                         break;
 
                     case self::KIND_PARAM:
@@ -732,8 +737,9 @@ class Router
 
                 }
 
-                if (!$ok)
+                if (!$ok) {
                     break;
+                }
             }
 
             if ($ok && $partIndex !== $partCount) {
@@ -756,7 +762,8 @@ class Router
         string|array|null $handler,
         array $params,
         array $groups,
-    ): array {
+    ): array
+    {
 
         if ($handler === null) {
             $override = [];

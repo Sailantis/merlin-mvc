@@ -27,7 +27,7 @@ Create a new ResultSet wrapping a PDO statement result.
 
 ---
 
-### fetch() · [source](../../src/Db/ResultSet.php#L58)
+### fetch() · [source](../../src/Db/ResultSet.php#L59)
 
 `public function fetch(): object|array|false`
 
@@ -41,7 +41,7 @@ Fetch next row as object or array depending on fetch mode.
 
 ---
 
-### fetchArray() · [source](../../src/Db/ResultSet.php#L68)
+### fetchArray() · [source](../../src/Db/ResultSet.php#L69)
 
 `public function fetchArray(): array|false`
 
@@ -55,7 +55,7 @@ Fetch next row as associative array.
 
 ---
 
-### fetchObject() · [source](../../src/Db/ResultSet.php#L78)
+### fetchObject() · [source](../../src/Db/ResultSet.php#L79)
 
 `public function fetchObject(): object|false`
 
@@ -69,7 +69,7 @@ Fetch next row as object.
 
 ---
 
-### fetchColumn() · [source](../../src/Db/ResultSet.php#L89)
+### fetchColumn() · [source](../../src/Db/ResultSet.php#L90)
 
 `public function fetchColumn(int $column = 0): mixed`
 
@@ -89,7 +89,7 @@ Fetch next row as a single column value.
 
 ---
 
-### fetchAllArray() · [source](../../src/Db/ResultSet.php#L99)
+### fetchAllArray() · [source](../../src/Db/ResultSet.php#L100)
 
 `public function fetchAllArray(): array`
 
@@ -103,7 +103,7 @@ Return all rows as associative array.
 
 ---
 
-### fetchAllObject() · [source](../../src/Db/ResultSet.php#L110)
+### fetchAllObject() · [source](../../src/Db/ResultSet.php#L111)
 
 `public function fetchAllObject(): array`
 
@@ -117,7 +117,7 @@ Return all rows as object.
 
 ---
 
-### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L122)
+### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L123)
 
 `public function fetchAllColumn(int $column = 0): array`
 
@@ -137,7 +137,7 @@ Fetch all values from a single column.
 
 ---
 
-### fetchAll() · [source](../../src/Db/ResultSet.php#L134)
+### fetchAll() · [source](../../src/Db/ResultSet.php#L135)
 
 `public function fetchAll(int $fetchMode = 0): array`
 
@@ -157,7 +157,7 @@ Fetch all rows as objects or arrays depending on fetch mode.
 
 ---
 
-### setFetchMode() · [source](../../src/Db/ResultSet.php#L145)
+### setFetchMode() · [source](../../src/Db/ResultSet.php#L146)
 
 `public function setFetchMode(int $fetchMode): void`
 
@@ -176,7 +176,7 @@ Set the default fetch mode for this result set.
 
 ---
 
-### nextModel() · [source](../../src/Db/ResultSet.php#L154)
+### nextModel() · [source](../../src/Db/ResultSet.php#L155)
 
 `public function nextModel(): Merlin\Mvc\Model|null`
 
@@ -190,7 +190,7 @@ Get the next model from the result set, or false if there are no more models. Th
 
 ---
 
-### firstModel() · [source](../../src/Db/ResultSet.php#L191)
+### firstModel() · [source](../../src/Db/ResultSet.php#L192)
 
 `public function firstModel(): Merlin\Mvc\Model|null`
 
@@ -204,7 +204,7 @@ Get first model or object from result set.
 
 ---
 
-### allModels() · [source](../../src/Db/ResultSet.php#L221)
+### allModels() · [source](../../src/Db/ResultSet.php#L222)
 
 `public function allModels(): array`
 
@@ -221,7 +221,7 @@ Returns an empty array when no model class was provided at construction.
 
 ---
 
-### getSql() · [source](../../src/Db/ResultSet.php#L239)
+### getSql() · [source](../../src/Db/ResultSet.php#L240)
 
 `public function getSql(): string|null`
 
@@ -235,7 +235,7 @@ Return the SQL statement that was executed to produce this result set, if availa
 
 ---
 
-### getBindings() · [source](../../src/Db/ResultSet.php#L248)
+### getBindings() · [source](../../src/Db/ResultSet.php#L249)
 
 `public function getBindings(): array|null`
 
@@ -249,7 +249,7 @@ Return the variables that were bound to the SQL statement, if available.
 
 ---
 
-### reexecute() · [source](../../src/Db/ResultSet.php#L257)
+### reexecute() · [source](../../src/Db/ResultSet.php#L258)
 
 `public function reexecute(): void`
 
@@ -262,7 +262,7 @@ Execute the query again to repopulate the result set.
 
 ---
 
-### rewind() · [source](../../src/Db/ResultSet.php#L273)
+### rewind() · [source](../../src/Db/ResultSet.php#L274)
 
 `public function rewind(): void`
 
@@ -275,7 +275,7 @@ Rewind is a no-op: the result set cursor is forward-only.
 
 ---
 
-### current() · [source](../../src/Db/ResultSet.php#L279)
+### current() · [source](../../src/Db/ResultSet.php#L280)
 
 `public function current(): mixed`
 
@@ -288,7 +288,7 @@ Return the current row (fetched lazily on first access).
 
 ---
 
-### key() · [source](../../src/Db/ResultSet.php#L289)
+### key() · [source](../../src/Db/ResultSet.php#L290)
 
 `public function key(): int`
 
@@ -301,7 +301,7 @@ Return the zero-based position of the current row within this traversal.
 
 ---
 
-### next() · [source](../../src/Db/ResultSet.php#L295)
+### next() · [source](../../src/Db/ResultSet.php#L296)
 
 `public function next(): void`
 
@@ -314,7 +314,7 @@ Advance to the next row.
 
 ---
 
-### valid() · [source](../../src/Db/ResultSet.php#L302)
+### valid() · [source](../../src/Db/ResultSet.php#L303)
 
 `public function valid(): bool`
 
@@ -327,7 +327,7 @@ Return true while the current row is not false/null (i.e., while rows remain).
 
 ---
 
-### count() · [source](../../src/Db/ResultSet.php#L311)
+### count() · [source](../../src/Db/ResultSet.php#L312)
 
 `public function count(): int`
 

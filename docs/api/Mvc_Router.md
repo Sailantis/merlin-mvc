@@ -2,9 +2,11 @@
 
 **Full name:** [Merlin\Mvc\Router](../../src/Mvc/Router.php)
 
+A simple and efficient router for mapping HTTP requests to handlers based on URI patterns and HTTP methods. Supports static routes, typed parameters, optional segments, wildcards, and route groups with shared middleware, namespaces, or controllers. Routes are matched in order of specificity, with static routes taking precedence over dynamic ones. Named routes allow for easy URL generation.
+
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Mvc/Router.php#L31)
+### __construct() · [source](../../src/Mvc/Router.php#L34)
 
 `public function __construct(): mixed`
 
@@ -17,7 +19,7 @@ Create a new Router instance.
 
 ---
 
-### addType() · [source](../../src/Mvc/Router.php#L63)
+### addType() · [source](../../src/Mvc/Router.php#L66)
 
 `public function addType(string $name, callable $validator): static`
 
@@ -47,7 +49,7 @@ $router->add('GET', '/blog/{slug:slug}', 'Blog::view');
 
 ---
 
-### add() · [source](../../src/Mvc/Router.php#L77)
+### add() · [source](../../src/Mvc/Router.php#L80)
 
 `public function add(array|string|null $method, string $pattern, array|string|null $handler = null): static`
 
@@ -69,7 +71,7 @@ Add a new route to the router. The route can be defined for specific HTTP method
 
 ---
 
-### setName() · [source](../../src/Mvc/Router.php#L148)
+### setName() · [source](../../src/Mvc/Router.php#L152)
 
 `public function setName(string $name): static`
 
@@ -93,7 +95,7 @@ Assign a name to the most recently added route. This allows you to generate URLs
 
 ---
 
-### hasNamedRoute() · [source](../../src/Mvc/Router.php#L167)
+### hasNamedRoute() · [source](../../src/Mvc/Router.php#L171)
 
 `public function hasNamedRoute(string $name): bool`
 
@@ -113,7 +115,7 @@ Check if a named route exists.
 
 ---
 
-### urlFor() · [source](../../src/Mvc/Router.php#L181)
+### urlFor() · [source](../../src/Mvc/Router.php#L185)
 
 `public function urlFor(string $name, array $params = [], array $query = []): string`
 
@@ -139,7 +141,7 @@ Generate a URL for a named route, substituting parameters as needed.
 
 ---
 
-### prefix() · [source](../../src/Mvc/Router.php#L237)
+### prefix() · [source](../../src/Mvc/Router.php#L241)
 
 `public function prefix(string $prefix, callable|null $callback = null): static`
 
@@ -167,7 +169,7 @@ $router->add('GET', '/dashboard', 'Admin::dashboard');
 
 ---
 
-### middleware() · [source](../../src/Mvc/Router.php#L271)
+### middleware() · [source](../../src/Mvc/Router.php#L275)
 
 `public function middleware(array|string $name, callable|null $callback = null): static`
 
@@ -195,7 +197,7 @@ $router->add('GET', '/admin/dashboard', 'Admin::dashboard');
 
 ---
 
-### namespace() · [source](../../src/Mvc/Router.php#L307)
+### namespace() · [source](../../src/Mvc/Router.php#L311)
 
 `public function namespace(string $namespace, callable|null $callback = null): static`
 
@@ -223,7 +225,7 @@ $router->add('GET', '/dashboard', 'Dashboard::view');
 
 ---
 
-### controller() · [source](../../src/Mvc/Router.php#L349)
+### controller() · [source](../../src/Mvc/Router.php#L353)
 
 `public function controller(string $controller, callable|null $callback = null): static`
 
@@ -251,7 +253,7 @@ $router->add('GET', '/dashboard', '::view');
 
 ---
 
-### match() · [source](../../src/Mvc/Router.php#L596)
+### match() · [source](../../src/Mvc/Router.php#L600)
 
 `public function match(string $uri, string $method = 'GET'): array|null`
 
