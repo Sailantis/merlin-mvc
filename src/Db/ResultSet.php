@@ -208,10 +208,6 @@ class ResultSet implements \Iterator, \Countable
 	}
 
 	/**
-	 * Get all remaining models or objects from result set.
-	 * @return array<int, TModel> An array of all remaining model instances, or an empty array if there are no more models.
-	 */
-	/**
 	 * Get all remaining rows hydrated as model instances.
 	 *
 	 * Calls {@see nextModel()} repeatedly until the result set is exhausted.

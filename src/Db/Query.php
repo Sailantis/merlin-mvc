@@ -11,6 +11,11 @@ use PDOStatement;
 /**
  * Unified query builder for SELECT, INSERT, UPDATE, DELETE operations
  * 
+ * @template T of Model
+ * @method static Query<T> new(?Database $db = null)
+ * @method ResultSet<T> select(array|string|null $columns = null)
+ * @method T|null first()
+ * 
  * @example
  * // SELECT
  * $users = Query::new()->table('users')->where('active', 1)->select();
@@ -200,12 +205,13 @@ class Query extends Condition
 
     /**
      * Set the table for this query. Can be either a table name or a model class name. If a model class name is provided, the corresponding table will be used and the model's database connection will be used if no connection is set on the query.
-     * @param string $name Table name or model class name
+     * @template TModel of Model
+     * @param class-string<TModel>|string $name Table name or model class name
      * @param string|null $alias Optional table alias
-     * @return $this
+     * @return Query<TModel>
      * @throws Exception
      */
-    public function table(string $name, ?string $alias = null): static
+    public function table(string $name, ?string $alias = null): Query
     {
         if (self::$useModels && !isset(self::$modelMapping)) {
 			$this->model = self::getModel($name);
@@ -707,7 +713,7 @@ class Query extends Condition
     /**
      * Execute SELECT query and return ResultSet or return SQL string if returnSql is enabled
      * @param array|string|null $columns Columns to select, or null to ignore parameter. Can be either a comma-separated string or an array of column names.
-     * @return ResultSet|string
+     * @return ResultSet<T>|string  when returnSql is false, string when returnSql is true
      * @throws Exception
      */
     public function select(array|string|null $columns = null): ResultSet|string
@@ -732,10 +738,10 @@ class Query extends Condition
 
     /**
      * Execute SELECT query and return first model or null or return SQL string if returnSql is enabled
-     * @return Model|string|null First model, or SQL string, or null if no results
+     * @return T|null|string First model, or SQL string, or null if no results
      * @throws Exception
      */
-    public function first(): Model|string|null
+    public function first(): Model|null|string
     {
         $result = $this->limit(1)->select();
         if ($this->returnSql) {

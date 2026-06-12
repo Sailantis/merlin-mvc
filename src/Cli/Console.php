@@ -306,6 +306,18 @@ class Console
         fwrite(STDERR, $text . PHP_EOL);
     }
 
+    /** Write text to stdout. */
+    public function stdout(string $text): void
+    {
+        fwrite(STDOUT, $text);
+    }
+
+    /** Write a line to stdout (newline appended). */
+    public function stdoutln(string $text): void
+    {
+        fwrite(STDOUT, $text . PHP_EOL);
+    }
+
     /** Plain informational line. */
     public function line(string $text): void
     {

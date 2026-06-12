@@ -53,6 +53,18 @@ abstract class Task
         $this->console->stderrln($text);
     }
 
+    /** Write to STDOUT without a newline. */
+    public function stdout(string $text = ''): void
+    {
+        $this->console->stdout($text);
+    }
+
+    /** Write to STDOUT with a newline. */
+    public function stdoutln(string $text = ''): void
+    {
+        $this->console->stdoutln($text);
+    }
+
     /** Plain message with no styling. Newline is appended. */
     public function line(string $text): void
     {
