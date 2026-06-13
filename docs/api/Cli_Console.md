@@ -343,7 +343,45 @@ Write a line to stderr (newline appended).
 
 ---
 
-### line() · [source](../../src/Cli/Console.php#L310)
+### stdout() · [source](../../src/Cli/Console.php#L310)
+
+`public function stdout(string $text): void`
+
+Write text to stdout.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$text` | string | - |  |
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### stdoutln() · [source](../../src/Cli/Console.php#L316)
+
+`public function stdoutln(string $text): void`
+
+Write a line to stdout (newline appended).
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$text` | string | - |  |
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### line() · [source](../../src/Cli/Console.php#L322)
 
 `public function line(string $text): void`
 
@@ -362,7 +400,7 @@ Plain informational line.
 
 ---
 
-### info() · [source](../../src/Cli/Console.php#L318)
+### info() · [source](../../src/Cli/Console.php#L330)
 
 `public function info(string $text): void`
 
@@ -381,7 +419,7 @@ Write an informational message (cyan). Newline is appended automatically.
 
 ---
 
-### success() · [source](../../src/Cli/Console.php#L326)
+### success() · [source](../../src/Cli/Console.php#L338)
 
 `public function success(string $text): void`
 
@@ -400,7 +438,7 @@ Write a success message (green). Newline is appended automatically.
 
 ---
 
-### warn() · [source](../../src/Cli/Console.php#L334)
+### warn() · [source](../../src/Cli/Console.php#L346)
 
 `public function warn(string $text): void`
 
@@ -419,7 +457,7 @@ Write a warning message (yellow). Newline is appended automatically.
 
 ---
 
-### error() · [source](../../src/Cli/Console.php#L342)
+### error() · [source](../../src/Cli/Console.php#L354)
 
 `public function error(string $text): void`
 
@@ -438,7 +476,7 @@ Write an error message (white on red) to STDERR. Newline is appended automatical
 
 ---
 
-### muted() · [source](../../src/Cli/Console.php#L350)
+### muted() · [source](../../src/Cli/Console.php#L362)
 
 `public function muted(string $text): void`
 
@@ -457,7 +495,7 @@ Write a muted / dimmed message. Newline is appended automatically.
 
 ---
 
-### shouldCoerceParams() · [source](../../src/Cli/Console.php#L368)
+### shouldCoerceParams() · [source](../../src/Cli/Console.php#L380)
 
 `public function shouldCoerceParams(): bool`
 
@@ -475,7 +513,7 @@ to the action method.
 
 ---
 
-### setCoerceParams() · [source](../../src/Cli/Console.php#L378)
+### setCoerceParams() · [source](../../src/Cli/Console.php#L390)
 
 `public function setCoerceParams(bool $coerceParams): void`
 
@@ -494,7 +532,7 @@ Enable or disable automatic parameter type coercion.
 
 ---
 
-### process() · [source](../../src/Cli/Console.php#L390)
+### process() · [source](../../src/Cli/Console.php#L402)
 
 `public function process(string|null $task = null, string|null $action = null, array $params = []): void`
 
@@ -515,7 +553,7 @@ Process the given task, action, and parameters.
 
 ---
 
-### autodiscover() · [source](../../src/Cli/Console.php#L509)
+### autodiscover() · [source](../../src/Cli/Console.php#L521)
 
 `public function autodiscover(): void`
 
@@ -528,7 +566,7 @@ Autodiscover tasks in all registered namespaces and paths
 
 ---
 
-### readComposerPsr4() · [source](../../src/Cli/Console.php#L546)
+### readComposerPsr4() · [source](../../src/Cli/Console.php#L558)
 
 `public function readComposerPsr4(): array`
 
@@ -544,7 +582,7 @@ Result is cached for the lifetime of this Console instance.
 
 ---
 
-### findComposerRoot() · [source](../../src/Cli/Console.php#L578)
+### findComposerRoot() · [source](../../src/Cli/Console.php#L590)
 
 `public function findComposerRoot(): string|null`
 
@@ -559,7 +597,7 @@ Falls back to the current working directory.
 
 ---
 
-### resolvePsr4Path() · [source](../../src/Cli/Console.php#L608)
+### resolvePsr4Path() · [source](../../src/Cli/Console.php#L620)
 
 `public function resolvePsr4Path(string $namespace): string|null`
 
@@ -582,7 +620,7 @@ Example: "App\\Models" => "/project/src/Models"
 
 ---
 
-### scanDirectory() · [source](../../src/Cli/Console.php#L641)
+### scanDirectory() · [source](../../src/Cli/Console.php#L653)
 
 `public function scanDirectory(string $dir, string $suffix = '.php'): array`
 
@@ -603,7 +641,7 @@ name ends with $suffix (default ".php").
 
 ---
 
-### extractClassFromFile() · [source](../../src/Cli/Console.php#L664)
+### extractClassFromFile() · [source](../../src/Cli/Console.php#L676)
 
 `public function extractClassFromFile(string $file): string|null`
 
@@ -623,7 +661,7 @@ parsing its namespace declaration and the file's base name.
 
 ---
 
-### detectNamespace() · [source](../../src/Cli/Console.php#L681)
+### detectNamespace() · [source](../../src/Cli/Console.php#L693)
 
 `public function detectNamespace(string $dir): string`
 
@@ -644,7 +682,7 @@ Returns an empty string if none is found.
 
 ---
 
-### helpOverview() · [source](../../src/Cli/Console.php#L734)
+### helpOverview() · [source](../../src/Cli/Console.php#L746)
 
 `public function helpOverview(): void`
 
@@ -657,7 +695,7 @@ Built-in help task
 
 ---
 
-### helpTask() · [source](../../src/Cli/Console.php#L822)
+### helpTask() · [source](../../src/Cli/Console.php#L834)
 
 `public function helpTask(string $task): void`
 
@@ -676,7 +714,7 @@ Built-in help task for a specific task
 
 ---
 
-### coerceParam() · [source](../../src/Cli/Console.php#L1201)
+### coerceParam() · [source](../../src/Cli/Console.php#L1213)
 
 `public function coerceParam(string $param): string|int|float|bool|null`
 
@@ -698,7 +736,7 @@ Otherwise return the original string. Empty string is returned as-is.
 
 ---
 
-### terminalWidth() · [source](../../src/Cli/Console.php#L1292)
+### terminalWidth() · [source](../../src/Cli/Console.php#L1304)
 
 `public function terminalWidth(): int`
 
@@ -711,7 +749,7 @@ Return detected terminal width (columns). Falls back to 80.
 
 ---
 
-### wrapText() · [source](../../src/Cli/Console.php#L1642)
+### wrapText() · [source](../../src/Cli/Console.php#L1654)
 
 `public function wrapText(string $text, int $width): array`
 

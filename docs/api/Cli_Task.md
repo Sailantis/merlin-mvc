@@ -90,7 +90,45 @@ Write to STDERR with a newline.
 
 ---
 
-### line() · [source](../../src/Cli/Task.php#L57)
+### stdout() · [source](../../src/Cli/Task.php#L57)
+
+`public function stdout(string $text = ''): void`
+
+Write to STDOUT without a newline.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$text` | string | `''` |  |
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### stdoutln() · [source](../../src/Cli/Task.php#L63)
+
+`public function stdoutln(string $text = ''): void`
+
+Write to STDOUT with a newline.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$text` | string | `''` |  |
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### line() · [source](../../src/Cli/Task.php#L69)
 
 `public function line(string $text): void`
 
@@ -109,7 +147,7 @@ Plain message with no styling. Newline is appended.
 
 ---
 
-### info() · [source](../../src/Cli/Task.php#L63)
+### info() · [source](../../src/Cli/Task.php#L75)
 
 `public function info(string $text): void`
 
@@ -128,7 +166,7 @@ Informational message (cyan). Newline is appended.
 
 ---
 
-### success() · [source](../../src/Cli/Task.php#L69)
+### success() · [source](../../src/Cli/Task.php#L81)
 
 `public function success(string $text): void`
 
@@ -147,7 +185,7 @@ Success message (green). Newline is appended.
 
 ---
 
-### warn() · [source](../../src/Cli/Task.php#L75)
+### warn() · [source](../../src/Cli/Task.php#L87)
 
 `public function warn(string $text): void`
 
@@ -166,7 +204,7 @@ Warning message (yellow). Newline is appended.
 
 ---
 
-### error() · [source](../../src/Cli/Task.php#L81)
+### error() · [source](../../src/Cli/Task.php#L93)
 
 `public function error(string $text): void`
 
@@ -185,7 +223,7 @@ Error message (white on red) to STDERR. Newline is appended.
 
 ---
 
-### muted() · [source](../../src/Cli/Task.php#L87)
+### muted() · [source](../../src/Cli/Task.php#L99)
 
 `public function muted(string $text): void`
 
@@ -204,7 +242,7 @@ Muted / dimmed text (gray). Newline is appended.
 
 ---
 
-### option() · [source](../../src/Cli/Task.php#L113)
+### option() · [source](../../src/Cli/Task.php#L125)
 
 `public function option(string $key, mixed $default = null): mixed`
 
@@ -225,7 +263,7 @@ Retrieve a parsed option value by key, with an optional default.
 
 ---
 
-### context() · [source](../../src/Cli/Task.php#L122)
+### context() · [source](../../src/Cli/Task.php#L134)
 
 `public function context(): Merlin\AppContext`
 
@@ -238,7 +276,7 @@ Get the current AppContext instance. Useful for accessing services.
 
 ---
 
-### beforeAction() · [source](../../src/Cli/Task.php#L139)
+### beforeAction() · [source](../../src/Cli/Task.php#L151)
 
 `public function beforeAction(string $action, array $params): void`
 
@@ -261,7 +299,7 @@ The method has access to $this->options and $this->console at this point.
 
 ---
 
-### afterAction() · [source](../../src/Cli/Task.php#L150)
+### afterAction() · [source](../../src/Cli/Task.php#L162)
 
 `public function afterAction(string $action, array $params): void`
 

@@ -34,10 +34,10 @@ class Router
     public function __construct()
     {
         $this->types = [
-            'int' => fn($v) => \ctype_digit($v),
+            'int'   => fn($v) => \ctype_digit($v),
             'alpha' => fn($v) => \ctype_alpha($v),
             'alnum' => fn($v) => \ctype_alnum($v),
-            'uuid' => function ($v) {
+            'uuid'  => function ($v) {
                 if (\strlen($v) !== 36) {
                     return false;
                 }
@@ -91,12 +91,12 @@ class Router
         }
 
         if (!empty($this->prefixGroupStack)) {
-            $prefix = implode('/', $this->prefixGroupStack);
+            $prefix  = implode('/', $this->prefixGroupStack);
             $pattern = "$prefix/" . ltrim($pattern, '/');
         }
 
         if (!empty($this->controllerGroupStack)) {
-            $controller = implode('', $this->controllerGroupStack);
+            $controller = end($this->controllerGroupStack);
             if (\is_string($handler)) {
                 $pos = strpos($handler, '::');
                 if ($pos === false) {
@@ -112,15 +112,15 @@ class Router
         if (!empty($this->namespaceGroupStack)) {
             $namespace = end($this->namespaceGroupStack);
             if (\is_string($handler)) {
-                $handler = "$namespace\\$handler";
+                if (!str_contains($handler, '\\')) {
+                    $handler = "$namespace\\$handler";
+                }
             } elseif (empty($handler['namespace'])) {
                 $handler['namespace'] = $namespace;
-            } else {
-                $handler['namespace'] = $namespace . '\\' . $handler['namespace'];
             }
         }
 
-        $tokens = $this->parsePattern($pattern);
+        $tokens                = $this->parsePattern($pattern);
         $this->lastAddedTokens = $tokens;
 
         if ($method === null || $method === '*') {
@@ -201,8 +201,8 @@ class Router
     {
         return [
             'middleware' => \count($this->middlewareGroupStack),
-            'prefix' => \count($this->prefixGroupStack),
-            'namespace' => \count($this->namespaceGroupStack),
+            'prefix'     => \count($this->prefixGroupStack),
+            'namespace'  => \count($this->namespaceGroupStack),
             'controller' => \count($this->controllerGroupStack),
         ];
     }
@@ -210,8 +210,8 @@ class Router
     protected function restoreGroupStacks(array $snapshot): void
     {
         $this->middlewareGroupStack = \array_slice($this->middlewareGroupStack, 0, $snapshot['middleware']);
-        $this->prefixGroupStack = \array_slice($this->prefixGroupStack, 0, $snapshot['prefix']);
-        $this->namespaceGroupStack = \array_slice($this->namespaceGroupStack, 0, $snapshot['namespace']);
+        $this->prefixGroupStack     = \array_slice($this->prefixGroupStack, 0, $snapshot['prefix']);
+        $this->namespaceGroupStack  = \array_slice($this->namespaceGroupStack, 0, $snapshot['namespace']);
         $this->controllerGroupStack = \array_slice($this->controllerGroupStack, 0, $snapshot['controller']);
     }
 
@@ -249,7 +249,7 @@ class Router
             return $this;
         }
 
-        $snapshot = $this->snapshotGroupStacks();
+        $snapshot                 = $this->snapshotGroupStacks();
         $this->prefixGroupStack[] = trim($prefix, '/');
 
         try {
@@ -327,7 +327,7 @@ class Router
             return $this;
         }
 
-        $snapshot = $this->snapshotGroupStacks();
+        $snapshot                    = $this->snapshotGroupStacks();
         $this->namespaceGroupStack[] = $namespace;
 
         try {
@@ -356,12 +356,18 @@ class Router
             throw new InvalidArgumentException('Controller name cannot be empty');
         }
 
+        if (!empty($this->controllerGroupStack)) {
+            if (!str_contains($controller, '\\')) {
+                $controller = implode('\\', $this->controllerGroupStack) . '\\' . $controller;
+            }
+        }
+
         if ($callback === null) {
             $this->controllerGroupStack[] = $controller;
             return $this;
         }
 
-        $snapshot = $this->snapshotGroupStacks();
+        $snapshot                     = $this->snapshotGroupStacks();
         $this->controllerGroupStack[] = $controller;
 
         try {
@@ -376,11 +382,11 @@ class Router
     protected function storeRoute(string $method, array $tokens, string|array|null $handler, array $groups): void
     {
         if ($this->isStaticTokens($tokens)) {
-            $path = '/' . implode('/', array_column($tokens, 1));
+            $path                         = '/' . implode('/', array_column($tokens, 1));
             $this->static[$method][$path] = [
                 'handler' => $handler,
-                'tokens' => $tokens,
-                'groups' => $groups,
+                'tokens'  => $tokens,
+                'groups'  => $groups,
             ];
             return;
         }
@@ -392,10 +398,10 @@ class Router
         $specificity = $this->calculateSpecificity($tokens);
 
         $this->groups[$method][$first][] = [
-            'tokens' => $tokens,
-            'handler' => $handler,
+            'tokens'      => $tokens,
+            'handler'     => $handler,
             'specificity' => $specificity,
-            'groups' => $groups,
+            'groups'      => $groups,
         ];
 
         // Sort by specificity (highest first) for automatic priority
@@ -448,7 +454,7 @@ class Router
     protected function parsePattern(string $pattern): array
     {
         $segments = explode('/', trim($pattern, '/'));
-        $result = [];
+        $result   = [];
 
         foreach ($segments as $t) {
             if ($t === '') {
@@ -464,7 +470,7 @@ class Router
 
             $inner = trim($t, '{}');
 
-            $name = strstr($inner, ':', true);
+            $name             = strstr($inner, ':', true);
             $hasTypeSeparator = $name !== false;
             if (!$hasTypeSeparator) {
                 $name = $inner;
@@ -476,7 +482,7 @@ class Router
             $optional = false;
             if (str_ends_with($name, '?')) {
                 $optional = true;
-                $name = substr($name, 0, -1);
+                $name     = substr($name, 0, -1);
             }
 
             if ($name === '') {
@@ -491,7 +497,7 @@ class Router
             }
 
             if (str_starts_with($type, 'regex(') && str_ends_with($type, ')')) {
-                $regex = substr($type, 6, -1);
+                $regex    = substr($type, 6, -1);
                 $result[] = [$optional ? self::KIND_REGEX_OPT : self::KIND_REGEX, $name, $regex];
             } else {
                 $result[] = [$optional ? self::KIND_PARAM_OPT : self::KIND_PARAM, $name, $type];
@@ -661,8 +667,8 @@ class Router
                 continue;
             }
 
-            $params = [];
-            $ok = true;
+            $params    = [];
+            $ok        = true;
             $partIndex = 0;
 
             foreach ($tokens as $token) {
@@ -670,7 +676,7 @@ class Router
 
                 if ($kind === self::KIND_WILDCARD) {
                     $params[$name] = array_slice($parts, $partIndex);
-                    $partIndex = $partCount;
+                    $partIndex     = $partCount;
                     break;
                 }
 
@@ -782,19 +788,19 @@ class Router
             }
         } else {
             $override = [];
-            $handler = trim($handler);
+            $handler  = trim($handler);
             if ($handler !== '') {
-                $action = null;
+                $action          = null;
                 $actionSeparator = strrpos($handler, '::');
                 if ($actionSeparator !== false) {
-                    $action = substr($handler, $actionSeparator + 2);
+                    $action  = substr($handler, $actionSeparator + 2);
                     $handler = substr($handler, 0, $actionSeparator);
                 }
 
                 if ($handler !== '') {
                     $namespaceSeparator = strrpos($handler, '\\');
                     if ($namespaceSeparator !== false) {
-                        $override['namespace'] = substr($handler, 0, $namespaceSeparator);
+                        $override['namespace']  = substr($handler, 0, $namespaceSeparator);
                         $override['controller'] = substr($handler, $namespaceSeparator + 1);
                     } else {
                         $override['controller'] = $handler;
@@ -808,9 +814,9 @@ class Router
         }
 
         return [
-            'vars' => $params,
+            'vars'     => $params,
             'override' => $override,
-            'groups' => $groups,
+            'groups'   => $groups,
         ];
     }
 

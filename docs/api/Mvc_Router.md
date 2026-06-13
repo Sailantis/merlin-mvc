@@ -253,7 +253,7 @@ $router->add('GET', '/dashboard', '::view');
 
 ---
 
-### match() · [source](../../src/Mvc/Router.php#L600)
+### match() · [source](../../src/Mvc/Router.php#L606)
 
 `public function match(string $uri, string $method = 'GET'): array|null`
 

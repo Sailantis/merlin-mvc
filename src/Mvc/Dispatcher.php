@@ -19,7 +19,7 @@ class Dispatcher
      */
     protected const RESERVED_ACTIONS = [
         'beforeAction' => true,
-        'afterAction' => true
+        'afterAction'  => true
     ];
 
     protected AppContext $context;
@@ -29,7 +29,7 @@ class Dispatcher
      */
     public function __construct()
     {
-        $this->context = AppContext::instance();
+        $this->context       = AppContext::instance();
         $this->baseNamespace = '\\App\\Controllers';
     }
 
@@ -151,16 +151,18 @@ class Dispatcher
      */
     public function dispatch(array $routeInfo): Response
     {
-        $groups = $routeInfo['groups'] ?? [];
-        $vars = $routeInfo['vars'] ?? [];
+        $groups   = $routeInfo['groups'] ?? [];
+        $vars     = $routeInfo['vars'] ?? [];
         $override = $routeInfo['override'] ?? [];
 
         if (!empty($override['namespace'])) {
-            $namespace = rtrim((string)$override['namespace'], '\\');
+            $namespace = rtrim((string) $override['namespace'], '\\');
             if (empty($namespace)) {
                 $namespace = $this->baseNamespace;
-            } elseif ($namespace[0] !== '\\' && !empty($this->baseNamespace)) {
-                $namespace = $this->baseNamespace . '\\' . $namespace;
+            } elseif (!empty($this->baseNamespace)) {
+                if (!str_contains($namespace, '\\')) {
+                    $namespace = $this->baseNamespace . '\\' . $this->camelize($namespace);
+                }
             }
         } else {
             $namespace = $this->baseNamespace;
@@ -168,22 +170,22 @@ class Dispatcher
                 if ($namespace !== '') {
                     $namespace .= '\\';
                 }
-                $namespace .= $this->camelize((string)$vars['namespace']);
+                $namespace .= $this->camelize((string) $vars['namespace']);
             }
         }
 
         if (!empty($override['controller'])) {
-            $controllerName = (string)$override['controller'];
+            $controllerName = (string) $override['controller'];
         } elseif (!empty($vars['controller'])) {
-            $controllerName = $this->camelize((string)$vars['controller']) . 'Controller';
+            $controllerName = $this->camelize((string) $vars['controller']) . 'Controller';
         } else {
             $controllerName = $this->defaultController;
         }
 
         if (!empty($override['action'])) {
-            $actionName = (string)$override['action'];
+            $actionName = (string) $override['action'];
         } elseif (!empty($vars['action'])) {
-            $actionName = $this->camelize((string)$vars['action'], false) . 'Action';
+            $actionName = $this->camelize((string) $vars['action'], false) . 'Action';
         } else {
             $actionName = $this->defaultAction;
         }
@@ -256,7 +258,7 @@ class Dispatcher
 
         foreach ($ref->getParameters() as $index => $param) {
 
-            $name = $param->getName();
+            $name    = $param->getName();
             $typeObj = $param->getType();
 
             // Extract type names (for union types)
@@ -282,7 +284,7 @@ class Dispatcher
 
                 // Variadic wildcard support
                 if ($param->isVariadic()) {
-                    $array = (array)$value;
+                    $array = (array) $value;
                     foreach ($array as $value) {
                         $args[] = $value;
                     }
@@ -352,27 +354,27 @@ class Dispatcher
 
             switch ($t) {
                 case 'int':
-                    if (\ctype_digit((string)$value)) {
-                        return (int)$value;
+                    if (\ctype_digit((string) $value)) {
+                        return (int) $value;
                     }
                     break;
 
                 case 'float':
-                    if (\is_numeric((string)$value)) {
-                        return (float)$value;
+                    if (\is_numeric((string) $value)) {
+                        return (float) $value;
                     }
                     break;
 
                 case 'bool':
                     // true/false/1/0/yes/no/on/off
-                    $filtered = \filter_var((string)$value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+                    $filtered = \filter_var((string) $value, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
                     if ($filtered !== null) {
                         return $filtered;
                     }
                     break;
 
                 case 'string':
-                    return (string)$value;
+                    return (string) $value;
 
                 case 'array':
                     if (\is_array($value)) {
@@ -459,7 +461,8 @@ class Dispatcher
         }
 
         // Core-Handler
-        $core = fn() => $this->invokeController(
+        $core = fn() =>
+            $this->invokeController(
             $controller,
             $action,
             $params
@@ -476,7 +479,7 @@ class Dispatcher
         foreach (array_reverse($middleware) as $mw) {
             /** @var MiddlewareInterface $mw */
             $current = $mw;
-            $next = fn() => $current->process($context, $next);
+            $next    = fn() => $current->process($context, $next);
         }
 
         return $next;
@@ -495,10 +498,10 @@ class Dispatcher
         } else {
             if (\is_array($mw)) {
                 $className = $mw[0] ?? null;
-                $args = $mw[1] ?? [];
+                $args      = $mw[1] ?? [];
             } else {
                 $className = $mw;
-                $args = [];
+                $args      = [];
             }
             if (!is_string($className)) {
                 throw new InvalidArgumentException("Middleware class name must be a string");
