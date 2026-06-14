@@ -161,7 +161,7 @@ class Dispatcher
                 $namespace = $this->baseNamespace;
             } elseif (!empty($this->baseNamespace)) {
                 if (!str_contains($namespace, '\\')) {
-                    $namespace = $this->baseNamespace . '\\' . $this->camelize($namespace);
+                    $namespace = $this->baseNamespace . '\\' . $namespace;
                 }
             }
         } else {
