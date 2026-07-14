@@ -2,7 +2,7 @@
 
 namespace Merlin\Tests\Mvc\PhpThunder;
 
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class AuthController extends Controller
 {

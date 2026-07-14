@@ -44,7 +44,7 @@ use Merlin\AppContext;
 use Merlin\Db\Database;
 use Merlin\Http\Response;
 use Merlin\Http\SessionMiddleware;
-use Merlin\Mvc\Dispatcher;
+use Merlin\Core\Dispatcher;
 
 // Initialize application context
 $ctx = AppContext::instance();
@@ -95,7 +95,7 @@ Create [app/Controllers/IndexController.php](../app/Controllers/IndexController.
 <?php
 namespace App\Controllers;
 
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class IndexController extends Controller
 {
@@ -165,7 +165,7 @@ Create [app/Models/User.php](../app/Models/User.php):
 <?php
 namespace App\Models;
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 class User extends Model
 {
@@ -191,7 +191,7 @@ $exists = User::exists(['email' => 'alice@example.com']);
 
 ## Middleware
 
-Middleware classes implement `Merlin\Mvc\MiddlewareInterface` and run before (and after) every controller action. Register global middleware on the dispatcher:
+Middleware classes implement `Merlin\Core\MiddlewareInterface` and run before (and after) every controller action. Register global middleware on the dispatcher:
 
 ```php
 $dispatcher->addMiddleware(new SessionMiddleware());  // built-in: starts PHP session
@@ -292,7 +292,7 @@ The directive `try_files $uri $uri/ /index.php?$query_string;` ensures that all 
 ## Next Steps
 
 - [Architecture](01-ARCHITECTURE.md)
-- [MVC Routing](02-MVC-ROUTING.md)
+- [MVC Routing](02-CORE-ROUTING.md)
 - [Controllers & Views](03-CONTROLLERS-VIEWS.md)
 - [Models & ORM](04-MODELS-ORM.md)
 - [Database Queries](05-DATABASE-QUERIES.md)

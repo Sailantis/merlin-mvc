@@ -1,4 +1,6 @@
 <?php
+namespace Merlin\SqlNodeExample;
+
 /**
  * Sql Usage Examples
  * 

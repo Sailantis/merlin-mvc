@@ -1,4 +1,6 @@
 <?php
+namespace Merlin\CompositeKeyExamples;
+
 /**
  * Example Models demonstrating composite key support
  * 
@@ -7,7 +9,7 @@
 
 namespace Examples;
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 // ============================================================================
 // Example 1: Simple Single-Key Model (Unchanged Behavior)

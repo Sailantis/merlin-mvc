@@ -8,7 +8,7 @@ use Merlin\Db\Sql;
 use Merlin\Db\Query;
 use Merlin\AppContext;
 use Merlin\Db\Condition;
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\ModelMapping;
 use PHPUnit\Framework\TestCase;
 
 class SelectBuilderTest extends TestCase

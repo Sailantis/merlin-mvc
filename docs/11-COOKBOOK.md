@@ -89,7 +89,7 @@ $affected = User::query()
 Instead of permanently deleting records, mark them as deleted with a timestamp. This allows recovery and maintains referential integrity.
 
 ```php
-class Post extends \Merlin\Mvc\Model
+class Post extends \Merlin\Core\Model
 {
     public int $id;
     public string $title;
@@ -243,7 +243,7 @@ Combine the `Validator` with model methods to validate, coerce, and persist data
 ```php
 use Merlin\Validation\Validator;
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class UserController extends Controller
 {
@@ -293,7 +293,7 @@ Return arrays directly from action methods — the `Dispatcher` automatically se
 
 ```php
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class ArticleController extends Controller
 {
@@ -342,7 +342,7 @@ $dispatcher->addMiddleware(new \Merlin\Http\SessionMiddleware());
 
 ```php
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class AuthController extends Controller
 {
@@ -375,7 +375,7 @@ Protect any controller by overriding `beforeAction()`:
 
 ```php
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class AccountController extends Controller
 {
@@ -449,7 +449,7 @@ Access uploaded files through `Request::getUploadedFile()` (single) or `Request:
 
 ```php
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class AvatarController extends Controller
 {
@@ -490,7 +490,7 @@ namespace App\Middleware;
 
 use Merlin\AppContext;
 use Merlin\Http\Response;
-use Merlin\Mvc\MiddlewareInterface;
+use Merlin\Core\MiddlewareInterface;
 
 class ApiKeyMiddleware implements MiddlewareInterface
 {

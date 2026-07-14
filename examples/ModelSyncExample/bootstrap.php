@@ -20,7 +20,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Database;
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\ModelMapping;
 
 // Use plural table names (e.g. 'users' instead of 'user').
 ModelMapping::usePluralTableNames(true);

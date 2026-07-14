@@ -27,7 +27,7 @@ Built-in lazy service accessors:
 | Method        | Returns                                                |
 | ------------- | ------------------------------------------------------ |
 | `request()`   | `Merlin\Http\Request`                                  |
-| `view()`      | `Merlin\Mvc\ViewEngine`                                |
+| `view()`      | `Merlin\Core\ViewEngine`                                |
 | `session()`   | `Merlin\Http\Session\|null`                            |
 | `cookies()`   | `Merlin\Http\Cookies`                                  |
 | `dbManager()` | `Merlin\Db\DatabaseManager`                            |

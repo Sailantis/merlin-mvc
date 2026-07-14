@@ -4,8 +4,8 @@ namespace Merlin\Db;
 
 use LogicException;
 use Merlin\AppContext;
-use Merlin\Mvc\Model;
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\Model;
+use Merlin\Core\ModelMapping;
 use PDOStatement;
 
 /**

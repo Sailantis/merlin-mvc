@@ -6,11 +6,11 @@ require_once __DIR__ . '/../Db/TestDatabase.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Query;
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\ModelMapping;
 use Merlin\Tests\Db\TestPgDatabase;
 use PHPUnit\Framework\TestCase;
 
-class DummyModel extends \Merlin\Mvc\Model
+class DummyModel extends \Merlin\Core\Model
 {
     public $id;
     public $name;
@@ -22,7 +22,7 @@ class DummyModel extends \Merlin\Mvc\Model
     }
 }
 
-class DummyDefaultedModel extends \Merlin\Mvc\Model
+class DummyDefaultedModel extends \Merlin\Core\Model
 {
     public $id;
     public $name;

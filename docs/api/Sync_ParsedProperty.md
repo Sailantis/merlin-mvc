@@ -10,7 +10,7 @@
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Sync/ModelParser.php#L237)
+### __construct() · [source](../../src/Sync/ModelParser.php#L236)
 
 `public function __construct(string $name, string|null $type, string|null $docComment): mixed`
 

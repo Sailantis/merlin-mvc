@@ -162,7 +162,7 @@ foreach ($request->getFiles('docs') as $doc) {
 ## Controller Example
 
 ```php
-class UserController extends \Merlin\Mvc\Controller
+class UserController extends \Merlin\Core\Controller
 {
     public function createAction(): array
     {

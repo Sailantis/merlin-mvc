@@ -6,7 +6,7 @@ require_once __DIR__ . '/TestDatabase.php';
 
 use Merlin\Db\Sql;
 use Merlin\Db\Query;
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 use PHPUnit\Framework\TestCase;
 
 /**

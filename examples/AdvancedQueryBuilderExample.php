@@ -1,11 +1,12 @@
 <?php
+namespace Merlin\AdvancedQueryBuilderExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Database;
 use Merlin\Db\Sql;
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 /**
  * Example: Advanced Query Building with Sql and Complex Queries

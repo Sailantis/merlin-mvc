@@ -63,13 +63,13 @@ Get the HttpRequest instance. If it doesn't exist, it will be created.
 
 ### view() · [source](../../src/AppContext.php#L91)
 
-`public function view(): Merlin\Mvc\ViewEngine`
+`public function view(): Merlin\Core\ViewEngine`
 
 Get the active view engine instance. Defaults to ClarityEngine.
 
 **➡️ Return value**
 
-- Type: [ViewEngine](Mvc_ViewEngine.md)
+- Type: [ViewEngine](Core_ViewEngine.md)
 - Description: The active view engine instance.
 
 
@@ -77,7 +77,7 @@ Get the active view engine instance. Defaults to ClarityEngine.
 
 ### setView() · [source](../../src/AppContext.php#L102)
 
-`public function setView(Merlin\Mvc\ViewEngine $engine): static`
+`public function setView(Merlin\Core\ViewEngine $engine): static`
 
 Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
 
@@ -85,7 +85,7 @@ Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$engine` | [ViewEngine](Mvc_ViewEngine.md) | - | The engine to use from this point on. |
+| `$engine` | [ViewEngine](Core_ViewEngine.md) | - | The engine to use from this point on. |
 
 **➡️ Return value**
 
@@ -124,13 +124,13 @@ Get the DatabaseManager instance. If it doesn't exist, it will be created.
 
 ### router() · [source](../../src/AppContext.php#L135)
 
-`public function router(): Merlin\Mvc\Router`
+`public function router(): Merlin\Core\Router`
 
 Get the Router instance. If it doesn't exist, it will be created.
 
 **➡️ Return value**
 
-- Type: [Router](Mvc_Router.md)
+- Type: [Router](Core_Router.md)
 - Description: The Router instance.
 
 

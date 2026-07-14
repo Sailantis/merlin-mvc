@@ -18,6 +18,34 @@
 
 - [ModelSyncTask](Cli_Tasks_ModelSyncTask.md) `Merlin\Cli\Tasks\ModelSyncTask`
 
+### `Merlin\Core`
+
+- [Controller](Core_Controller.md) `Merlin\Core\Controller`
+- [Dispatcher](Core_Dispatcher.md) `Merlin\Core\Dispatcher`
+- [Exception](Core_Exception.md) `Merlin\Core\Exception`
+- [MiddlewareInterface](Core_MiddlewareInterface.md) `Merlin\Core\MiddlewareInterface`
+- [Model](Core_Model.md) `Merlin\Core\Model`
+- [ModelMapping](Core_ModelMapping.md) `Merlin\Core\ModelMapping`
+- [Router](Core_Router.md) `Merlin\Core\Router`
+- [ViewEngine](Core_ViewEngine.md) `Merlin\Core\ViewEngine`
+
+### `Merlin\Core\Engines\Adapters`
+
+- [BladeAdapter](Core_Engines_Adapters_BladeAdapter.md) `Merlin\Core\Engines\Adapters\BladeAdapter`
+- [PlatesAdapter](Core_Engines_Adapters_PlatesAdapter.md) `Merlin\Core\Engines\Adapters\PlatesAdapter`
+- [TwigAdapter](Core_Engines_Adapters_TwigAdapter.md) `Merlin\Core\Engines\Adapters\TwigAdapter`
+
+### `Merlin\Core\Engines`
+
+- [ClarityEngine](Core_Engines_ClarityEngine.md) `Merlin\Core\Engines\ClarityEngine`
+- [NativeEngine](Core_Engines_NativeEngine.md) `Merlin\Core\Engines\NativeEngine`
+
+### `Merlin\Core\Exceptions`
+
+- [ActionNotFoundException](Core_Exceptions_ActionNotFoundException.md) `Merlin\Core\Exceptions\ActionNotFoundException`
+- [ControllerNotFoundException](Core_Exceptions_ControllerNotFoundException.md) `Merlin\Core\Exceptions\ControllerNotFoundException`
+- [InvalidControllerException](Core_Exceptions_InvalidControllerException.md) `Merlin\Core\Exceptions\InvalidControllerException`
+
 ### `Merlin\Db`
 
 - [Condition](Db_Condition.md) `Merlin\Db\Condition`
@@ -43,34 +71,6 @@
 - [Session](Http_Session.md) `Merlin\Http\Session`
 - [SessionMiddleware](Http_SessionMiddleware.md) `Merlin\Http\SessionMiddleware`
 - [UploadedFile](Http_UploadedFile.md) `Merlin\Http\UploadedFile`
-
-### `Merlin\Mvc`
-
-- [Controller](Mvc_Controller.md) `Merlin\Mvc\Controller`
-- [Dispatcher](Mvc_Dispatcher.md) `Merlin\Mvc\Dispatcher`
-- [Exception](Mvc_Exception.md) `Merlin\Mvc\Exception`
-- [MiddlewareInterface](Mvc_MiddlewareInterface.md) `Merlin\Mvc\MiddlewareInterface`
-- [Model](Mvc_Model.md) `Merlin\Mvc\Model`
-- [ModelMapping](Mvc_ModelMapping.md) `Merlin\Mvc\ModelMapping`
-- [Router](Mvc_Router.md) `Merlin\Mvc\Router`
-- [ViewEngine](Mvc_ViewEngine.md) `Merlin\Mvc\ViewEngine`
-
-### `Merlin\Mvc\Engines\Adapters`
-
-- [BladeAdapter](Mvc_Engines_Adapters_BladeAdapter.md) `Merlin\Mvc\Engines\Adapters\BladeAdapter`
-- [PlatesAdapter](Mvc_Engines_Adapters_PlatesAdapter.md) `Merlin\Mvc\Engines\Adapters\PlatesAdapter`
-- [TwigAdapter](Mvc_Engines_Adapters_TwigAdapter.md) `Merlin\Mvc\Engines\Adapters\TwigAdapter`
-
-### `Merlin\Mvc\Engines`
-
-- [ClarityEngine](Mvc_Engines_ClarityEngine.md) `Merlin\Mvc\Engines\ClarityEngine`
-- [NativeEngine](Mvc_Engines_NativeEngine.md) `Merlin\Mvc\Engines\NativeEngine`
-
-### `Merlin\Mvc\Exceptions`
-
-- [ActionNotFoundException](Mvc_Exceptions_ActionNotFoundException.md) `Merlin\Mvc\Exceptions\ActionNotFoundException`
-- [ControllerNotFoundException](Mvc_Exceptions_ControllerNotFoundException.md) `Merlin\Mvc\Exceptions\ControllerNotFoundException`
-- [InvalidControllerException](Mvc_Exceptions_InvalidControllerException.md) `Merlin\Mvc\Exceptions\InvalidControllerException`
 
 ### `Merlin\Sync`
 

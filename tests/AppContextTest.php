@@ -6,7 +6,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Http\Session;
-use Merlin\Mvc\ViewEngine;
+use Merlin\Core\ViewEngine;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

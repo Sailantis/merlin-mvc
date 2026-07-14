@@ -1,7 +1,7 @@
 <?php
 namespace Merlin\Tests\Mvc\PhpThunder;
 
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class IndexController extends Controller
 {

@@ -1,10 +1,12 @@
 <?php
+namespace Merlin\ModelLoadMethodsExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Database;
-use Merlin\Mvc\Model;
+use Merlin\Db\ResultSet;
+use Merlin\Core\Model;
 
 /**
  * Example: Using Model load methods
@@ -26,7 +28,6 @@ $db = new Database(
 
 AppContext::instance()->dbManager()->set('default', $db);
 
-
 // ============================================================================
 // Model Definitions
 // ============================================================================
@@ -37,6 +38,10 @@ class User extends Model
     public string $username;
     public string $email;
     public string $status;
+
+    public function test()
+    {
+    }
 }
 
 class UserProduct extends Model
@@ -67,7 +72,6 @@ class CartItem extends Model
     }
 }
 
-
 // ============================================================================
 // find() - Single Primary Key
 // ============================================================================
@@ -75,17 +79,17 @@ class CartItem extends Model
 // Load user by ID (scalar value)
 $user = User::find(10);
 if ($user !== null) {
+    $user->test();
     echo "Found user: {$user->username}\n";
 
     // State is automatically saved on load
-    echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n";  // no
+    echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n"; // no
 
     $user->email = 'newemail@example.com';
-    echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n";  // yes
+    echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n"; // yes
 } else {
     echo "User not found\n";
 }
-
 
 // ============================================================================
 // find() - Composite Primary Key (Positional Array)
@@ -99,27 +103,29 @@ if ($userProduct !== null) {
     echo "Quantity: {$userProduct->quantity}\n";
 }
 
-
 // ============================================================================
 // find() - Composite Primary Key (Associative Array)
 // ============================================================================
 
 // Load by composite key using associative array (explicit field names)
-$userProduct = UserProduct::find([
-    'user_id' => 10,
-    'product_id' => 25
-]);
+$userProduct = UserProduct::find(
+    [
+        'user_id'    => 10,
+        'product_id' => 25
+    ]
+);
 
 // Three-field composite key example
-$cartItem = CartItem::find([
-    'cart_id' => 1,
-    'product_id' => 25,
-    'user_id' => 10
-]);
+$cartItem = CartItem::find(
+    [
+        'cart_id'    => 1,
+        'product_id' => 25,
+        'user_id'    => 10
+    ]
+);
 
 // Or using positional array
 $cartItem = CartItem::find([1, 25, 10]);  // Maps to [cart_id, product_id, user_id]
-
 
 // ============================================================================
 // findOne() - Load Single Record by Conditions
@@ -132,17 +138,18 @@ if ($user !== null) {
 }
 
 // Load by multiple conditions
-$user = User::findOne([
-    'username' => 'alice',
-    'status' => 'active'
-]);
+$user = User::findOne(
+    [
+        'username' => 'alice',
+        'status'   => 'active'
+    ]
+);
 
 // Returns null if not found
 $user = User::findOne(['email' => 'nonexistent@example.com']);
 if ($user === null) {
     echo "User not found\n";
 }
-
 
 // ============================================================================
 // findAll() - Load Multiple Records
@@ -164,11 +171,12 @@ $allUsers = User::findAll();
 echo "Total users: " . count($allUsers) . "\n";
 
 // Load with multiple conditions
-$userProducts = UserProduct::findAll([
-    'user_id' => 10,
-    'quantity' => 0  // Find items with zero quantity
-]);
-
+$userProducts = UserProduct::findAll(
+    [
+        'user_id'  => 10,
+        'quantity' => 0 // Find items with zero quantity
+    ]
+);
 
 // ============================================================================
 // exists() - Check Existence Without Loading
@@ -191,7 +199,6 @@ if (UserProduct::exists(['user_id' => 10, 'product_id' => 25])) {
     echo "User 10 has product 25\n";
 }
 
-
 // ============================================================================
 // count() - Count Records
 // ============================================================================
@@ -205,12 +212,13 @@ $activeUsers = User::count(['status' => 'active']);
 echo "Active users: {$activeUsers}\n";
 
 // Count by multiple conditions
-$count = UserProduct::count([
-    'user_id' => 10,
-    'quantity' => 0
-]);
+$count = UserProduct::count(
+    [
+        'user_id'  => 10,
+        'quantity' => 0
+    ]
+);
 echo "User 10 has {$count} products with zero quantity\n";
-
 
 // ============================================================================
 // Combining Load Methods with Updates
@@ -221,7 +229,7 @@ $user = User::find(10);
 if ($user !== null) {
     echo "Original email: {$user->email}\n";
 
-    $user->email = 'updated@example.com';
+    $user->email  = 'updated@example.com';
     $user->status = 'active';
 
     if ($user->update()) {
@@ -233,7 +241,6 @@ if ($user !== null) {
     $user->save();
 }
 
-
 // ============================================================================
 // Load and Delete
 // ============================================================================
@@ -243,7 +250,6 @@ if ($user !== null) {
     $user->delete();
     echo "User deleted\n";
 }
-
 
 // ============================================================================
 // Working with ResultSet from findAll()
@@ -265,7 +271,6 @@ $userArray = $users->allModels();
 // Count
 $count = $users->count();
 
-
 // ============================================================================
 // Error Handling
 // ============================================================================
@@ -273,11 +278,10 @@ $count = $users->count();
 try {
     // Load with wrong number of ID values for composite key
     $userProduct = UserProduct::find([10]);  // Only 1 value, needs 2
-} catch (Exception $e) {
+} catch (\Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     // "ID array count mismatch for UserProduct: expected 2, got 1"
 }
-
 
 // ============================================================================
 // Comparison with Builder Pattern
@@ -292,7 +296,6 @@ $user = User::query()
 // New way: using find()
 $user = User::find(10);
 
-
 // Old way: checking existence
 $exists = User::query()
     ->columns(['1'])
@@ -302,7 +305,6 @@ $exists = User::query()
 
 // New way: using exists
 $exists = User::exists(['email' => 'test@example.com']);
-
 
 // Old way: counting
 $count = User::query()
@@ -314,7 +316,6 @@ $count = User::query()
 // New way: using count
 $count = User::count(['status' => 'active']);
 
-
 // Note: For complex queries, you can still use the builder pattern
 $users = User::query()
     ->where('status', 'active')
@@ -322,3 +323,4 @@ $users = User::query()
     ->orderBy('username ASC')
     ->limit(10)
     ->select();
+$user = $users->firstModel();

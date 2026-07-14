@@ -1,11 +1,11 @@
 <?php
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Mvc\Engines\Adapters\TwigAdapter;
-use Merlin\Mvc\Engines\Adapters\PlatesAdapter;
-use Merlin\Mvc\Engines\Adapters\BladeAdapter;
-use Merlin\Mvc\Engines\ClarityEngine;
-use Merlin\Mvc\Engines\NativeEngine;
+use Merlin\Core\Engines\Adapters\TwigAdapter;
+use Merlin\Core\Engines\Adapters\PlatesAdapter;
+use Merlin\Core\Engines\Adapters\BladeAdapter;
+use Merlin\Core\Engines\ClarityEngine;
+use Merlin\Core\Engines\NativeEngine;
 
 $engines = [
     'clarity' => function () {

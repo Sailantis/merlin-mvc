@@ -1,7 +1,7 @@
 <?php
 namespace Merlin\Tests\Mvc;
 
-use Merlin\Mvc\Router;
+use Merlin\Core\Router;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../../vendor/autoload.php';

@@ -48,7 +48,7 @@ Auto-wiring: if `get($id)` receives a class name that is not registered but exis
 | Method                       | Returns                      |
 | ---------------------------- | ---------------------------- |
 | `$ctx->request()`            | `Merlin\Http\Request`        |
-| `$ctx->view()`               | `Merlin\Mvc\ViewEngine`      |
+| `$ctx->view()`               | `Merlin\Core\ViewEngine`      |
 | `$ctx->session()`            | `Merlin\Http\Session\|null`  |
 | `$ctx->setSession($session)` | sets the active session      |
 | `$ctx->cookies()`            | `Merlin\Http\Cookies`        |
@@ -68,7 +68,7 @@ $ctx->view()->addFilter('upper', fn($v) => strtoupper($v)); // custom filter
 $ctx->view()->addNamespace('admin', __DIR__ . '/../views/admin');
 
 // Switch to plain-PHP templates instead
-use Merlin\Mvc\Engines\NativeEngine;
+use Merlin\Core\Engines\NativeEngine;
 $ctx->setView(new NativeEngine());
 $ctx->view()->setViewPath(__DIR__ . '/../views');
 $ctx->view()->setExtension('php');   // default for NativeEngine
@@ -103,7 +103,7 @@ Factories are lazy: the callable is invoked only on first use; the resulting `Da
 
 ## Models & DB Roles
 
-`Merlin\Mvc\Model` reads from the `read` role and writes to the `write` role by default. These names are looked up via `DatabaseManager::getOrDefault()` (falls back to the default if the specific role is not configured).
+`Merlin\Core\Model` reads from the `read` role and writes to the `write` role by default. These names are looked up via `DatabaseManager::getOrDefault()` (falls back to the default if the specific role is not configured).
 
 ### Override per Model Class
 
@@ -168,7 +168,7 @@ Model has **no `toArray()` method**. Use direct property access or build your ow
 
 ## MiddlewareInterface
 
-`Merlin\Mvc\MiddlewareInterface` must be implemented by all middleware classes:
+`Merlin\Core\MiddlewareInterface` must be implemented by all middleware classes:
 
 ```php
 interface MiddlewareInterface
@@ -195,7 +195,7 @@ After this middleware runs, `AppContext::instance()->session()` returns a `Sessi
 
 ## Dispatcher & DI
 
-`Merlin\Mvc\Dispatcher` resolves and invokes controllers. It is instantiated **without arguments** and obtains `AppContext` internally via `AppContext::instance()`.
+`Merlin\Core\Dispatcher` resolves and invokes controllers. It is instantiated **without arguments** and obtains `AppContext` internally via `AppContext::instance()`.
 
 ```php
 $dispatcher = new Dispatcher();
@@ -255,7 +255,7 @@ class UserController extends Controller
 
 ## Controller
 
-`Merlin\Mvc\Controller` provides helpers and lifecycle hooks. All helper methods delegate to `AppContext`.
+`Merlin\Core\Controller` provides helpers and lifecycle hooks. All helper methods delegate to `AppContext`.
 
 ```php
 class MyController extends Controller
@@ -294,7 +294,7 @@ class AdminController extends Controller
 
 ```php
 use Merlin\AppContext;
-use Merlin\Mvc\Router;
+use Merlin\Core\Router;
 
 $ctx = AppContext::instance();
 
@@ -418,8 +418,8 @@ use Merlin\AppContext;
 use Merlin\Db\Database;
 use Merlin\Http\Response;
 use Merlin\Http\SessionMiddleware;
-use Merlin\Mvc\Dispatcher;
-use Merlin\Mvc\Router;
+use Merlin\Core\Dispatcher;
+use Merlin\Core\Router;
 
 $ctx = AppContext::instance();
 
@@ -482,5 +482,5 @@ The files under `docs/api/` are **auto-generated** from source PHPDoc. Do not ed
 - Route parameters are matched **by name**; type-hinted parameters are resolved via DI.
 - `Model` has **no `toArray()` method** – access properties directly or build an array manually.
 - `Crypt` is a **static-only** class – never instantiate it.
-- All middleware must implement `Merlin\Mvc\MiddlewareInterface`.
+- All middleware must implement `Merlin\Core\MiddlewareInterface`.
 - The default view engine is `ClarityEngine` (Clarity DSL, `.clarity.html` templates). Use `$ctx->setView(new NativeEngine())` to switch to plain-PHP templates. Template syntax reference: `docs/03b-CLARITY-ENGINE.md`.

@@ -6,9 +6,9 @@ use Merlin\Db\DatabaseManager;
 use Merlin\Http\Cookies;
 use Merlin\Http\Request as HttpRequest;
 use Merlin\Http\Session;
-use Merlin\Mvc\Engines\ClarityEngine;
-use Merlin\Mvc\Router;
-use Merlin\Mvc\ViewEngine;
+use Merlin\Core\Engines\ClarityEngine;
+use Merlin\Core\Router;
+use Merlin\Core\ViewEngine;
 
 class AppContext
 {

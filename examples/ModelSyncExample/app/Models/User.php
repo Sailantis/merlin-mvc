@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 /**
  * Sync by file path:   php console.php model-sync model app/Models/User.php --apply

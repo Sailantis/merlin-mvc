@@ -123,7 +123,7 @@ $db = (new Database($dsn, $user, $pass))
 Capturing and logging exceptions is critical for debugging production issues. Middleware is the ideal place to implement global exception handling.
 
 ```php
-use Merlin\Mvc\MiddlewareInterface;
+use Merlin\Core\MiddlewareInterface;
 use Merlin\AppContext;
 use Merlin\Http\Response;
 

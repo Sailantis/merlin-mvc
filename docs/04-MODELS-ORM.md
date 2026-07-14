@@ -8,13 +8,13 @@ Merlin models use an Active Record style API backed by `Merlin\Db\Query`.
 
 ## Define a Model
 
-Extend `Merlin\Mvc\Model` and declare public properties for your table columns. No registration or mapping is needed — Merlin infers the table name from the class name automatically.
+Extend `Merlin\Core\Model` and declare public properties for your table columns. No registration or mapping is needed — Merlin infers the table name from the class name automatically.
 
 ```php
 <?php
 namespace App\Models;
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 class User extends Model
 {
@@ -47,7 +47,7 @@ class OrderItem extends Model
 By default, class names are converted to snake_case (`AdminUser` → `admin_user`). Enable automatic pluralization globally:
 
 ```php
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\ModelMapping;
 
 ModelMapping::usePluralTableNames(true);
 // User → users, AdminUser → admin_users, Person → people
@@ -258,7 +258,7 @@ User::setDefaultWriteRole('primary');
 Call `setDefaultRole()` on the base `Model` class to change the default for every model that has not set its own role:
 
 ```php
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 Model::setDefaultRole('default'); // reset everything to 'default'
 ```
@@ -286,7 +286,7 @@ $db = $user->writeConnection();  // Database (write role)
 
 ```php
 use Merlin\Db\Query;
-use Merlin\Mvc\ModelMapping;
+use Merlin\Core\ModelMapping;
 
 $mapping = ModelMapping::fromArray([
     // simple: name => table

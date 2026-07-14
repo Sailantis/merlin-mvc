@@ -7,10 +7,10 @@ require_once __DIR__ . '/PhpThunder/AuthController.php';
 use Merlin\AppContext;
 use Merlin\Http\Session;
 use Merlin\Http\Response;
-use Merlin\Mvc\Controller;
-use Merlin\Mvc\Dispatcher;
-use Merlin\Mvc\MiddlewareInterface;
-use Merlin\Mvc\Router;
+use Merlin\Core\Controller;
+use Merlin\Core\Dispatcher;
+use Merlin\Core\MiddlewareInterface;
+use Merlin\Core\Router;
 use PHPUnit\Framework\TestCase;
 // --- Helper controllers / middleware (top-level declarations) ---
 
@@ -409,7 +409,7 @@ class DispatcherTest extends TestCase
         AppContext::setInstance($context);
         $disp = new Dispatcher();
 
-        $this->expectException(\Merlin\Mvc\Exceptions\ActionNotFoundException::class);
+        $this->expectException(\Merlin\Core\Exceptions\ActionNotFoundException::class);
 
         $disp->dispatch($this->routeWithOverride(
             DTResponseController::class,

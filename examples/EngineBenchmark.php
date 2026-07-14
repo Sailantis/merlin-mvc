@@ -1,4 +1,6 @@
 <?php
+namespace Merlin\EngineBenchmark;
+
 /**
  * Engine Benchmark: NativeEngine vs ClarityEngine
  *
@@ -13,8 +15,8 @@
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\Mvc\Engines\ClarityEngine;
-use Merlin\Mvc\Engines\NativeEngine;
+use Merlin\Core\Engines\ClarityEngine;
+use Merlin\Core\Engines\NativeEngine;
 
 // ---------------------------------------------------------------------------
 // Config

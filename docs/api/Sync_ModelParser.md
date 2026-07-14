@@ -21,7 +21,7 @@
 
 ---
 
-### parse() · [source](../../src/Sync/ModelParser.php#L14)
+### parse() · [source](../../src/Sync/ModelParser.php#L13)
 
 `public function parse(): Merlin\Sync\ParsedModel`
 

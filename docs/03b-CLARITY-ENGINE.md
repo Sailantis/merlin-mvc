@@ -23,7 +23,7 @@ $ctx->view()
 To use plain-PHP templates instead, swap to `NativeEngine`:
 
 ```php
-use Merlin\Mvc\Engines\NativeEngine;
+use Merlin\Core\Engines\NativeEngine;
 
 $ctx->setView(new NativeEngine());
 $ctx->view()->setViewPath(__DIR__ . '/../views');
@@ -494,8 +494,8 @@ use Merlin\AppContext;
 use Merlin\Db\Database;
 use Merlin\Http\Response;
 use Merlin\Http\SessionMiddleware;
-use Merlin\Mvc\Dispatcher;
-use Merlin\Mvc\Router;
+use Merlin\Core\Dispatcher;
+use Merlin\Core\Router;
 
 $ctx = AppContext::instance();
 

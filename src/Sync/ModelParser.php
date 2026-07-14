@@ -8,23 +8,23 @@ class ModelParser
 {
     public function __construct(
         private string $filePath
-    ) {
-    }
+    ) {}
 
     public function parse(): ParsedModel
     {
-        $code = file_get_contents($this->filePath);
+        $code   = file_get_contents($this->filePath);
         $tokens = token_get_all($code);
 
         // Build a byte-offset map: $offsets[$i] = start position of token $i in $code
         $offsets = [];
-        $pos = 0;
+        $pos     = 0;
         foreach ($tokens as $i => $token) {
             $offsets[$i] = $pos;
             $pos += is_array($token) ? strlen($token[1]) : strlen($token);
         }
 
         $className = $this->resolveClassName($tokens);
+        // @phpstan-ignore PhpIncludeInspection
         require_once $this->filePath;
 
         $ref = new ReflectionClass($className);
@@ -41,7 +41,7 @@ class ModelParser
     private function resolveClassName(array $tokens): string
     {
         $namespace = '';
-        $class = '';
+        $class     = '';
 
         for ($i = 0; $i < count($tokens); $i++) {
             if (is_array($tokens[$i])) {
@@ -126,7 +126,7 @@ class ModelParser
     private function extractProperties(ReflectionClass $ref, array $tokens): array
     {
         $properties = [];
-        $n = count($tokens);
+        $n          = count($tokens);
 
         for ($i = 0; $i < $n; $i++) {
             if (!is_array($tokens[$i]) || $tokens[$i][0] !== T_VARIABLE) {
@@ -166,11 +166,11 @@ class ModelParser
     private function findInsertionOffset(array $tokens, array $offsets): int
     {
         $lastSemiOffset = null;
-        $n = count($tokens);
+        $n              = count($tokens);
 
         // Scan for the last ';' token that terminates a property declaration.
         // We track whether we're inside a method (brace depth > 1 after class opening).
-        $braceDepth = 0;
+        $braceDepth  = 0;
         $classOpened = false;
 
         for ($i = 0; $i < $n; $i++) {
@@ -228,8 +228,7 @@ class ParsedModel
         /** @var array<string, ParsedProperty> name-keyed */
         public array $properties,
         public int $insertionOffset
-    ) {
-    }
+    ) {}
 }
 
 class ParsedProperty
@@ -238,6 +237,5 @@ class ParsedProperty
         public string $name,
         public ?string $type,
         public ?string $docComment
-    ) {
-    }
+    ) {}
 }

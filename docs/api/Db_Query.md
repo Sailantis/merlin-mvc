@@ -51,7 +51,7 @@ Enable or disable automatic model resolution for queries. If enabled, the query 
 
 ### setModelMapping() · [source](../../src/Db/Query.php#L71)
 
-`public static function setModelMapping(Merlin\Mvc\ModelMapping|null $modelMapping): void`
+`public static function setModelMapping(Merlin\Core\ModelMapping|null $modelMapping): void`
 
 Set the model mapping instance to use for resolving model class names to table names and database connections. This can be used instead of model classes for simple queries or when you want to avoid coupling to model classes.
 
@@ -59,7 +59,7 @@ Set the model mapping instance to use for resolving model class names to table n
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$modelMapping` | [ModelMapping](Mvc_ModelMapping.md)\|null | - |  |
+| `$modelMapping` | [ModelMapping](Core_ModelMapping.md)\|null | - |  |
 
 **➡️ Return value**
 
@@ -70,7 +70,7 @@ Set the model mapping instance to use for resolving model class names to table n
 
 ### __construct() · [source](../../src/Db/Query.php#L165)
 
-`public function __construct(Merlin\Db\Database|null $db = null, Merlin\Mvc\Model|null $model = null): mixed`
+`public function __construct(Merlin\Db\Database|null $db = null, Merlin\Core\Model|null $model = null): mixed`
 
 Constructor. Can optionally pass a Database connection to use for this query, or a Model to automatically set the table and connection.
 
@@ -79,7 +79,7 @@ Constructor. Can optionally pass a Database connection to use for this query, or
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `$db` | [Database](Db_Database.md)\|null | `null` |  |
-| `$model` | [Model](Mvc_Model.md)\|null | `null` |  |
+| `$model` | [Model](Core_Model.md)\|null | `null` |  |
 
 **➡️ Return value**
 
@@ -719,13 +719,13 @@ Execute SELECT query and return ResultSet or return SQL string if returnSql is e
 
 ### first() · [source](../../src/Db/Query.php#L744)
 
-`public function first(): Merlin\Mvc\Model|string|null`
+`public function first(): Merlin\Core\Model|string|null`
 
 Execute SELECT query and return first model or null or return SQL string if returnSql is enabled
 
 **➡️ Return value**
 
-- Type: [Model](Mvc_Model.md)|string|null
+- Type: [Model](Core_Model.md)|string|null
 - Description: First model, or SQL string, or null if no results
 
 **⚠️ Throws**

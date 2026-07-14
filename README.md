@@ -95,8 +95,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 use Merlin\AppContext;
 use Merlin\Db\Database;
 use Merlin\Http\Response;
-use Merlin\Mvc\Dispatcher;
-use Merlin\Mvc\Router;
+use Merlin\Core\Dispatcher;
+use Merlin\Core\Router;
 
 // Application context holds shared services
 // Dispatcher, Controllers, Query Builders and Models access the AppContext
@@ -150,7 +150,7 @@ Controller example:
 <?php
 namespace App\Controllers;
 
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class IndexController extends Controller
 {
@@ -166,7 +166,7 @@ class IndexController extends Controller
 Define and use Active Record style models:
 
 ```php
-class User extends \Merlin\Mvc\Model
+class User extends \Merlin\Core\Model
 {
     public int $id;
     public string $username;

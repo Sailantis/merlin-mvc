@@ -155,7 +155,7 @@ class SyncRunner
 
 namespace {$namespace};
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 class {$className} extends Model
 {
@@ -194,7 +194,7 @@ PHP;
         $ref = new \ReflectionClass($className);
         $instance = $ref->newInstanceWithoutConstructor();
 
-        if (!$instance instanceof \Merlin\Mvc\Model) {
+        if (!$instance instanceof \Merlin\Core\Model) {
             throw new RuntimeException(
                 "Class {$className} is not an instance of Merlin\\Mvc\\Model"
             );

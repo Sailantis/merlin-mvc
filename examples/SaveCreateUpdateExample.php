@@ -1,10 +1,11 @@
 <?php
+namespace Merlin\SaveCreateUpdateExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Database;
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 /**
  * Example: Using Model save(), create(), update(), delete() methods

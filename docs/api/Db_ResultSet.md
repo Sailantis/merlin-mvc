@@ -6,7 +6,7 @@
 
 ### __construct() · [source](../../src/Db/ResultSet.php#L37)
 
-`public function __construct(Merlin\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, Merlin\Mvc\Model|null $model = null): mixed`
+`public function __construct(Merlin\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, Merlin\Core\Model|null $model = null): mixed`
 
 Create a new ResultSet wrapping a PDO statement result.
 
@@ -18,7 +18,7 @@ Create a new ResultSet wrapping a PDO statement result.
 | `$statement` | PDOStatement | - | The executed PDO statement. |
 | `$sqlStatement` | string\|null | `null` | The original SQL string (used by reexecute()). |
 | `$boundParams` | array\|null | `null` | Bound parameters (used by reexecute()). |
-| `$model` | [Model](Mvc_Model.md)\|null | `null` | Optional model instance used for hydration (sets the fetch class). |
+| `$model` | [Model](Core_Model.md)\|null | `null` | Optional model instance used for hydration (sets the fetch class). |
 
 **➡️ Return value**
 
@@ -178,13 +178,13 @@ Set the default fetch mode for this result set.
 
 ### nextModel() · [source](../../src/Db/ResultSet.php#L155)
 
-`public function nextModel(): Merlin\Mvc\Model|null`
+`public function nextModel(): Merlin\Core\Model|null`
 
 Get the next model from the result set, or false if there are no more models. This method will attempt to hydrate a model if a model class was provided when the ResultSet was created. If no model class was provided, it will return false.
 
 **➡️ Return value**
 
-- Type: [Model](Mvc_Model.md)|null
+- Type: [Model](Core_Model.md)|null
 - Description: The next model instance, or null if there are no more models.
 
 
@@ -192,13 +192,13 @@ Get the next model from the result set, or false if there are no more models. Th
 
 ### firstModel() · [source](../../src/Db/ResultSet.php#L192)
 
-`public function firstModel(): Merlin\Mvc\Model|null`
+`public function firstModel(): Merlin\Core\Model|null`
 
 Get first model or object from result set.
 
 **➡️ Return value**
 
-- Type: [Model](Mvc_Model.md)|null
+- Type: [Model](Core_Model.md)|null
 - Description: The first model instance, or null if there are no models or if the first row cannot be hydrated as a model.
 
 

@@ -3,7 +3,7 @@ namespace Merlin\Tests\Mvc;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Mvc\Router;
+use Merlin\Core\Router;
 use PHPUnit\Framework\TestCase;
 
 class RouterModernContractTest extends TestCase

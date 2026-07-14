@@ -3,7 +3,7 @@ namespace Merlin\Http;
 
 use Merlin\AppContext;
 use Merlin\Http\Response;
-use Merlin\Mvc\MiddlewareInterface;
+use Merlin\Core\MiddlewareInterface;
 
 /**
  * Middleware to manage PHP sessions.

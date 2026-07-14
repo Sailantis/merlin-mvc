@@ -3,7 +3,7 @@
 namespace Merlin\Db;
 
 use Merlin\Db\Exceptions\TransactionLostException;
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 use PDO;
 use PDOException;

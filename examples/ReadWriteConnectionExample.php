@@ -1,10 +1,11 @@
 <?php
+namespace Merlin\ReadWriteConnectionExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use Merlin\AppContext;
 use Merlin\Db\Database;
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 
 /**
  * Example: Setting up read/write database connections

@@ -2,7 +2,7 @@
 
 namespace Merlin\Db;
 
-use Merlin\Mvc\Model;
+use Merlin\Core\Model;
 use PDO;
 use PDOStatement;
 

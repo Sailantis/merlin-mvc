@@ -2,19 +2,19 @@
 
 **Build your application logic and presentation** - Learn how to create controllers that handle requests, use dependency injection, work with the view engine, and render templates with layouts. Includes lifecycle hooks, middleware, and best practices.
 
-Controllers coordinate request handling and return responses. View rendering is handled by `Merlin\Mvc\ViewEngine`.
+Controllers coordinate request handling and return responses. View rendering is handled by `Merlin\Core\ViewEngine`.
 
 ---
 
 ## Controller Basics
 
-Extend `Merlin\Mvc\Controller` and add public methods whose names end with `Action`. The `Dispatcher` resolves the controller and action from the matched route, injects dependencies, and invokes the action.
+Extend `Merlin\Core\Controller` and add public methods whose names end with `Action`. The `Dispatcher` resolves the controller and action from the matched route, injects dependencies, and invokes the action.
 
 ```php
 <?php
 namespace App\Controllers;
 
-use Merlin\Mvc\Controller;
+use Merlin\Core\Controller;
 
 class UserController extends Controller
 {
@@ -62,7 +62,7 @@ All helpers delegate to `AppContext` and are available anywhere inside the contr
 | ------------------ | ------------------------------- |
 | `$this->context()` | `AppContext`                    |
 | `$this->request()` | `Merlin\Http\Request`           |
-| `$this->view()`    | `Merlin\Mvc\ViewEngine`         |
+| `$this->view()`    | `Merlin\Core\ViewEngine`         |
 | `$this->session()` | `Merlin\Http\Session` or `null` |
 | `$this->cookies()` | `Merlin\Http\Cookies`           |
 
@@ -178,7 +178,7 @@ Middleware wraps the entire request pipeline around controller actions. The exec
 Global middleware → Route-group middleware → Controller middleware → Action middleware → beforeAction → action → afterAction
 ```
 
-Each middleware implements `Merlin\Mvc\MiddlewareInterface`:
+Each middleware implements `Merlin\Core\MiddlewareInterface`:
 
 ```php
 interface MiddlewareInterface
@@ -197,7 +197,7 @@ namespace App\Middleware;
 
 use Merlin\AppContext;
 use Merlin\Http\Response;
-use Merlin\Mvc\MiddlewareInterface;
+use Merlin\Core\MiddlewareInterface;
 
 class AuthMiddleware implements MiddlewareInterface
 {
@@ -420,6 +420,6 @@ See [Validation](07-VALIDATION.md) for the complete rule reference.
 ## Related
 
 - [Clarity Engine](03b-CLARITY-ENGINE.md)
-- [MVC Routing](02-MVC-ROUTING.md)
+- [MVC Routing](02-CORE-ROUTING.md)
 - [HTTP Request](06-HTTP-REQUEST.md)
 - [API Reference](api/README.md)
