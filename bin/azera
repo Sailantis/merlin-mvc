@@ -1,0 +1,77 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Azera Framework CLI tool.
+ *
+ * Resolves and boots the project bridge (Azera\Boot\BootstrapProvider),
+ * then dispatches the requested task via the framework's Console.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Find the project root by walking up from CWD
+ */
+function azera_find_project_root(string $start): ?string
+{
+    $dir = $start;
+    while (true) {
+        if (is_file($dir . '/composer.json') && is_dir($dir . '/vendor')) {
+            return $dir;
+        }
+        $parent = dirname($dir);
+        if ($parent === $dir) {
+            return null;
+        }
+        $dir = $parent;
+    }
+}
+
+$projectRoot = azera_find_project_root(getcwd());
+
+if ($projectRoot !== null) {
+    // Load the project's autoloader so user classes are available
+    $autoload = $projectRoot . '/vendor/autoload.php';
+    if (is_file($autoload)) {
+        require_once $autoload;
+    }
+} else {
+    // No project found — load only the framework's own autoloader
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
+
+// Resolve and invoke the bridge if a project was found
+if ($projectRoot !== null) {
+    $bridge = \Azera\Boot\BootstrapResolver::resolve($projectRoot);
+
+    // If the resolver returned null and no discovery cache exists yet,
+    // run a one-time inline discovery scan and retry.
+    if ($bridge === null && !is_file($projectRoot . '/vendor/azera-bootstrap.php')) {
+        \Azera\Boot\BootstrapDiscovery::scanAndCache($projectRoot);
+        $bridge = \Azera\Boot\BootstrapResolver::resolve($projectRoot);
+    }
+
+    if ($bridge !== null) {
+        // Let the bootstrap provider create/obtain the AppContext itself.
+        // We do NOT call Azera\AppContext::instance() here because the
+        // provider's subclass (e.g. App\AppContext) must be the first to
+        // call instance() — otherwise the base class wins the singleton
+        // slot and the subclass call overwrites it, losing all state.
+        $bridge->boot();
+    }
+}
+
+// Dispatch the task
+$console = new \Azera\Cli\Console();
+
+// When a project was found, point the Console at the project's composer.json
+// so task autodiscovery scans the project's own PSR-4 paths (e.g. App\Tasks)
+// instead of the framework's. Without this, findComposerRoot() walks up from
+// the bin script and finds the framework's composer.json first, so project
+// tasks are never discovered.
+if ($projectRoot !== null) {
+    $console->setComposerRoot($projectRoot);
+}
+
+$console->process(array_slice($argv, 1));
