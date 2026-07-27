@@ -1,6 +1,6 @@
 # 🧩 Class: ColumnSchema
 
-**Full name:** [Merlin\Sync\Schema\ColumnSchema](../../src/Sync/Schema/SchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\ColumnSchema](../../src/Sync/Schema/SchemaProvider.php)
 
 ## 🌍 Public Properties
 

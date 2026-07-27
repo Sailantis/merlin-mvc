@@ -1,6 +1,6 @@
 # 🧩 Class: ResolvedRoute
 
-**Full name:** [Merlin\ResolvedRoute](../../src/AppContext.php)
+**Full name:** [Azera\ResolvedRoute](../../src/AppContext.php)
 
 ResolvedRoute represents the fully resolved route and execution context
 used by the dispatcher to invoke the matched controller and action.
@@ -17,7 +17,7 @@ used by the dispatcher to invoke the matched controller and action.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/AppContext.php#L454)
+### __construct() · [source](../../src/AppContext.php#L462)
 
 `public function __construct(string|null $namespace, string $controller, string $action, array $params, array $vars, array $groups, array $override): mixed`
 

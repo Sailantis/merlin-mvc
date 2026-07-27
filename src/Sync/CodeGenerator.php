@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
 class CodeGenerator
 {

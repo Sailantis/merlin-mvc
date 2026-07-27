@@ -18,9 +18,9 @@
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Core\ModelMapping;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Core\ModelMapping;
 
 // Use plural table names (e.g. 'users' instead of 'user').
 ModelMapping::usePluralTableNames(true);

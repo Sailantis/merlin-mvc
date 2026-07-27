@@ -1,10 +1,10 @@
 # 🧩 Class: AppContext
 
-**Full name:** [Merlin\AppContext](../../src/AppContext.php)
+**Full name:** [Azera\AppContext](../../src/AppContext.php)
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/AppContext.php#L15)
+### __construct() · [source](../../src/AppContext.php#L16)
 
 `public function __construct(): mixed`
 
@@ -15,7 +15,7 @@
 
 ---
 
-### instance() · [source](../../src/AppContext.php#L60)
+### instance() · [source](../../src/AppContext.php#L65)
 
 `public static function instance(): static`
 
@@ -28,9 +28,9 @@ Get/create shared singleton instance
 
 ---
 
-### setInstance() · [source](../../src/AppContext.php#L69)
+### setInstance() · [source](../../src/AppContext.php#L74)
 
-`public static function setInstance(Merlin\AppContext $instance): void`
+`public static function setInstance(Azera\AppContext $instance): void`
 
 Set the shared singleton instance (e.g. for testing or multi-context scenarios).
 
@@ -47,9 +47,9 @@ Set the shared singleton instance (e.g. for testing or multi-context scenarios).
 
 ---
 
-### request() · [source](../../src/AppContext.php#L81)
+### request() · [source](../../src/AppContext.php#L86)
 
-`public function request(): Merlin\Http\Request`
+`public function request(): Azera\Http\Request`
 
 Get the HttpRequest instance. If it doesn't exist, it will be created.
 
@@ -61,9 +61,9 @@ Get the HttpRequest instance. If it doesn't exist, it will be created.
 
 ---
 
-### view() · [source](../../src/AppContext.php#L91)
+### view() · [source](../../src/AppContext.php#L96)
 
-`public function view(): Merlin\Core\ViewEngine`
+`public function view(): Azera\Core\ViewEngine`
 
 Get the active view engine instance. Defaults to ClarityEngine.
 
@@ -75,9 +75,9 @@ Get the active view engine instance. Defaults to ClarityEngine.
 
 ---
 
-### setView() · [source](../../src/AppContext.php#L102)
+### setView() · [source](../../src/AppContext.php#L107)
 
-`public function setView(Merlin\Core\ViewEngine $engine): static`
+`public function setView(Azera\Core\ViewEngine $engine): static`
 
 Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
 
@@ -94,9 +94,9 @@ Replace the active view engine (e.g. swap in ClarityEngine at bootstrap).
 
 ---
 
-### cookies() · [source](../../src/AppContext.php#L115)
+### cookies() · [source](../../src/AppContext.php#L120)
 
-`public function cookies(): Merlin\Http\Cookies`
+`public function cookies(): Azera\Http\Cookies`
 
 Get the Cookies instance. If it doesn't exist, it will be created.
 
@@ -108,9 +108,9 @@ Get the Cookies instance. If it doesn't exist, it will be created.
 
 ---
 
-### dbManager() · [source](../../src/AppContext.php#L125)
+### dbManager() · [source](../../src/AppContext.php#L130)
 
-`public function dbManager(): Merlin\Db\DatabaseManager`
+`public function dbManager(): Azera\Db\DatabaseManager`
 
 Get the DatabaseManager instance. If it doesn't exist, it will be created.
 
@@ -122,9 +122,9 @@ Get the DatabaseManager instance. If it doesn't exist, it will be created.
 
 ---
 
-### router() · [source](../../src/AppContext.php#L135)
+### router() · [source](../../src/AppContext.php#L140)
 
-`public function router(): Merlin\Core\Router`
+`public function router(): Azera\Core\Router`
 
 Get the Router instance. If it doesn't exist, it will be created.
 
@@ -136,9 +136,20 @@ Get the Router instance. If it doesn't exist, it will be created.
 
 ---
 
-### session() · [source](../../src/AppContext.php#L145)
+### dispatcher() · [source](../../src/AppContext.php#L145)
 
-`public function session(): Merlin\Http\Session|null`
+`public function dispatcher(): Azera\Core\Dispatcher`
+
+**➡️ Return value**
+
+- Type: [Dispatcher](Core_Dispatcher.md)
+
+
+---
+
+### session() · [source](../../src/AppContext.php#L155)
+
+`public function session(): Azera\Http\Session|null`
 
 Get the Session instance.
 
@@ -149,9 +160,9 @@ Get the Session instance.
 
 ---
 
-### setSession() · [source](../../src/AppContext.php#L155)
+### setSession() · [source](../../src/AppContext.php#L165)
 
-`public function setSession(Merlin\Http\Session $session): void`
+`public function setSession(Azera\Http\Session $session): void`
 
 Set the Session instance.
 
@@ -168,9 +179,9 @@ Set the Session instance.
 
 ---
 
-### route() · [source](../../src/AppContext.php#L165)
+### route() · [source](../../src/AppContext.php#L175)
 
-`public function route(): Merlin\ResolvedRoute|null`
+`public function route(): Azera\ResolvedRoute|null`
 
 Get the current resolved route information.
 
@@ -181,9 +192,9 @@ Get the current resolved route information.
 
 ---
 
-### setRoute() · [source](../../src/AppContext.php#L175)
+### setRoute() · [source](../../src/AppContext.php#L185)
 
-`public function setRoute(Merlin\ResolvedRoute $route): void`
+`public function setRoute(Azera\ResolvedRoute $route): void`
 
 Set the current resolved route information.
 
@@ -200,7 +211,7 @@ Set the current resolved route information.
 
 ---
 
-### set() · [source](../../src/AppContext.php#L191)
+### set() · [source](../../src/AppContext.php#L201)
 
 `public function set(string $id, callable|object|null $service = null): void`
 
@@ -223,7 +234,7 @@ first resolution and their returned object is cached for subsequent lookups.
 
 ---
 
-### has() · [source](../../src/AppContext.php#L209)
+### has() · [source](../../src/AppContext.php#L219)
 
 `public function has(string $id): bool`
 
@@ -243,7 +254,7 @@ Check if a service is registered in the context.
 
 ---
 
-### get() · [source](../../src/AppContext.php#L225)
+### get() · [source](../../src/AppContext.php#L235)
 
 `public function get(string $id): object`
 
@@ -271,7 +282,7 @@ is a class name, it will attempt to auto-wire and instantiate it.
 
 ---
 
-### tryGet() · [source](../../src/AppContext.php#L254)
+### tryGet() · [source](../../src/AppContext.php#L264)
 
 `public function tryGet(string $id): object|null`
 
@@ -296,7 +307,7 @@ the service is not found, or if a registered factory currently resolves to null.
 
 ---
 
-### getOrNull() · [source](../../src/AppContext.php#L281)
+### getOrNull() · [source](../../src/AppContext.php#L291)
 
 `public function getOrNull(string $id): object|null`
 

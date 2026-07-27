@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\CompositeKeyExamples;
+namespace Azera\CompositeKeyExamples;
 
 /**
  * Example Models demonstrating composite key support
@@ -9,7 +9,7 @@ namespace Merlin\CompositeKeyExamples;
 
 namespace Examples;
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 // ============================================================================
 // Example 1: Simple Single-Key Model (Unchanged Behavior)
@@ -261,7 +261,7 @@ try {
     $item->user_id = 10;
     // product_id not set
     $item->update();
-} catch (\Merlin\Db\Exception $e) {
+} catch (\Azera\Db\Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     // Output: ID field(s) UserProduct->{'product_id'} not set
 }
@@ -271,7 +271,7 @@ try {
     $item->quantity = 5;
     // Both keys missing on MySQL
     $item->save();
-} catch (\Merlin\Db\Exception $e) {
+} catch (\Azera\Db\Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     // Output: Composite key fields UserProduct->{'user_id', 'product_id'} must be set for MySQL/SQLite
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Validation;
+namespace Azera\Validation;
 
 /**
  * Fluent validator for a single input field.

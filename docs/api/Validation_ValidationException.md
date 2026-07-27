@@ -1,6 +1,6 @@
 # 🧩 Class: ValidationException
 
-**Full name:** [Merlin\Validation\ValidationException](../../src/Validation/ValidationException.php)
+**Full name:** [Azera\Validation\ValidationException](../../src/Validation/ValidationException.php)
 
 Thrown by Validator::validate() when one or more field rules fail.
 

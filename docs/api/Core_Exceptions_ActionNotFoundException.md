@@ -1,6 +1,6 @@
 # 🧩 Class: ActionNotFoundException
 
-**Full name:** [Merlin\Core\Exceptions\ActionNotFoundException](../../src/Core/Exceptions/ActionNotFoundException.php)
+**Full name:** [Azera\Core\Exceptions\ActionNotFoundException](../../src/Core/Exceptions/ActionNotFoundException.php)
 
 Exception thrown when a requested controller action is not found.
 

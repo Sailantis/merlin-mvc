@@ -1,6 +1,6 @@
 # 🧩 Class: ModelMapping
 
-**Full name:** [Merlin\Core\ModelMapping](../../src/Core/ModelMapping.php)
+**Full name:** [Azera\Core\ModelMapping](../../src/Core/ModelMapping.php)
 
 Class to map models
 

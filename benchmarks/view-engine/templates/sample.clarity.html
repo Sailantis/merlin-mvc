@@ -3,15 +3,15 @@
 {% block content %}
   {% include "partials/header" %}
   <ul>
-  {% for item, idx in items %}
-    <li{% if idx % 2 == 0 %} class="even"{% endif %}>
-      {{ item |> upper }}
-      <div class="extras">
-        {% for j in 0..9 %}
-          <span>{{ item ~ '-' ~ j }}</span>
-        {% endfor %}
-      </div>
-    </li>
-  {% endfor %}
+    {% for item, idx in items %}
+      <li {% if idx % 2 == 0 %}class="even"{% endif %}>
+        {{ item |> upper }}
+        <div class="extras">
+          {% for j in 0 .. 9 %}
+            <span>{{ item ~ '-' ~ j }}</span>
+          {% endfor %}
+        </div>
+      </li>
+    {% endfor %}
   </ul>
 {% endblock %}

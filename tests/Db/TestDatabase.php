@@ -1,11 +1,11 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 /**
  * Lightweight test PDO driver to avoid real DB connection
  * Tracks queries and provides mock result functionality for testing
  */
-class TestDatabase extends \Merlin\Db\Database
+class TestDatabase extends \Azera\Db\Database
 {
     /** @var array Query log with SQL and parameters */
     public array $queries = [];

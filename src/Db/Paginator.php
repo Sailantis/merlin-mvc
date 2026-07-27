@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Db;
+namespace Azera\Db;
 
 /**
  * Paginator class for paginating database query results.
@@ -45,7 +45,7 @@ class Paginator
      * @param int $fetchMode The \PDO fetch mode to use (default: \PDO::FETCH_DEFAULT).
      * @return array The items for the current page.
      */
-    public function execute($fetchMode = 0): array
+    public function execute($fetchMode = \PDO::FETCH_DEFAULT): array
     {
         // Count query
         $this->totalItems = $this->builder->count();

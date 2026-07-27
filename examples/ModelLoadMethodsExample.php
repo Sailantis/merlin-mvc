@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\ModelLoadMethodsExample;
+namespace Azera\ModelLoadMethodsExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Db\ResultSet;
-use Merlin\Core\Model;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Db\ResultSet;
+use Azera\Core\Model;
 
 /**
  * Example: Using Model load methods

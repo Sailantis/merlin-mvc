@@ -1,6 +1,6 @@
 # 🧩 Class: SyncOptions
 
-**Full name:** [Merlin\Sync\SyncOptions](../../src/Sync/SyncOptions.php)
+**Full name:** [Azera\Sync\SyncOptions](../../src/Sync/SyncOptions.php)
 
 Configuration options that control the behavior of the model-sync process.
 

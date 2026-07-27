@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\EngineBenchmark;
+namespace Azera\EngineBenchmark;
 
 /**
  * Engine Benchmark: NativeEngine vs ClarityEngine
@@ -15,8 +15,8 @@ namespace Merlin\EngineBenchmark;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\Core\Engines\ClarityEngine;
-use Merlin\Core\Engines\NativeEngine;
+use Azera\Core\Engines\ClarityEngine;
+use Azera\Core\Engines\NativeEngine;
 
 // ---------------------------------------------------------------------------
 // Config
@@ -138,7 +138,7 @@ function bench(callable $fn, int $n): array
 // ---------------------------------------------------------------------------
 
 echo PHP_EOL;
-echo "Merlin Engine Benchmark" . PHP_EOL;
+echo "Azera Engine Benchmark" . PHP_EOL;
 echo str_repeat('=', 50) . PHP_EOL;
 echo "Iterations : {$iterations}" . PHP_EOL;
 echo "PHP        : " . PHP_VERSION . PHP_EOL;

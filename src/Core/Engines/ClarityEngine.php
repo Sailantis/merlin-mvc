@@ -1,8 +1,8 @@
 <?php
-namespace Merlin\Core\Engines;
+namespace Azera\Core\Engines;
 
 use Clarity\ClarityEngineTrait;
-use Merlin\Core\ViewEngine;
+use Azera\Core\ViewEngine;
 
 /**
  * Clarity template engine.

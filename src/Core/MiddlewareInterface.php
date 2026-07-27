@@ -1,24 +1,25 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
-use Merlin\AppContext;
-use Merlin\Http\Response;
+use Azera\AppContext;
+use Azera\Http\Response;
 
 /**
- * Contract for all middleware classes in the Merlin pipeline.
+ * Contract for all middleware classes in the Azera pipeline.
  *
  * Implementations receive the application context and a callable representing
  * the remainder of the pipeline. They can short-circuit processing by returning
  * a {@see Response} directly, or continue by calling {@see $next()} and
  * optionally modifying its result.
+ * @template T of AppContext
  */
 interface MiddlewareInterface
 {
     /**
      * Process the incoming request and optionally delegate to the next handler.
      *
-     * @param AppContext $context Application context for the current request.
+     * @param T $context Application context for the current request.
      * @param callable   $next    Callable that invokes the remaining pipeline. Returns ?Response.
      * @return Response|null Response to send, or null to continue (caller resumes the pipeline).
      */

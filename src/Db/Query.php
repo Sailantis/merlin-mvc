@@ -1,11 +1,11 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
 use LogicException;
-use Merlin\AppContext;
-use Merlin\Core\Model;
-use Merlin\Core\ModelMapping;
+use Azera\AppContext;
+use Azera\Core\Model;
+use Azera\Core\ModelMapping;
 use PDOStatement;
 
 /**

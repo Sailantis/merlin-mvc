@@ -1,6 +1,6 @@
 # 🧩 Class: Response
 
-**Full name:** [Merlin\Http\Response](../../src/Http/Response.php)
+**Full name:** [Azera\Http\Response](../../src/Http/Response.php)
 
 Represents an HTTP response.
 

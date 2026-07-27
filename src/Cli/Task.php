@@ -1,8 +1,8 @@
 <?php
 
-namespace Merlin\Cli;
+namespace Azera\Cli;
 
-use Merlin\AppContext;
+use Azera\AppContext;
 
 
 /**

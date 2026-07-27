@@ -1,6 +1,6 @@
 # 🧩 Class: Validator
 
-**Full name:** [Merlin\Validation\Validator](../../src/Validation/Validator.php)
+**Full name:** [Azera\Validation\Validator](../../src/Validation/Validator.php)
 
 Validates and coerces an associative input array against a set of field rules.
 
@@ -86,7 +86,7 @@ Error codes and their $params keys / types:
 
 ### field() · [source](../../src/Validation/Validator.php#L90)
 
-`public function field(string $name): Merlin\Validation\FieldValidator`
+`public function field(string $name): Azera\Validation\FieldValidator`
 
 Register rules for a field and return the fluent FieldValidator.
 

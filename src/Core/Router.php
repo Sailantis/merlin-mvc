@@ -1,12 +1,12 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
 use LogicException;
 use RuntimeException;
 use InvalidArgumentException;
 
-/** 
+/**
  * A simple and efficient router for mapping HTTP requests to handlers based on URI patterns and HTTP methods. Supports static routes, typed parameters, optional segments, wildcards, and route groups with shared middleware, namespaces, or controllers. Routes are matched in order of specificity, with static routes taking precedence over dynamic ones. Named routes allow for easy URL generation.
  */
 class Router
@@ -27,6 +27,7 @@ class Router
     protected array $controllerGroupStack = [];
     protected array $namedRoutes = []; // [name] => ['tokens'=>...]
     protected ?array $lastAddedTokens = null;
+    protected bool $autoOptions = false;
 
     /**
      * Create a new Router instance.
@@ -60,13 +61,49 @@ class Router
      * @return static For method chaining
      *
      * @example
-     * $router->addType('slug', fn($v) => preg_match('/^[a-z0-9-]+$/', $v));
+     * $router->type('slug', fn($v) => preg_match('/^[a-z0-9-]+$/', $v));
      * $router->add('GET', '/blog/{slug:slug}', 'Blog::view');
      */
-    public function addType(string $name, callable $validator): static
+    public function type(string $name, callable $validator): static
     {
         $this->types[$name] = $validator;
         return $this;
+    }
+
+    /**
+     * Enable or disable automatic OPTIONS responses.
+     * When enabled, if an OPTIONS request is received for a path that has
+     * routes registered for other HTTP methods (GET, POST, etc.) but no
+     * explicit OPTIONS route, the router will return a synthetic match
+     * that the Dispatcher converts into a 204 response with Allow and
+     * CORS headers.
+     *
+     * @param bool $enabled Whether to enable auto-OPTIONS handling
+     * @return static For method chaining
+     */
+    public function autoOptions(bool $enabled = true): static
+    {
+        $this->autoOptions = $enabled;
+        return $this;
+    }
+
+    /**
+     * Get all HTTP methods that have routes matching the given URI.
+     * Useful for generating Allow headers for OPTIONS requests or 405 responses.
+     *
+     * @param string $uri The request URI (path) to check, e.g. "/blog/hello-world"
+     * @return array Array of HTTP methods (e.g., ['GET', 'POST'])
+     */
+    public function getAllowedMethods(string $uri): array
+    {
+        $methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+        $allowed = [];
+        foreach ($methods as $m) {
+            if ($this->match($uri, $m) !== null) {
+                $allowed[] = $m;
+            }
+        }
+        return $allowed;
     }
 
     /**
@@ -85,9 +122,24 @@ class Router
     {
 
         $routeName = null;
-        if (\is_array($handler) && isset($handler['name'])) {
-            $routeName = (string)$handler['name'];
-            unset($handler['name']);
+        if (\is_array($handler)) {
+            if (isset($handler[0])) {
+                // If the handler is an indexed array,
+                // treat it as [controller, action, name]
+                $handler['controller'] = $handler[0];
+                unset($handler[0]);
+                if (isset($handler[1])) {
+                    $handler['action'] = $handler[1];
+                    unset($handler[1]);
+                }
+                if (isset($handler[2])) {
+                    $routeName = (string) $handler[2];
+                    unset($handler[2]);
+                }
+            } elseif (isset($handler['name'])) {
+                $routeName = (string) $handler['name'];
+                unset($handler['name']);
+            }
         }
 
         if (!empty($this->prefixGroupStack)) {
@@ -143,6 +195,66 @@ class Router
     }
 
     /**
+     * Convenience method to add a GET route.
+     *
+     * @param string $pattern Route pattern (e.g., '/blog/{slug}')
+     * @param string|array|null $handler Optional handler definition to override controller/action
+     * @return static For method chaining
+     */
+    public function get(string $pattern, string|array|null $handler = null): static
+    {
+        return $this->add('GET', $pattern, $handler);
+    }
+
+    /**
+     * Convenience method to add a POST route.
+     *
+     * @param string $pattern Route pattern (e.g., '/submit')
+     * @param string|array|null $handler Optional handler definition to override controller/action
+     * @return static For method chaining
+     */
+    public function post(string $pattern, string|array|null $handler = null): static
+    {
+        return $this->add('POST', $pattern, $handler);
+    }
+
+    /**
+     * Convenience method to add a PUT route.
+     *
+     * @param string $pattern Route pattern (e.g., '/submit')
+     * @param string|array|null $handler Optional handler definition to override controller/action
+     * @return static For method chaining
+     */
+    public function put(string $pattern, string|array|null $handler = null): static
+    {
+        return $this->add('PUT', $pattern, $handler);
+    }
+
+    /**
+     * Convenience method to add a DELETE route.
+     *
+     * @param string $pattern Route pattern (e.g., '/submit')
+     * @param string|array|null $handler Optional handler definition to override controller/action
+     * @return static For method chaining
+     */
+    public function delete(string $pattern, string|array|null $handler = null): static
+    {
+        return $this->add('DELETE', $pattern, $handler);
+    }
+
+    /**
+     * Convenience method to add a PATCH route.
+     *
+     * @param string $pattern Route pattern (e.g., '/submit')
+     * @param string|array|null $handler Optional handler definition to override controller/action
+     * @return static For method chaining
+     */
+    public function patch(string $pattern, string|array|null $handler = null): static
+    {
+        return $this->add('PATCH', $pattern, $handler);
+    }
+
+    /**
      * Assign a name to the most recently added route. This allows you to generate URLs for this route using the `urlFor()` method.
      *
      * @param string $name The name to assign to the route
@@ -195,6 +307,116 @@ class Router
         }
 
         return $path;
+    }
+
+    /**
+     * Return all registered routes as a flat array.
+     *
+     * Each entry is an associative array with keys:
+     *   - 'method':    HTTP method (GET, POST, …)
+     *   - 'pattern':   Reconstructed path pattern (e.g. "/users/{id:int}")
+     *   - 'handler':   The handler value (string, array, or null)
+     *   - 'groups':    Middleware group names applied to this route
+     *   - 'name':      Route name if one was assigned, or null
+     *
+     * @return array<int, array{method:string, pattern:string, handler:string|array|null, groups:array, name:?string}>
+     */
+    public function allRoutes(): array
+    {
+        $routes = [];
+
+        // Build a reverse lookup: tokens → route name
+        $nameLookup = [];
+        foreach ($this->namedRoutes as $name => $data) {
+            $key              = serialize($data['tokens']);
+            $nameLookup[$key] = $name;
+        }
+
+        // Static routes: [method][path] => ['handler', 'tokens', 'groups']
+        foreach ($this->static as $method => $byPath) {
+            foreach ($byPath as $path => $entry) {
+                $tokens   = $entry['tokens'];
+                $key      = serialize($tokens);
+                $routes[] = [
+                    'method'  => $method,
+                    'pattern' => $path,
+                    // static paths are already canonical
+                    'handler' => $entry['handler'],
+                    'groups'  => $entry['groups'],
+                    'name'    => $nameLookup[$key] ?? null,
+                ];
+            }
+        }
+
+        // Dynamic routes: [method][firstSegment][] => ['tokens', 'handler', 'specificity', 'groups']
+        foreach ($this->groups as $method => $byFirst) {
+            foreach ($byFirst as $routesList) {
+                foreach ($routesList as $entry) {
+                    $tokens   = $entry['tokens'];
+                    $key      = serialize($tokens);
+                    $routes[] = [
+                        'method'  => $method,
+                        'pattern' => $this->tokensToPattern($tokens),
+                        'handler' => $entry['handler'],
+                        'groups'  => $entry['groups'],
+                        'name'    => $nameLookup[$key] ?? null,
+                    ];
+                }
+            }
+        }
+
+        return $routes;
+    }
+
+    /**
+     * Reconstruct a path pattern string from parsed tokens.
+     *
+     * This is the inverse of {@see parsePattern()}.
+     *
+     * @param array $tokens Token array from parsePattern().
+     * @return string The path pattern (e.g. "/users/{id:int}/posts/{slug?}").
+     */
+    protected function tokensToPattern(array $tokens): string
+    {
+        $segments = [];
+
+        foreach ($tokens as $token) {
+            [$kind, $name, $type] = $token + [null, null, null];
+
+            if ($kind === self::KIND_STATIC) {
+                if ($name !== '') {
+                    $segments[] = $name;
+                }
+                continue;
+            }
+
+            if ($kind === self::KIND_WILDCARD) {
+                $segments[] = "{{$name}:*}";
+                continue;
+            }
+
+            if ($kind === self::KIND_PARAM) {
+                $segments[] = "{{$name}:{$type}}";
+                continue;
+            }
+
+            if ($kind === self::KIND_PARAM_OPT) {
+                $segments[] = "{{$name}?:{$type}}";
+                continue;
+            }
+
+            if ($kind === self::KIND_REGEX) {
+                $segments[] = "{{$name}:regex({$type})}";
+                continue;
+            }
+
+            if ($kind === self::KIND_REGEX_OPT) {
+                $segments[] = "{{$name}?:regex({$type})}";
+                continue;
+            }
+        }
+
+        return '/' . implode('/', $segments);
     }
 
     protected function snapshotGroupStacks(): array
@@ -262,15 +484,15 @@ class Router
     }
 
     /**
-    * Add group of middleware to be applied to all routes defined within the group. When a callback is supplied, the middleware groups are scoped to that callback and the router restores the previous stack afterward. When omitted, the middleware stays on the active stack for subsequent routes.
-     *
-     * @param string|array $name Middleware group name (e.g., "auth")
-     * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
-     * @return static For method chaining
-     *
-     * @example
-     * $router->middleware('auth');
-     * $router->add('GET', '/admin/dashboard', 'Admin::dashboard');
+     * Add group of middleware to be applied to all routes defined within the group. When a callback is supplied, the middleware groups are scoped to that callback and the router restores the previous stack afterward. When omitted, the middleware stays on the active stack for subsequent routes.
+      *
+      * @param string|array $name Middleware group name (e.g., "auth")
+      * @param callable|null $callback Optional callback that receives the router instance to define routes within the group
+      * @return static For method chaining
+      *
+      * @example
+      * $router->middleware('auth');
+      * $router->add('GET', '/admin/dashboard', 'Admin::dashboard');
      */
     public function middleware(string|array $name, ?callable $callback = null): static
     {
@@ -318,7 +540,7 @@ class Router
         if ($namespace[0] !== '\\') {
             $parentNamespace = end($this->namespaceGroupStack);
             if ($parentNamespace !== false && $parentNamespace !== null && $parentNamespace !== '') {
-                $namespace = trim((string)$parentNamespace, '\\') . '\\' . $namespace;
+                $namespace = trim((string) $parentNamespace, '\\') . '\\' . $namespace;
             }
         }
 
@@ -526,7 +748,7 @@ class Router
                     continue;
                 }
 
-                $value = (string)$params[$name];
+                $value = (string) $params[$name];
                 if ($kind === self::KIND_PARAM_OPT) {
                     if (!isset($this->types[$type])) {
                         throw new RuntimeException("Unknown validator: $type");
@@ -549,7 +771,7 @@ class Router
                     throw new RuntimeException("Missing route parameter: $name");
                 }
 
-                $value = (string)$params[$name];
+                $value = (string) $params[$name];
                 if ($kind === self::KIND_PARAM) {
                     if (!isset($this->types[$type])) {
                         throw new RuntimeException("Unknown validator: $type");
@@ -584,7 +806,7 @@ class Router
                 }
 
                 foreach ($wildcardValues as $wildcardValue) {
-                    $segments[] = rawurlencode((string)$wildcardValue);
+                    $segments[] = rawurlencode((string) $wildcardValue);
                 }
             }
         }
@@ -610,6 +832,7 @@ class Router
         if ($method === 'HEAD') {
             $method = 'GET';
         }
+
         $uri = '/' . trim($uri, '/');
 
         // static
@@ -758,6 +981,21 @@ class Router
                     $params,
                     $route['groups'],
                 );
+            }
+        }
+
+        // Auto-OPTIONS: if no explicit OPTIONS route matched, generate one
+        if ($method === 'OPTIONS' && $this->autoOptions) {
+            $allowed = $this->getAllowedMethods($uri);
+            if (!empty($allowed)) {
+                $allowed[] = 'OPTIONS';
+                return [
+                    'vars'              => [],
+                    'override'          => [],
+                    'groups'            => [],
+                    '__auto_options'    => true,
+                    '__allowed_methods' => $allowed,
+                ];
             }
         }
 

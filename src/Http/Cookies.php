@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Http;
+namespace Azera\Http;
 
 /**
  * Cookie jar that manages a collection of {@see Cookie} instances for the current request.

@@ -1,6 +1,6 @@
 ﻿# Security
 
-Merlin provides building blocks for secure applications: parameterised queries, authenticated encryption, and safe cookie handling. This page documents those features and the additional measures — CSRF, output escaping, mass-assignment guards — that every application must apply itself.
+Azera provides building blocks for secure applications: parameterised queries, authenticated encryption, and safe cookie handling. This page documents those features and the additional measures — CSRF, output escaping, mass-assignment guards — that every application must apply itself.
 
 ## SQL Injection Protection
 
@@ -44,7 +44,7 @@ User::query()->orderBy($col);
 
 ## XSS – Output Escaping
 
-Merlin's `ViewEngine` renders plain PHP templates and does **not** auto-escape output. You are responsible for escaping every dynamic value before printing it.
+Azera's `ViewEngine` renders plain PHP templates and does **not** auto-escape output. You are responsible for escaping every dynamic value before printing it.
 
 ```php
 <!-- views/profile/show.php -->
@@ -70,7 +70,7 @@ Never print raw request input, database values, or any externally sourced string
 
 ## CSRF Protection
 
-Merlin has no built-in CSRF middleware, so you must implement token-based protection for all state-changing forms. A straightforward pattern using the session:
+Azera has no built-in CSRF middleware, so you must implement token-based protection for all state-changing forms. A straightforward pattern using the session:
 
 ```php
 function csrf_token(): string
@@ -160,7 +160,7 @@ User::create($request->post());
 Cookies default to `httpOnly = true` (inaccessible to JavaScript). Enable `secure` in production so cookies are only sent over HTTPS.
 
 ```php
-use Merlin\Http\Cookie;
+use Azera\Http\Cookie;
 
 $cookie = Cookie::make('auth')
     ->set($token)
@@ -194,12 +194,12 @@ $ctx->cookies()->delete('auth');
 
 ## Crypt Helper
 
-`Merlin\Crypt` provides static authenticated encryption. It auto-selects the best available cipher (libsodium ChaCha20-Poly1305 preferred, AES-256-GCM via OpenSSL as fallback). Decryption returns `null` if the ciphertext was tampered with.
+`Azera\Crypt` provides static authenticated encryption. It auto-selects the best available cipher (libsodium ChaCha20-Poly1305 preferred, AES-256-GCM via OpenSSL as fallback). Decryption returns `null` if the ciphertext was tampered with.
 
 **`Crypt` is a static-only class — never instantiate it.**
 
 ```php
-use Merlin\Crypt;
+use Azera\Crypt;
 
 $encrypted = Crypt::encrypt('hello', $secretKey);
 $plain     = Crypt::decrypt($encrypted, $secretKey); // null on failure or tamper
@@ -229,7 +229,7 @@ $key = $_ENV['APP_KEY'] ?? throw new RuntimeException('APP_KEY not set');
 
 ## Session Safety
 
-Add `SessionMiddleware` to activate Merlin's session wrapper:
+Add `SessionMiddleware` to activate Azera's session wrapper:
 
 ```php
 $dispatcher->addMiddleware(new SessionMiddleware());
@@ -262,8 +262,8 @@ ini_set('session.cookie_samesite', 'Lax');
 Use the built-in `Validator` to sanitize and coerce all external input. It returns only the fields that passed, with values cast to declared types.
 
 ```php
-use Merlin\Validation\Validator;
-use Merlin\Validation\ValidationException;
+use Azera\Validation\Validator;
+use Azera\Validation\ValidationException;
 
 $v = new Validator($this->request()->post());
 $v->field('email')->email()->max(255);

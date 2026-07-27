@@ -1,8 +1,8 @@
 <?php
 
-namespace Merlin\Tests\Mvc\PhpThunder;
+namespace Azera\Tests\Mvc\PhpThunder;
 
-use Merlin\Core\Controller;
+use Azera\Core\Controller;
 
 class AuthController extends Controller
 {

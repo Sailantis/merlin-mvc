@@ -2,7 +2,7 @@
 
 **Build command-line tools** – Create powerful CLI applications for cron jobs, database migrations, data imports, and maintenance scripts. Tasks are auto-discovered from PSR-4 namespaces, receive parsed options, and can produce color-highlighted output via a simple output API.
 
-Merlin provides `Merlin\Cli\Console` (dispatcher + help system) and `Merlin\Cli\Task` (base class for every task).
+Azera provides `Azera\Cli\Console` (dispatcher + help system) and `Azera\Cli\Task` (base class for every task).
 
 ---
 
@@ -14,7 +14,7 @@ Create `console.php` once at the project root:
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Merlin\Cli\Console;
+use Azera\Cli\Console;
 
 $console = new Console();
 // App\Tasks is included automatically; add other namespaces as needed:
@@ -34,7 +34,7 @@ php console.php <task> [<action>] [<arg1> <arg2> …] [--option] [--key=value]
 
 ## Task Discovery
 
-`Console` scans every registered namespace for files matching `*Task.php`, loads them, and registers any class that extends `Merlin\Cli\Task` under a lowercase task name derived from the class name (`DatabaseTask` → `database`).
+`Console` scans every registered namespace for files matching `*Task.php`, loads them, and registers any class that extends `Azera\Cli\Task` under a lowercase task name derived from the class name (`DatabaseTask` → `database`).
 
 ```php
 // App\Tasks is included automatically
@@ -45,7 +45,7 @@ $console->addNamespace('App\\Extra\\Tasks');
 $console->addTaskPath('/path/to/extra/tasks', registerAutoload: true);
 ```
 
-The built-in `Merlin\Cli\Tasks` namespace (containing `ModelSyncTask`) is included by default. Discovery resolves paths from `composer.json` PSR-4 entries.
+The built-in `Azera\Cli\Tasks` namespace (containing `ModelSyncTask`) is included by default. Discovery resolves paths from `composer.json` PSR-4 entries.
 
 If you want to remove these built-in/system tasks, you can clear the tasks before processing. Call `clearTasks()` on the `Console` instance to unregister all built-in/system tasks:
 
@@ -76,7 +76,7 @@ Extend `Task` and add public `*Action` methods. Positional arguments map to meth
 <?php
 namespace App\Tasks;
 
-use Merlin\Cli\Task;
+use Azera\Cli\Task;
 
 /**
  * Database maintenance utilities.
@@ -231,8 +231,8 @@ public function afterAction(string $action, array $params): void { }
 <?php
 namespace App\Tasks;
 
-use Merlin\AppContext;
-use Merlin\Cli\Task;
+use Azera\AppContext;
+use Azera\Cli\Task;
 
 abstract class BaseTask extends Task
 {
@@ -409,7 +409,7 @@ Tasks have full access to your application context:
 namespace App\Tasks;
 
 use App\Models\User;
-use Merlin\Cli\Task;
+use Azera\Cli\Task;
 
 /**
  * User management utilities.
@@ -492,7 +492,7 @@ All of these work without any framework bootstrap — they only need `composer.j
 
 ## Built-in: Sync Task
 
-Merlin ships with a ready-made `ModelSyncTask` that keeps your PHP model files in sync with the live database schema (DB → PHP). It is registered under the `Merlin\Cli\Tasks` namespace and is auto-discovered – **no extra setup required**.
+Azera ships with a ready-made `ModelSyncTask` that keeps your PHP model files in sync with the live database schema (DB → PHP). It is registered under the `Azera\Cli\Tasks` namespace and is auto-discovered – **no extra setup required**.
 
 ### Commands
 

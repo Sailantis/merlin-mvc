@@ -1,108 +1,119 @@
-# Merlin MVC API
+# Azera MVC API
 
 ## Classes & Interfaces overview
 
-### `Merlin`
+### `Azera`
 
-- [AppContext](AppContext.md) `Merlin\AppContext`
-- [ResolvedRoute](ResolvedRoute.md) `Merlin\ResolvedRoute`
-- [Crypt](Crypt.md) `Merlin\Crypt`
-- [Exception](Exception.md) `Merlin\Exception`
+- [AppContext](AppContext.md) `Azera\AppContext`
+- [ResolvedRoute](ResolvedRoute.md) `Azera\ResolvedRoute`
+- [Exception](Exception.md) `Azera\Exception`
 
-### `Merlin\Cli`
+### `Azera\Boot`
 
-- [Console](Cli_Console.md) `Merlin\Cli\Console`
-- [Task](Cli_Task.md) `Merlin\Cli\Task`
+- [BootstrapDiscovery](Boot_BootstrapDiscovery.md) `Azera\Boot\BootstrapDiscovery`
+- [BootstrapProvider](Boot_BootstrapProvider.md) `Azera\Boot\BootstrapProvider`
+- [BootstrapResolver](Boot_BootstrapResolver.md) `Azera\Boot\BootstrapResolver`
+- [FileBridge](Boot_FileBridge.md) `Azera\Boot\FileBridge`
 
-### `Merlin\Cli\Tasks`
+### `Azera\Cli`
 
-- [ModelSyncTask](Cli_Tasks_ModelSyncTask.md) `Merlin\Cli\Tasks\ModelSyncTask`
+- [Console](Cli_Console.md) `Azera\Cli\Console`
+- [Task](Cli_Task.md) `Azera\Cli\Task`
 
-### `Merlin\Core`
+### `Azera\Cli\Tasks`
 
-- [Controller](Core_Controller.md) `Merlin\Core\Controller`
-- [Dispatcher](Core_Dispatcher.md) `Merlin\Core\Dispatcher`
-- [Exception](Core_Exception.md) `Merlin\Core\Exception`
-- [MiddlewareInterface](Core_MiddlewareInterface.md) `Merlin\Core\MiddlewareInterface`
-- [Model](Core_Model.md) `Merlin\Core\Model`
-- [ModelMapping](Core_ModelMapping.md) `Merlin\Core\ModelMapping`
-- [Router](Core_Router.md) `Merlin\Core\Router`
-- [ViewEngine](Core_ViewEngine.md) `Merlin\Core\ViewEngine`
+- [AboutTask](Cli_Tasks_AboutTask.md) `Azera\Cli\Tasks\AboutTask`
+- [DbTask](Cli_Tasks_DbTask.md) `Azera\Cli\Tasks\DbTask`
+- [ModelTask](Cli_Tasks_ModelTask.md) `Azera\Cli\Tasks\ModelTask`
+- [RoutesTask](Cli_Tasks_RoutesTask.md) `Azera\Cli\Tasks\RoutesTask`
+- [ServeTask](Cli_Tasks_ServeTask.md) `Azera\Cli\Tasks\ServeTask`
 
-### `Merlin\Core\Engines\Adapters`
+### `Azera\Core`
 
-- [BladeAdapter](Core_Engines_Adapters_BladeAdapter.md) `Merlin\Core\Engines\Adapters\BladeAdapter`
-- [PlatesAdapter](Core_Engines_Adapters_PlatesAdapter.md) `Merlin\Core\Engines\Adapters\PlatesAdapter`
-- [TwigAdapter](Core_Engines_Adapters_TwigAdapter.md) `Merlin\Core\Engines\Adapters\TwigAdapter`
+- [Controller](Core_Controller.md) `Azera\Core\Controller`
+- [Dispatcher](Core_Dispatcher.md) `Azera\Core\Dispatcher`
+- [Exception](Core_Exception.md) `Azera\Core\Exception`
+- [MiddlewareInterface](Core_MiddlewareInterface.md) `Azera\Core\MiddlewareInterface`
+- [Model](Core_Model.md) `Azera\Core\Model`
+- [ModelMapping](Core_ModelMapping.md) `Azera\Core\ModelMapping`
+- [Router](Core_Router.md) `Azera\Core\Router`
+- [ViewEngine](Core_ViewEngine.md) `Azera\Core\ViewEngine`
 
-### `Merlin\Core\Engines`
+### `Azera\Core\Engines\Adapters`
 
-- [ClarityEngine](Core_Engines_ClarityEngine.md) `Merlin\Core\Engines\ClarityEngine`
-- [NativeEngine](Core_Engines_NativeEngine.md) `Merlin\Core\Engines\NativeEngine`
+- [BladeAdapter](Core_Engines_Adapters_BladeAdapter.md) `Azera\Core\Engines\Adapters\BladeAdapter`
+- [PlatesAdapter](Core_Engines_Adapters_PlatesAdapter.md) `Azera\Core\Engines\Adapters\PlatesAdapter`
+- [TwigAdapter](Core_Engines_Adapters_TwigAdapter.md) `Azera\Core\Engines\Adapters\TwigAdapter`
 
-### `Merlin\Core\Exceptions`
+### `Azera\Core\Engines`
 
-- [ActionNotFoundException](Core_Exceptions_ActionNotFoundException.md) `Merlin\Core\Exceptions\ActionNotFoundException`
-- [ControllerNotFoundException](Core_Exceptions_ControllerNotFoundException.md) `Merlin\Core\Exceptions\ControllerNotFoundException`
-- [InvalidControllerException](Core_Exceptions_InvalidControllerException.md) `Merlin\Core\Exceptions\InvalidControllerException`
+- [ClarityEngine](Core_Engines_ClarityEngine.md) `Azera\Core\Engines\ClarityEngine`
+- [NativeEngine](Core_Engines_NativeEngine.md) `Azera\Core\Engines\NativeEngine`
 
-### `Merlin\Db`
+### `Azera\Core\Exceptions`
 
-- [Condition](Db_Condition.md) `Merlin\Db\Condition`
-- [Database](Db_Database.md) `Merlin\Db\Database`
-- [DatabaseManager](Db_DatabaseManager.md) `Merlin\Db\DatabaseManager`
-- [Exception](Db_Exception.md) `Merlin\Db\Exception`
-- [Paginator](Db_Paginator.md) `Merlin\Db\Paginator`
-- [Query](Db_Query.md) `Merlin\Db\Query`
-- [ResultSet](Db_ResultSet.md) `Merlin\Db\ResultSet`
-- [Sql](Db_Sql.md) `Merlin\Db\Sql`
-- [SqlCase](Db_SqlCase.md) `Merlin\Db\SqlCase`
+- [ActionNotFoundException](Core_Exceptions_ActionNotFoundException.md) `Azera\Core\Exceptions\ActionNotFoundException`
+- [ControllerNotFoundException](Core_Exceptions_ControllerNotFoundException.md) `Azera\Core\Exceptions\ControllerNotFoundException`
+- [InvalidControllerException](Core_Exceptions_InvalidControllerException.md) `Azera\Core\Exceptions\InvalidControllerException`
 
-### `Merlin\Db\Exceptions`
+### `Azera\Db`
 
-- [TransactionLostException](Db_Exceptions_TransactionLostException.md) `Merlin\Db\Exceptions\TransactionLostException`
+- [Condition](Db_Condition.md) `Azera\Db\Condition`
+- [Database](Db_Database.md) `Azera\Db\Database`
+- [DatabaseManager](Db_DatabaseManager.md) `Azera\Db\DatabaseManager`
+- [Exception](Db_Exception.md) `Azera\Db\Exception`
+- [Paginator](Db_Paginator.md) `Azera\Db\Paginator`
+- [Query](Db_Query.md) `Azera\Db\Query`
+- [ResultSet](Db_ResultSet.md) `Azera\Db\ResultSet`
+- [Sql](Db_Sql.md) `Azera\Db\Sql`
+- [SqlCase](Db_SqlCase.md) `Azera\Db\SqlCase`
 
-### `Merlin\Http`
+### `Azera\Db\Exceptions`
 
-- [Cookie](Http_Cookie.md) `Merlin\Http\Cookie`
-- [Cookies](Http_Cookies.md) `Merlin\Http\Cookies`
-- [Request](Http_Request.md) `Merlin\Http\Request`
-- [Response](Http_Response.md) `Merlin\Http\Response`
-- [Session](Http_Session.md) `Merlin\Http\Session`
-- [SessionMiddleware](Http_SessionMiddleware.md) `Merlin\Http\SessionMiddleware`
-- [UploadedFile](Http_UploadedFile.md) `Merlin\Http\UploadedFile`
+- [TransactionLostException](Db_Exceptions_TransactionLostException.md) `Azera\Db\Exceptions\TransactionLostException`
 
-### `Merlin\Sync`
+### `Azera\Http`
 
-- [CodeGenerator](Sync_CodeGenerator.md) `Merlin\Sync\CodeGenerator`
-- [ModelDiff](Sync_ModelDiff.md) `Merlin\Sync\ModelDiff`
-- [DiffOperation](Sync_DiffOperation.md) `Merlin\Sync\DiffOperation`
-- [AddProperty](Sync_AddProperty.md) `Merlin\Sync\AddProperty`
-- [RemoveProperty](Sync_RemoveProperty.md) `Merlin\Sync\RemoveProperty`
-- [AddAccessor](Sync_AddAccessor.md) `Merlin\Sync\AddAccessor`
-- [UpdatePropertyType](Sync_UpdatePropertyType.md) `Merlin\Sync\UpdatePropertyType`
-- [UpdatePropertyComment](Sync_UpdatePropertyComment.md) `Merlin\Sync\UpdatePropertyComment`
-- [UpdateClassComment](Sync_UpdateClassComment.md) `Merlin\Sync\UpdateClassComment`
-- [ModelParser](Sync_ModelParser.md) `Merlin\Sync\ModelParser`
-- [ParsedModel](Sync_ParsedModel.md) `Merlin\Sync\ParsedModel`
-- [ParsedProperty](Sync_ParsedProperty.md) `Merlin\Sync\ParsedProperty`
-- [SyncOptions](Sync_SyncOptions.md) `Merlin\Sync\SyncOptions`
-- [SyncResult](Sync_SyncResult.md) `Merlin\Sync\SyncResult`
-- [SyncRunner](Sync_SyncRunner.md) `Merlin\Sync\SyncRunner`
+- [Cookie](Http_Cookie.md) `Azera\Http\Cookie`
+- [Cookies](Http_Cookies.md) `Azera\Http\Cookies`
+- [Request](Http_Request.md) `Azera\Http\Request`
+- [Response](Http_Response.md) `Azera\Http\Response`
+- [Session](Http_Session.md) `Azera\Http\Session`
+- [SessionMiddleware](Http_SessionMiddleware.md) `Azera\Http\SessionMiddleware`
+- [UploadedFile](Http_UploadedFile.md) `Azera\Http\UploadedFile`
 
-### `Merlin\Sync\Schema`
+### `Azera\Sync`
 
-- [MySqlSchemaProvider](Sync_Schema_MySqlSchemaProvider.md) `Merlin\Sync\Schema\MySqlSchemaProvider`
-- [PostgresSchemaProvider](Sync_Schema_PostgresSchemaProvider.md) `Merlin\Sync\Schema\PostgresSchemaProvider`
-- [SchemaProvider](Sync_Schema_SchemaProvider.md) `Merlin\Sync\Schema\SchemaProvider`
-- [TableSchema](Sync_Schema_TableSchema.md) `Merlin\Sync\Schema\TableSchema`
-- [ColumnSchema](Sync_Schema_ColumnSchema.md) `Merlin\Sync\Schema\ColumnSchema`
-- [IndexSchema](Sync_Schema_IndexSchema.md) `Merlin\Sync\Schema\IndexSchema`
-- [SqliteSchemaProvider](Sync_Schema_SqliteSchemaProvider.md) `Merlin\Sync\Schema\SqliteSchemaProvider`
+- [CodeGenerator](Sync_CodeGenerator.md) `Azera\Sync\CodeGenerator`
+- [ModelDiff](Sync_ModelDiff.md) `Azera\Sync\ModelDiff`
+- [DiffOperation](Sync_DiffOperation.md) `Azera\Sync\DiffOperation`
+- [AddProperty](Sync_AddProperty.md) `Azera\Sync\AddProperty`
+- [RemoveProperty](Sync_RemoveProperty.md) `Azera\Sync\RemoveProperty`
+- [AddAccessor](Sync_AddAccessor.md) `Azera\Sync\AddAccessor`
+- [UpdatePropertyType](Sync_UpdatePropertyType.md) `Azera\Sync\UpdatePropertyType`
+- [UpdatePropertyComment](Sync_UpdatePropertyComment.md) `Azera\Sync\UpdatePropertyComment`
+- [UpdateClassComment](Sync_UpdateClassComment.md) `Azera\Sync\UpdateClassComment`
+- [ModelParser](Sync_ModelParser.md) `Azera\Sync\ModelParser`
+- [ParsedModel](Sync_ParsedModel.md) `Azera\Sync\ParsedModel`
+- [ParsedProperty](Sync_ParsedProperty.md) `Azera\Sync\ParsedProperty`
+- [SyncOptions](Sync_SyncOptions.md) `Azera\Sync\SyncOptions`
+- [SyncResult](Sync_SyncResult.md) `Azera\Sync\SyncResult`
+- [SyncRunner](Sync_SyncRunner.md) `Azera\Sync\SyncRunner`
 
-### `Merlin\Validation`
+### `Azera\Sync\Schema`
 
-- [FieldValidator](Validation_FieldValidator.md) `Merlin\Validation\FieldValidator`
-- [ValidationException](Validation_ValidationException.md) `Merlin\Validation\ValidationException`
-- [Validator](Validation_Validator.md) `Merlin\Validation\Validator`
+- [MySqlSchemaProvider](Sync_Schema_MySqlSchemaProvider.md) `Azera\Sync\Schema\MySqlSchemaProvider`
+- [PostgresSchemaProvider](Sync_Schema_PostgresSchemaProvider.md) `Azera\Sync\Schema\PostgresSchemaProvider`
+- [SchemaProvider](Sync_Schema_SchemaProvider.md) `Azera\Sync\Schema\SchemaProvider`
+- [TableSchema](Sync_Schema_TableSchema.md) `Azera\Sync\Schema\TableSchema`
+- [ColumnSchema](Sync_Schema_ColumnSchema.md) `Azera\Sync\Schema\ColumnSchema`
+- [IndexSchema](Sync_Schema_IndexSchema.md) `Azera\Sync\Schema\IndexSchema`
+- [SchemaProviderFactory](Sync_Schema_SchemaProviderFactory.md) `Azera\Sync\Schema\SchemaProviderFactory`
+- [SqliteSchemaProvider](Sync_Schema_SqliteSchemaProvider.md) `Azera\Sync\Schema\SqliteSchemaProvider`
+
+### `Azera\Validation`
+
+- [FieldValidator](Validation_FieldValidator.md) `Azera\Validation\FieldValidator`
+- [ValidationException](Validation_ValidationException.md) `Azera\Validation\ValidationException`
+- [Validator](Validation_Validator.md) `Azera\Validation\Validator`
 

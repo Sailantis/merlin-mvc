@@ -1,6 +1,6 @@
 # 🧩 Class: Query
 
-**Full name:** [Merlin\Db\Query](../../src/Db/Query.php)
+**Full name:** [Azera\Db\Query](../../src/Db/Query.php)
 
 Unified query builder for SELECT, INSERT, UPDATE, DELETE operations
 
@@ -51,7 +51,7 @@ Enable or disable automatic model resolution for queries. If enabled, the query 
 
 ### setModelMapping() · [source](../../src/Db/Query.php#L71)
 
-`public static function setModelMapping(Merlin\Core\ModelMapping|null $modelMapping): void`
+`public static function setModelMapping(Azera\Core\ModelMapping|null $modelMapping): void`
 
 Set the model mapping instance to use for resolving model class names to table names and database connections. This can be used instead of model classes for simple queries or when you want to avoid coupling to model classes.
 
@@ -70,7 +70,7 @@ Set the model mapping instance to use for resolving model class names to table n
 
 ### __construct() · [source](../../src/Db/Query.php#L165)
 
-`public function __construct(Merlin\Db\Database|null $db = null, Merlin\Core\Model|null $model = null): mixed`
+`public function __construct(Azera\Db\Database|null $db = null, Azera\Core\Model|null $model = null): mixed`
 
 Constructor. Can optionally pass a Database connection to use for this query, or a Model to automatically set the table and connection.
 
@@ -90,7 +90,7 @@ Constructor. Can optionally pass a Database connection to use for this query, or
 
 ### new() · [source](../../src/Db/Query.php#L176)
 
-`public static function new(Merlin\Db\Database|null $db = null): static`
+`public static function new(Azera\Db\Database|null $db = null): static`
 
 Factory method to create a new Query instance. Can optionally pass a Database connection to use for this query.
 
@@ -109,7 +109,7 @@ Factory method to create a new Query instance. Can optionally pass a Database co
 
 ### table() · [source](../../src/Db/Query.php#L214)
 
-`public function table(string $name, string|null $alias = null): Merlin\Db\Query`
+`public function table(string $name, string|null $alias = null): Azera\Db\Query`
 
 Set the table for this query. Can be either a table name or a model class name. If a model class name is provided, the corresponding table will be used and the model's database connection will be used if no connection is set on the query.
 
@@ -133,7 +133,7 @@ Set the table for this query. Can be either a table name or a model class name. 
 
 ### from() · [source](../../src/Db/Query.php#L233)
 
-`public function from(Merlin\Db\Query|string $source, string|null $alias = null): static`
+`public function from(Azera\Db\Query|string $source, string|null $alias = null): static`
 
 Set the source for this query from a subquery or raw table expression. The subquery will be wrapped in parentheses and treated as a table. An optional alias can be provided for the subquery.
 
@@ -296,7 +296,7 @@ Set a value for INSERT or UPDATE queries. Can be either:
 
 ### innerJoin() · [source](../../src/Db/Query.php#L399)
 
-`public function innerJoin(Merlin\Db\Query|string $model, Merlin\Db\Condition|string|null $alias = null, Merlin\Db\Condition|string|null $conditions = null): static`
+`public function innerJoin(Azera\Db\Query|string $model, Azera\Db\Condition|string|null $alias = null, Azera\Db\Condition|string|null $conditions = null): static`
 
 Adds an INNER join to the query
 
@@ -321,7 +321,7 @@ Adds an INNER join to the query
 
 ### leftJoin() · [source](../../src/Db/Query.php#L412)
 
-`public function leftJoin(Merlin\Db\Query|string $model, Merlin\Db\Condition|string|null $alias = null, Merlin\Db\Condition|string|null $conditions = null): static`
+`public function leftJoin(Azera\Db\Query|string $model, Azera\Db\Condition|string|null $alias = null, Azera\Db\Condition|string|null $conditions = null): static`
 
 Adds a LEFT join to the query
 
@@ -346,7 +346,7 @@ Adds a LEFT join to the query
 
 ### rightJoin() · [source](../../src/Db/Query.php#L425)
 
-`public function rightJoin(Merlin\Db\Query|string $model, Merlin\Db\Condition|string|null $alias = null, Merlin\Db\Condition|string|null $conditions = null): static`
+`public function rightJoin(Azera\Db\Query|string $model, Azera\Db\Condition|string|null $alias = null, Azera\Db\Condition|string|null $conditions = null): static`
 
 Adds a RIGHT join to the query
 
@@ -371,7 +371,7 @@ Adds a RIGHT join to the query
 
 ### crossJoin() · [source](../../src/Db/Query.php#L438)
 
-`public function crossJoin(Merlin\Db\Query|string $model, Merlin\Db\Condition|string|null $alias = null, Merlin\Db\Condition|string|null $conditions = null): static`
+`public function crossJoin(Azera\Db\Query|string $model, Azera\Db\Condition|string|null $alias = null, Azera\Db\Condition|string|null $conditions = null): static`
 
 Adds a CROSS join to the query
 
@@ -396,7 +396,7 @@ Adds a CROSS join to the query
 
 ### join() · [source](../../src/Db/Query.php#L452)
 
-`public function join(Merlin\Db\Query|string $model, Merlin\Db\Condition|string|null $alias = null, Merlin\Db\Condition|string|null $conditions = null, string|null $type = null): static`
+`public function join(Azera\Db\Query|string $model, Azera\Db\Condition|string|null $alias = null, Azera\Db\Condition|string|null $conditions = null, string|null $type = null): static`
 
 Add a JOIN clause to the query
 
@@ -695,7 +695,7 @@ Compile and return the SQL string for this query without executing it
 
 ### select() · [source](../../src/Db/Query.php#L719)
 
-`public function select(array|string|null $columns = null): Merlin\Db\ResultSet|string`
+`public function select(array|string|null $columns = null): Azera\Db\ResultSet|string`
 
 Execute SELECT query and return ResultSet or return SQL string if returnSql is enabled
 
@@ -719,7 +719,7 @@ Execute SELECT query and return ResultSet or return SQL string if returnSql is e
 
 ### first() · [source](../../src/Db/Query.php#L744)
 
-`public function first(): Merlin\Core\Model|string|null`
+`public function first(): Azera\Core\Model|string|null`
 
 Execute SELECT query and return first model or null or return SQL string if returnSql is enabled
 
@@ -737,7 +737,7 @@ Execute SELECT query and return first model or null or return SQL string if retu
 
 ### insert() · [source](../../src/Db/Query.php#L759)
 
-`public function insert(array|null $data = null): Merlin\Db\ResultSet|array|string|bool`
+`public function insert(array|null $data = null): Azera\Db\ResultSet|array|string|bool`
 
 Execute INSERT or UPSERT query or return SQL string if returnSql is enabled
 
@@ -761,7 +761,7 @@ Execute INSERT or UPSERT query or return SQL string if returnSql is enabled
 
 ### upsert() · [source](../../src/Db/Query.php#L770)
 
-`public function upsert(array|null $data = null): Merlin\Db\ResultSet|array|string|bool`
+`public function upsert(array|null $data = null): Azera\Db\ResultSet|array|string|bool`
 
 Execute UPSERT query (INSERT with ON CONFLICT/ON DUPLICATE KEY UPDATE) or return SQL string if returnSql is enabled
 
@@ -785,7 +785,7 @@ Execute UPSERT query (INSERT with ON CONFLICT/ON DUPLICATE KEY UPDATE) or return
 
 ### update() · [source](../../src/Db/Query.php#L809)
 
-`public function update(array|null $data = null): Merlin\Db\ResultSet|array|string|int`
+`public function update(array|null $data = null): Azera\Db\ResultSet|array|string|int`
 
 Execute UPDATE query or return SQL string if returnSql is enabled
 
@@ -809,7 +809,7 @@ Execute UPDATE query or return SQL string if returnSql is enabled
 
 ### delete() · [source](../../src/Db/Query.php#L839)
 
-`public function delete(): Merlin\Db\ResultSet|array|string|int`
+`public function delete(): Azera\Db\ResultSet|array|string|int`
 
 Execute DELETE query
 
@@ -893,7 +893,7 @@ Get bind parameters
 
 ### paginate() · [source](../../src/Db/Query.php#L1634)
 
-`public function paginate(int $page = 1, int $pageSize = 30, bool $reverse = false): Merlin\Db\Paginator`
+`public function paginate(int $page = 1, int $pageSize = 30, bool $reverse = false): Azera\Db\Paginator`
 
 Create a paginator for the current query
 

@@ -2,11 +2,11 @@
 
 **Practical solutions to common problems** - A collection of real-world recipes and patterns for everyday tasks like pagination, authentication, file uploads, API responses, caching, and more. Copy, adapt, and use in your projects.
 
-Practical recipes built with the current Merlin API.
+Practical recipes built with the current Azera API.
 
 ## 1) Paginated Listing
 
-Pagination is essential for large datasets. Use `Merlin\Db\Paginator` to paginate any query builder. The paginator runs a count() query first, then fetches the requested page using `LIMIT/OFFSET`.
+Pagination is essential for large datasets. Use `Azera\Db\Paginator` to paginate any query builder. The paginator runs a count() query first, then fetches the requested page using `LIMIT/OFFSET`.
 
 ```php
 $paginator = User::query()
@@ -89,7 +89,7 @@ $affected = User::query()
 Instead of permanently deleting records, mark them as deleted with a timestamp. This allows recovery and maintains referential integrity.
 
 ```php
-class Post extends \Merlin\Core\Model
+class Post extends \Azera\Core\Model
 {
     public int $id;
     public string $title;
@@ -108,7 +108,7 @@ class Post extends \Merlin\Core\Model
 Wrap related database operations in a transaction to ensure data consistency. If any operation fails, all changes are rolled back.
 
 ```php
-use Merlin\AppContext;
+use Azera\AppContext;
 
 $db = AppContext::instance()->dbManager()->getDefault();
 
@@ -127,7 +127,7 @@ try {
 
     Product::query()
         ->where('id', 2)
-        ->update(['stock' => new \Merlin\Db\Sql('stock - 3')]);
+        ->update(['stock' => new \Azera\Db\Sql('stock - 3')]);
 
     $db->commit();
 } catch (\Throwable $e) {
@@ -138,11 +138,11 @@ try {
 
 ## 8) Read/Write Split
 
-Distribute database load by routing reads to replicas and writes to the primary server. Merlin automatically uses the appropriate connection.
+Distribute database load by routing reads to replicas and writes to the primary server. Azera automatically uses the appropriate connection.
 
 ```php
-use Merlin\AppContext;
-use Merlin\Db\Database;
+use Azera\AppContext;
+use Azera\Db\Database;
 
 $ctx = AppContext::instance();
 $ctx->dbManager()->set('write', new Database('mysql:host=primary;dbname=app', 'rw', 'secret'));
@@ -157,7 +157,7 @@ $user->save(); // write
 
 ## 9) Route + Dispatcher Integration
 
-Connect routing to the dispatcher for a complete request handling flow. This is the core pattern of any Merlin web application.
+Connect routing to the dispatcher for a complete request handling flow. This is the core pattern of any Azera web application.
 
 ```php
 $router->add('GET', '/users/{id:int}', 'UserController::viewAction');
@@ -174,7 +174,7 @@ if ($route !== null) {
 Create maintenance tasks for scheduled cleanup operations. Perfect for cron jobs that need to trim old data.
 
 ```php
-class CleanupTask extends \Merlin\Cli\Task
+class CleanupTask extends \Azera\Cli\Task
 {
     public function sessionsAction(int $days = 30): void
     {
@@ -194,7 +194,7 @@ class CleanupTask extends \Merlin\Cli\Task
 Use a `Query` instance as the `FROM` source to pre-aggregate or pre-filter data before the outer query processes it. Bind parameters from the subquery are automatically carried over — no manual merging required.
 
 ```php
-use Merlin\Db\Query;
+use Azera\Db\Query;
 
 // Step 1 — build the inner query independently
 $activeSales = Query::new()
@@ -218,7 +218,7 @@ $topCustomers = Query::new()
 Join any pre-built `Query` directly. Works with `join()`, `leftJoin()`, `innerJoin()`, `rightJoin()`, and `crossJoin()`. Provide an alias as the second argument so the outer query can reference it in conditions and columns.
 
 ```php
-use Merlin\Db\Query;
+use Azera\Db\Query;
 
 // Aggregate products to their latest price
 $latestPrices = Query::new()
@@ -241,9 +241,9 @@ $catalogue = Query::new()
 Combine the `Validator` with model methods to validate, coerce, and persist data in one clean flow. `$v->validated()` returns only the fields that passed, which drops any unexpected input automatically.
 
 ```php
-use Merlin\Validation\Validator;
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
+use Azera\Validation\Validator;
+use Azera\Http\Response;
+use Azera\Core\Controller;
 
 class UserController extends Controller
 {
@@ -292,8 +292,8 @@ class UserController extends Controller
 Return arrays directly from action methods — the `Dispatcher` automatically serialises them as `application/json`. Use `Response::json()` when you need a non-200 status code.
 
 ```php
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
+use Azera\Http\Response;
+use Azera\Core\Controller;
 
 class ArticleController extends Controller
 {
@@ -337,12 +337,12 @@ A complete login/logout flow with a `beforeAction` guard. The session is activat
 
 ```php
 // bootstrap — register the session middleware once
-$dispatcher->addMiddleware(new \Merlin\Http\SessionMiddleware());
+$dispatcher->addMiddleware(new \Azera\Http\SessionMiddleware());
 ```
 
 ```php
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
+use Azera\Http\Response;
+use Azera\Core\Controller;
 
 class AuthController extends Controller
 {
@@ -374,8 +374,8 @@ class AuthController extends Controller
 Protect any controller by overriding `beforeAction()`:
 
 ```php
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
+use Azera\Http\Response;
+use Azera\Core\Controller;
 
 class AccountController extends Controller
 {
@@ -399,13 +399,13 @@ class AccountController extends Controller
 
 ## 16) CSRF Protection
 
-Merlin has no built-in CSRF middleware — implement token-based protection yourself. The pattern below stores a token in the session and validates it on every state-changing request.
+Azera has no built-in CSRF middleware — implement token-based protection yourself. The pattern below stores a token in the session and validates it on every state-changing request.
 
 ```php
 // helpers.php — include in your bootstrap
 function csrf_token(): string
 {
-    $session = \Merlin\AppContext::instance()->session();
+    $session = \Azera\AppContext::instance()->session();
     if (!$session->has('csrf_token')) {
         $session->set('csrf_token', bin2hex(random_bytes(32)));
     }
@@ -414,8 +414,8 @@ function csrf_token(): string
 
 function csrf_verify(): bool
 {
-    $session = \Merlin\AppContext::instance()->session();
-    $token   = \Merlin\AppContext::instance()->request()->post('_csrf_token');
+    $session = \Azera\AppContext::instance()->session();
+    $token   = \Azera\AppContext::instance()->request()->post('_csrf_token');
     return hash_equals($session->get('csrf_token', ''), (string) $token);
 }
 ```
@@ -437,7 +437,7 @@ public function beforeAction(string $action = null, array $params = []): ?Respon
 {
     $method = $this->request()->getMethod();
     if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && !csrf_verify()) {
-        return \Merlin\Http\Response::status(419); // token mismatch
+        return \Azera\Http\Response::status(419); // token mismatch
     }
     return null;
 }
@@ -448,8 +448,8 @@ public function beforeAction(string $action = null, array $params = []): ?Respon
 Access uploaded files through `Request::getUploadedFile()` (single) or `Request::getUploadedFiles()` (all). Each entry is an `UploadedFile` instance.
 
 ```php
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
+use Azera\Http\Response;
+use Azera\Core\Controller;
 
 class AvatarController extends Controller
 {
@@ -488,9 +488,9 @@ Implement `MiddlewareInterface` to add cross-cutting behavior — rate limiting,
 <?php
 namespace App\Middleware;
 
-use Merlin\AppContext;
-use Merlin\Http\Response;
-use Merlin\Core\MiddlewareInterface;
+use Azera\AppContext;
+use Azera\Http\Response;
+use Azera\Core\MiddlewareInterface;
 
 class ApiKeyMiddleware implements MiddlewareInterface
 {
@@ -531,10 +531,10 @@ $router->add('GET', '/api/users', 'Api\UserController::indexAction');
 
 ## 19) Encrypting Sensitive Data
 
-Use `Merlin\Crypt` to store sensitive fields (tokens, personal data, secrets) encrypted at rest. Keys should be 32 bytes of random data, loaded from an environment variable or secrets manager — never hard-coded.
+Use `Azera\Crypt` to store sensitive fields (tokens, personal data, secrets) encrypted at rest. Keys should be 32 bytes of random data, loaded from an environment variable or secrets manager — never hard-coded.
 
 ```php
-use Merlin\Crypt;
+use Azera\Crypt;
 
 $key = base64_decode($_ENV['ENCRYPTION_KEY']); // 32-byte key stored in the environment
 

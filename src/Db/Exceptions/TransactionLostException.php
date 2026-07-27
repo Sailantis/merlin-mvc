@@ -1,7 +1,7 @@
 <?php
-namespace Merlin\Db\Exceptions;
+namespace Azera\Db\Exceptions;
 
-use Merlin\Db\Exception;
+use Azera\Db\Exception;
 
 class TransactionLostException extends Exception
 {

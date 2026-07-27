@@ -1,9 +1,9 @@
 <?php
-namespace Merlin\Http;
+namespace Azera\Http;
 
-use Merlin\AppContext;
-use Merlin\Http\Response;
-use Merlin\Core\MiddlewareInterface;
+use Azera\AppContext;
+use Azera\Http\Response;
+use Azera\Core\MiddlewareInterface;
 
 /**
  * Middleware to manage PHP sessions.
@@ -21,7 +21,7 @@ class SessionMiddleware implements MiddlewareInterface
      *
      * @param AppContext $context Application context.
      * @param callable   $next    Next middleware callable.
-     * @return \Merlin\Http\Response|null The response from the downstream pipeline.
+     * @return \Azera\Http\Response|null The response from the downstream pipeline.
      */
     public function process(AppContext $context, callable $next): ?Response
     {

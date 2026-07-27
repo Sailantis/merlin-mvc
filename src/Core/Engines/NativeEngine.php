@@ -1,8 +1,8 @@
 <?php
-namespace Merlin\Core\Engines
+namespace Azera\Core\Engines
 {
 
-    use Merlin\Core\ViewEngine;
+    use Azera\Core\ViewEngine;
 
     /**
      * Native PHP template engine.

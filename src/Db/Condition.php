@@ -1,8 +1,8 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
-use Merlin\AppContext;
+use Azera\AppContext;
 
 /**
  * Build conditions for WHERE, HAVING, ON etc. clauses
@@ -25,11 +25,12 @@ use Merlin\AppContext;
  *   // Complex conditions
  *   $c = Condition::create()
  *       ->where('u.age', 18, '>=')
- *       ->andWhere('u.status', 'active')
- *       ->groupStart()
- *           ->where('u.role', 'admin')
- *           ->orWhere('u.role', 'moderator')
- *       ->groupEnd();
+ *       ->where('u.status', 'active')
+ *       ->group(
+ *           fn(Condition $g) => 
+ *              $g->where('u.role', 'admin')
+ *                  ->orWhere('u.role', 'moderator')
+ *       );
  */
 class Condition
 {
@@ -46,7 +47,7 @@ class Condition
 	/**
 	 * @var bool
 	 */
-	protected bool $needOperator = false;
+	protected bool $needConnector = false;
 
 	/**
 	 * @var array
@@ -176,7 +177,7 @@ class Condition
 	 */
 	public function where(string|Condition $condition, $value = null, bool $escape = true): static
 	{
-		return $this->addWhere($condition, ' AND ', $value, $escape);
+		return $this->addWhere($condition, ' AND ', '', $value, $escape);
 	}
 
 	/**
@@ -188,21 +189,45 @@ class Condition
 	 */
 	public function orWhere(string|Condition $condition, $value = null, bool $escape = true): static
 	{
-		return $this->addWhere($condition, ' OR ', $value, $escape);
+		return $this->addWhere($condition, ' OR ', '', $value, $escape);
+	}
+
+	/**
+	 * Appends a negated condition to the current conditions using an AND operator
+	 * @param string|Condition $condition
+	 * @param $value
+	 * @param bool $escape
+	 * @return $this
+	 */
+	public function notWhere(string|Condition $condition, $value = null, bool $escape = true): static
+	{
+		return $this->addWhere($condition, ' AND ', 'NOT ', $value, $escape);
+	}
+
+	/**
+	 * Appends a negated condition to the current conditions using an OR operator
+	 * @param string|Condition $condition
+	 * @param $value
+	 * @param bool $escape
+	 * @return $this
+	 */
+	public function orNotWhere(string|Condition $condition, $value = null, bool $escape = true): static
+	{
+		return $this->addWhere($condition, ' OR ', 'NOT ', $value, $escape);
 	}
 
 	/**
 	 * Appends a condition to the current conditions using an operator
 	 * @param string|Condition $condition
-	 * @param string $operator
+	 * @param string $connector
 	 * @param $value
 	 * @param bool $escape
 	 * @return $this
 	 */
-	private function addWhere(string|Condition $condition, string $operator, $value = null, bool $escape = true): static
+	private function addWhere(string|Condition $condition, string $connector, string $prefix, $value = null, bool $escape = true): static
 	{
-		if ($this->needOperator) {
-			$this->condition .= $operator;
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
 		if ($condition instanceof Condition) {
 			// sub conditions
@@ -250,10 +275,11 @@ class Condition
 			// Plain condition string - parse and protect identifiers
 			$condition = $this->protectConditionString($condition);
 		}
+		$this->condition .= $prefix;
 		$this->condition .= '(';
 		$this->condition .= $condition;
 		$this->condition .= ')';
-		$this->needOperator = true;
+		$this->needConnector = true;
 		return $this;
 	}
 
@@ -308,7 +334,7 @@ class Condition
 	/**
 	 * Appends a BETWEEN condition to the current conditions
 	 * @param string $condition
-	 * @param string $operator
+	 * @param string $connector
 	 * @param string $between
 	 * @param $minimum
 	 * @param $maximum
@@ -316,16 +342,16 @@ class Condition
 	 */
 	private function addBetweenWhere(
 		string $condition,
-		string $operator,
+		string $connector,
 		string $between,
 		$minimum,
 		$maximum
 	): static {
-		if ($this->needOperator) {
-			$this->condition .= $operator;
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
 		$this->condition .= '(' . $this->protectIdentifier($condition) . $between . $this->escapeValue($minimum) . ' AND ' . $this->escapeValue($maximum) . ')';
-		$this->needOperator = true;
+		$this->needConnector = true;
 		return $this;
 	}
 
@@ -376,15 +402,15 @@ class Condition
 	/**
 	 * Appends an NOT IN condition to the current conditions
 	 * @param string $condition
-	 * @param string $operator
+	 * @param string $connector
 	 * @param string $in
 	 * @param $values
 	 * @return $this
 	 */
-	private function addInWhere(string $condition, string $operator, string $in, $values): static
+	private function addInWhere(string $condition, string $connector, string $in, $values): static
 	{
-		if ($this->needOperator) {
-			$this->condition .= $operator;
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
 		$protectedCondition = $this->protectIdentifier($condition);
 		if ($values instanceof Condition) {
@@ -399,7 +425,7 @@ class Condition
 		} else {
 			$this->condition .= '(' . $protectedCondition . " $in (" . $this->escapeValue($values) . '))';
 		}
-		$this->needOperator = true;
+		$this->needConnector = true;
 		return $this;
 	}
 
@@ -449,15 +475,15 @@ class Condition
 	/**
 	 * Appends an HAVING condition to the current conditions
 	 * @param string|Sql $condition
-	 * @param string $operator
+	 * @param string $connector
 	 * @param string $having
 	 * @param array|null $values
 	 * @return $this
 	 */
-	private function addHaving(string|Sql $condition, string $operator, string $having, $values = null): static
+	private function addHaving(string|Sql $condition, string $connector, string $having, $values = null): static
 	{
-		if ($this->needOperator) {
-			$this->condition .= $operator;
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
 		// If a Sql was provided directly, serialize it and ignore $values
 		if ($condition instanceof Sql) {
@@ -468,7 +494,7 @@ class Condition
 		}
 
 		$this->condition .= "($having $condition)";
-		$this->needOperator = true;
+		$this->needConnector = true;
 		return $this;
 	}
 
@@ -554,7 +580,7 @@ class Condition
 	 * @param string $identifier
 	 * @param $value
 	 * @param bool $escape
-	 * @param string $operator
+	 * @param string $connector
 	 * @param string $like
 	 * @return $this
 	 */
@@ -562,85 +588,100 @@ class Condition
 		string $identifier,
 		$value,
 		bool $escape,
-		string $operator,
+		string $connector,
 		string $like
 	): static {
-		if ($this->needOperator) {
-			$this->condition .= $operator;
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
 		$this->condition .= '(';
 		$this->condition .= $this->protectIdentifier($identifier);
 		$this->condition .= $like;
 		$this->condition .= $escape ? $this->escapeValue($value) : $value;
 		$this->condition .= ')';
-		$this->needOperator = true;
+		$this->needConnector = true;
 		return $this;
 	}
 
 	/**
-	 * Starts a new group by adding an opening parenthesis to the WHERE clause of the query.
+	 * Build a grouped condition using a callback.
+	 *
+	 * The callback receives a fresh Condition builder whose contents are
+	 * wrapped in parentheses and appended to the current builder using AND.
+	 * Bindings and deferred model prefixes are merged into the parent.
+	 *
+	 * Example:
+	 *   $c->group(function (Condition $g) {
+	 *       $g->where('role', 'admin')
+	 *         ->orWhere('role', 'moderator');
+	 *   });
+	 *
+	 * @param callable(Condition): void $callback
 	 * @return $this
 	 */
-	public function groupStart(): static
+	public function group(callable $callback): static
 	{
-		if ($this->needOperator) {
-			$this->condition .= ' AND ';
-			$this->needOperator = false;
+		return $this->addGroup($callback, ' AND ', '(');
+	}
+
+	/**
+	 * Build a grouped condition using a callback, joined with OR.
+	 *
+	 * @param callable(Condition): void $callback
+	 * @return $this
+	 * @see group()
+	 */
+	public function orGroup(callable $callback): static
+	{
+		return $this->addGroup($callback, ' OR ', '(');
+	}
+
+	/**
+	 * Build a negated grouped condition using a callback, joined with AND.
+	 *
+	 * @param callable(Condition): void $callback
+	 * @return $this
+	 * @see group()
+	 */
+	public function notGroup(callable $callback): static
+	{
+		return $this->addGroup($callback, ' AND ', 'NOT (');
+	}
+
+	/**
+	 * Build a negated grouped condition using a callback, joined with OR.
+	 *
+	 * @param callable(Condition): void $callback
+	 * @return $this
+	 * @see group()
+	 */
+	public function orNotGroup(callable $callback): static
+	{
+		return $this->addGroup($callback, ' OR ', 'NOT (');
+	}
+
+	/**
+	 * Shared implementation for the callback-based group methods.
+	 *
+	 * @param callable(Condition): void $callback
+	 * @param string $connector Logical operator to prepend (' AND ' or ' OR ')
+	 * @param string $open Opening token ('(' or 'NOT (')
+	 * @return $this
+	 */
+	private function addGroup(callable $callback, string $connector, string $open): static
+	{
+		if ($this->needConnector) {
+			$this->condition .= $connector;
 		}
-		$this->condition .= '(';
-		return $this;
-	}
 
-	/**
-	 * Starts a new group by adding an opening parenthesis to the WHERE clause of the query, prefixing it with ‘OR’.
-	 * @return $this
-	 */
-	public function orGroupStart(): static
-	{
-		if ($this->needOperator) {
-			$this->condition .= ' OR ';
-			$this->needOperator = false;
-		}
-		$this->condition .= '(';
-		return $this;
-	}
+		$this->condition .= $open;
+		$this->needConnector = false; // first inner condition: no prefix
 
-	/**
-	 * Starts a new group by adding an opening parenthesis to the WHERE clause of the query, prefixing it with ‘NOT’.
-	 * @return $this
-	 */
-	public function notGroupStart(): static
-	{
-		if ($this->needOperator) {
-			$this->condition .= ' AND ';
-			$this->needOperator = false;
-		}
-		$this->condition .= 'NOT (';
-		return $this;
-	}
+		$callback($this);
 
-	/**
-	 * Starts a new group by adding an opening parenthesis to the WHERE clause of the query, prefixing it with ‘OR NOT’.
-	 * @return $this
-	 */
-	public function orNotGroupStart(): static
-	{
-		if ($this->needOperator) {
-			$this->condition .= ' OR ';
-			$this->needOperator = false;
-		}
-		$this->condition .= 'NOT (';
-		return $this;
-	}
-
-	/**
-	 * Ends the current group by adding an closing parenthesis to the WHERE clause of the query.
-	 * @return $this
-	 */
-	public function groupEnd(): static
-	{
 		$this->condition .= ')';
-		$this->needOperator = true;
+		$this->needConnector = true; // next sibling: gets AND/OR
+
 		return $this;
 	}
 

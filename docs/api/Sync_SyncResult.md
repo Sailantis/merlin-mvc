@@ -1,6 +1,6 @@
 # 🧩 Class: SyncResult
 
-**Full name:** [Merlin\Sync\SyncResult](../../src/Sync/SyncResult.php)
+**Full name:** [Azera\Sync\SyncResult](../../src/Sync/SyncResult.php)
 
 Holds the result of synchronising a single model file against the database schema.
 

@@ -1,14 +1,15 @@
 <?php
-namespace Merlin;
+namespace Azera;
 
+use Azera\Core\Dispatcher;
+use Azera\Core\Engines\ClarityEngine;
+use Azera\Core\Router;
+use Azera\Core\ViewEngine;
+use Azera\Db\DatabaseManager;
+use Azera\Http\Cookies;
+use Azera\Http\Request as HttpRequest;
+use Azera\Http\Session;
 use RuntimeException;
-use Merlin\Db\DatabaseManager;
-use Merlin\Http\Cookies;
-use Merlin\Http\Request as HttpRequest;
-use Merlin\Http\Session;
-use Merlin\Core\Engines\ClarityEngine;
-use Merlin\Core\Router;
-use Merlin\Core\ViewEngine;
 
 class AppContext
 {
@@ -20,12 +21,14 @@ class AppContext
     protected function registerDefaultServices(): void
     {
         $this->serviceDefinitions = [
-            Session::class => fn() => $this->session(),
-            Cookies::class => fn() => $this->cookies(),
-            HttpRequest::class => fn() => $this->request(),
-            ViewEngine::class => fn() => $this->view(),
+            Session::class         => fn() => $this->session(),
+            Cookies::class         => fn() => $this->cookies(),
+            HttpRequest::class     => fn() => $this->request(),
+            ViewEngine::class      => fn() => $this->view(),
             DatabaseManager::class => fn() => $this->dbManager(),
-            AppContext::class => fn() => $this,
+            Router::class          => fn() => $this->router(),
+            Dispatcher::class      => fn() => $this->dispatcher(),
+            AppContext::class      => fn() => $this,
         ];
 
         $this->serviceInstances = [];
@@ -44,6 +47,8 @@ class AppContext
     protected ?Cookies $cookies = null;
 
     protected ?Router $router = null;
+
+    protected ?Dispatcher $dispatcher = null;
 
     protected ?ResolvedRoute $route = null;
 
@@ -101,9 +106,9 @@ class AppContext
      */
     public function setView(ViewEngine $engine): static
     {
-        $this->view = $engine;
+        $this->view                                  = $engine;
         $this->serviceDefinitions[ViewEngine::class] = $engine;
-        $this->serviceInstances[ViewEngine::class] = $engine;
+        $this->serviceInstances[ViewEngine::class]   = $engine;
         return $this;
     }
 
@@ -137,6 +142,11 @@ class AppContext
         return $this->router ??= new Router();
     }
 
+    public function dispatcher(): Dispatcher
+    {
+        return $this->dispatcher ??= new Dispatcher();
+    }
+
     // --- Critical Services ---
 
     /**
@@ -154,9 +164,9 @@ class AppContext
      */
     public function setSession(Session $session): void
     {
-        $this->session = $session;
+        $this->session                            = $session;
         $this->serviceDefinitions[Session::class] = $session;
-        $this->serviceInstances[Session::class] = $session;
+        $this->serviceInstances[Session::class]   = $session;
     }
 
     /**
@@ -230,9 +240,9 @@ class AppContext
         }
 
         if (class_exists($id)) {
-            $service = $this->build($id);
+            $service                       = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -259,9 +269,9 @@ class AppContext
         }
 
         if (class_exists($id)) {
-            $service = $this->build($id);
+            $service                       = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -296,9 +306,9 @@ class AppContext
         }
 
         if (is_string($definition) && class_exists($definition)) {
-            $service = $this->build($definition);
+            $service                       = $this->build($definition);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -329,33 +339,31 @@ class AppContext
 
     protected function syncKnownServiceProperty(string $id, object $service): void
     {
-        if ($id === HttpRequest::class && $service instanceof HttpRequest) {
-            $this->request = $service;
-            return;
+        if ($service !== null && !$service instanceof $id) {
+            return; // The service does not match the expected type, skip syncing
         }
-
-        if ($id === ViewEngine::class && $service instanceof ViewEngine) {
-            $this->view = $service;
-            return;
-        }
-
-        if ($id === Session::class && $service instanceof Session) {
-            $this->session = $service;
-            return;
-        }
-
-        if ($id === Cookies::class && $service instanceof Cookies) {
-            $this->cookies = $service;
-            return;
-        }
-
-        if ($id === Router::class && $service instanceof Router) {
-            $this->router = $service;
-            return;
-        }
-
-        if ($id === DatabaseManager::class && $service instanceof DatabaseManager) {
-            $this->dbManager = $service;
+        switch ($id) {
+            case HttpRequest::class:
+                $this->request = $service;
+                break;
+            case ViewEngine::class:
+                $this->view = $service;
+                break;
+            case Session::class:
+                $this->session = $service;
+                break;
+            case Cookies::class:
+                $this->cookies = $service;
+                break;
+            case Router::class:
+                $this->router = $service;
+                break;
+            case Dispatcher::class:
+                $this->dispatcher = $service;
+                break;
+            case DatabaseManager::class:
+                $this->dbManager = $service;
+                break;
         }
     }
 
@@ -373,7 +381,7 @@ class AppContext
         foreach ($ref->getConstructor()->getParameters() as $param) {
 
             $typeObj = $param->getType();
-            $types = [];
+            $types   = [];
 
             // Extract all possible types (Named, Union, Intersection)
             if ($typeObj instanceof \ReflectionNamedType) {
@@ -459,6 +467,5 @@ class ResolvedRoute
         public readonly array $vars,
         public readonly array $groups,
         public readonly array $override
-    ) {
-    }
+    ) {}
 }

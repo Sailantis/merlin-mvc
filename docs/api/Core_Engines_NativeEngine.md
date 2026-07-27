@@ -1,6 +1,6 @@
 # 🧩 Class: NativeEngine
 
-**Full name:** [Merlin\Core\Engines\NativeEngine](../../src/Core/Engines/NativeEngine.php)
+**Full name:** [Azera\Core\Engines\NativeEngine](../../src/Core/Engines/NativeEngine.php)
 
 Native PHP template engine.
 

@@ -1,12 +1,12 @@
-# Merlin - PHP Web Framework
+# Azera - PHP Web Framework
 
-![Merlin Logo](docs/images/merlin-logo-text-opt.svg)
+![Azera Logo](docs/images/azera-logo-text.svg)
 
 ### Lightweight by Design. Powerful in Practice.
 
-A lightweight, fast PHP framework for building modern Web applications and CLI tools. Merlin combines the best ideas from frameworks like Phalcon, CodeIgniter, Laravel and Symfony into a minimal yet powerful toolkit.
+A lightweight, fast PHP framework for building modern Web applications and CLI tools. Azera combines the best ideas from frameworks like Phalcon, CodeIgniter, Laravel and Symfony into a minimal yet powerful toolkit.
 
-## Why Merlin?
+## Why Azera?
 
 **Lightweight & Fast** - Minimal dependencies and overhead. No bloat, just what you need.
 
@@ -16,7 +16,7 @@ A lightweight, fast PHP framework for building modern Web applications and CLI t
 
 **Flexible Architecture** - Use as much or as little as you need. Mix and match components freely.
 
-**Secure by Default** - Prepared statements everywhere, CSRF protection, encryption helpers, and security best practices built in.
+**Secure by Default** - SQL injection protection via prepared statements, CSRF protection, encryption helpers, and security best practices built in.
 
 **Developer Friendly** - Intuitive APIs, clear error messages, and comprehensive documentation.
 
@@ -27,7 +27,7 @@ A lightweight, fast PHP framework for building modern Web applications and CLI t
 - **Router** - Fast pattern matching with named routes, parameter validation, and middleware support
 - **Controllers** - Clean action-based controllers with dependency injection
 - **Dispatcher** - Flexible request dispatching with middleware pipeline
-- **ViewEngine** - Clarity template engine with auto-escaping, template inheritance, and a filter pipeline (A native PHP engine is also available for maximum performance)
+- **ViewEngine** - Clarity template engine with auto-escaping, template inheritance, and a filter pipeline. Other engines can be used as well, including Twig, Plates, and plain PHP templates.
 
 ### Database & ORM
 
@@ -79,7 +79,7 @@ A lightweight, fast PHP framework for building modern Web applications and CLI t
 Install via Composer:
 
 ```bash
-composer require sailantis/merlin-mvc
+composer require sailantis/azera-framework
 ```
 
 ## Quick Start
@@ -92,11 +92,11 @@ Create a simple web application with routing and controllers:
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Http\Response;
-use Merlin\Core\Dispatcher;
-use Merlin\Core\Router;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Http\Response;
+use Azera\Core\Dispatcher;
+use Azera\Core\Router;
 
 // Application context holds shared services
 // Dispatcher, Controllers, Query Builders and Models access the AppContext
@@ -150,7 +150,7 @@ Controller example:
 <?php
 namespace App\Controllers;
 
-use Merlin\Core\Controller;
+use Azera\Core\Controller;
 
 class IndexController extends Controller
 {
@@ -166,7 +166,7 @@ class IndexController extends Controller
 Define and use Active Record style models:
 
 ```php
-class User extends \Merlin\Core\Model
+class User extends \Azera\Core\Model
 {
     public int $id;
     public string $username;
@@ -224,10 +224,10 @@ User::query()->where('status', 'spam')->delete();
 
 ### Validating Input
 
-Merlin includes a fluent validation component. Fields are required by default; call `->optional()` or `->default()` where needed.
+Azera includes a fluent validation component. Fields are required by default; call `->optional()` or `->default()` where needed.
 
 ```php
-use Merlin\Validation\Validator;
+use Azera\Validation\Validator;
 
 $v = new Validator($ctx->request()->post());
 
@@ -247,7 +247,7 @@ User::create($data);
 Or throw on failure instead of branching:
 
 ```php
-use Merlin\Validation\ValidationException;
+use Azera\Validation\ValidationException;
 
 try {
     $data = $v->validate(); // throws ValidationException on failure
@@ -261,7 +261,7 @@ try {
 `Paginator` wraps any `Query`, handles `LIMIT`/`OFFSET`, and runs an automatic total-count query.
 
 ```php
-use Merlin\Db\Paginator;
+use Azera\Db\Paginator;
 
 $paginator = new Paginator(
     User::query()->where('status', 'active')->orderBy('name'),
@@ -283,7 +283,7 @@ Build complex queries with joins, subqueries, and aggregations.
 #### Using Models and Sql Functions
 
 ```php
-use Merlin\Db\Sql;
+use Azera\Db\Sql;
 
 // Subquery: select the latest order date for each user
 $latestOrder = Sql::subquery(
@@ -313,7 +313,7 @@ $results = Order::query('o')
 A `Query` instance can be passed directly to `->from()` or to any join method. The subquery is wrapped in parentheses automatically and its bind parameters are propagated to the outer query — no manual merging required.
 
 ```php
-use Merlin\Db\Query;
+use Azera\Db\Query;
 
 // Build the subquery independently
 $completedOrders = Order::query()
@@ -369,7 +369,7 @@ Build command-line tools and scripts. `Console` auto-discovers tasks from PSR-4 
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Merlin\Cli\Console;
+use Azera\Cli\Console;
 
 $console = new Console();
 // App\Tasks is included automatically; add other namespaces if needed:
@@ -383,7 +383,7 @@ $console->process($argv[1] ?? null, $argv[2] ?? null, array_slice($argv, 3));
 <?php
 namespace App\Tasks;
 
-use Merlin\Cli\Task;
+use Azera\Cli\Task;
 
 /**
  * Database maintenance utilities.
@@ -417,7 +417,7 @@ php console.php help database      # detail page for one task
 
 **Using Built-in Tasks**
 
-Merlin includes a built-in `model-sync` task that synchronizes PHP models with the database schema:
+Azera includes a built-in `model-sync` task that synchronizes PHP models with the database schema:
 
 ```bash
 # Preview differences between your models and the database
@@ -434,7 +434,7 @@ php console.php model-sync make Order
 
 ## Project Structure
 
-Recommended directory layout for Merlin applications:
+Recommended directory layout for Azera applications:
 
 ```text
 your-project/
@@ -459,7 +459,7 @@ your-project/
 
 Comprehensive guides and references:
 
-- **[Getting Started](docs/00-GETTING-STARTED.md)** - Set up your first Merlin project
+- **[Getting Started](docs/00-GETTING-STARTED.md)** - Set up your first Azera project
 - **[Architecture](docs/01-ARCHITECTURE.md)** - Understand core components and design principles
 - **[MVC Routing](docs/02-MVC-ROUTING.md)** - Define routes, patterns, and middleware
 - **[Controllers & Views](docs/03-CONTROLLERS-VIEWS.md)** - Build controllers and render views
@@ -481,8 +481,8 @@ Comprehensive guides and references:
 Centralized access to shared services via a singleton service container:
 
 ```php
-use Merlin\AppContext;
-use Merlin\Db\Database;
+use Azera\AppContext;
+use Azera\Db\Database;
 
 $ctx = AppContext::instance();
 
@@ -535,7 +535,7 @@ $mgr->set('read', new Database('mysql:host=replica;dbname=app', 'user', 'pass'))
 
 ### Running Tests
 
-Merlin uses PHPUnit for testing:
+Azera uses PHPUnit for testing:
 
 ```bash
 # Run all tests
@@ -576,7 +576,7 @@ Check out the `examples/` directory for complete working examples:
 
 ## Philosophy
 
-Merlin is designed with these principles:
+Azera is designed with these principles:
 
 - **Simplicity over magic** - Explicit is better than implicit
 - **Performance** - Minimal overhead and memory footprint
@@ -586,7 +586,7 @@ Merlin is designed with these principles:
 
 ## Acknowledgments
 
-Merlin draws inspiration from:
+Azera draws inspiration from:
 
 - **Phalcon** - Speed and C-based architecture concepts
 - **CodeIgniter** - Simplicity and developer-friendly APIs
@@ -594,7 +594,9 @@ Merlin draws inspiration from:
 
 ## About the Name
 
-Merlins are small falcons known for their speed, agility, and hunting precision. These characteristics reflect the goals of the Merlin framework: a lightweight, fast, and focused MVC system. The name is also a deliberate reference to Phalcon, which strongly influenced Merlin’s design.
+**Azera** is named after **Andi Gutmans**, **Zeev Suraski**, and **Rasmus Lerdorf** — the founders of PHP.
+
+The little bird on the Azera logo is a Merlin falcon — a small, fast, and agile raptor, just like the framework itself: lightweight, focused, and built for speed. It is also a reference to Phalcon, which strongly influenced Azera’s design.
 
 ## License
 

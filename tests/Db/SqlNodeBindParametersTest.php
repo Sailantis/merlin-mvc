@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/TestDatabase.php';
 
-use Merlin\Db\Sql;
-use Merlin\Db\Query;
-use Merlin\Core\Model;
+use Azera\Db\Sql;
+use Azera\Db\Query;
+use Azera\Core\Model;
 use PHPUnit\Framework\TestCase;
 
 /**

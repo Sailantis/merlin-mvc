@@ -1,6 +1,6 @@
 # 🧩 Class: TableSchema
 
-**Full name:** [Merlin\Sync\Schema\TableSchema](../../src/Sync/Schema/SchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\TableSchema](../../src/Sync/Schema/SchemaProvider.php)
 
 ## 🌍 Public Properties
 

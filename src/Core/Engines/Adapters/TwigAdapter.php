@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\Core\Engines\Adapters;
+namespace Azera\Core\Engines\Adapters;
 
-use Merlin\Core\ViewEngine;
+use Azera\Core\ViewEngine;
 
 /**
  * Twig template engine adapter.
  *
- * Wraps Twig/Twig so Merlin applications can use `.twig` templates.
+ * Wraps Twig/Twig so Azera applications can use `.twig` templates.
  * Requires `twig/twig` to be installed:
  *
  * ```sh
@@ -194,12 +194,12 @@ class TwigAdapter extends ViewEngine
     // -------------------------------------------------------------------------
 
     /**
-     * Convert a Merlin view name to a Twig template name.
+     * Convert a Azera view name to a Twig template name.
      *
      * Twig uses `/` as the directory separator and `@namespace/path` for
      * namespaced views.  Dot-notation is converted to slashes.
      *
-     * | Merlin              | Twig                      |
+     * | Azera              | Twig                      |
      * |---------------------|---------------------------|
      * | `home/index`        | `home/index.twig`         |
      * | `home.index`        | `home/index.twig`         |

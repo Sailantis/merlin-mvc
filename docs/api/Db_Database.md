@@ -1,6 +1,6 @@
 # 🧩 Class: Database
 
-**Full name:** [Merlin\Db\Database](../../src/Db/Database.php)
+**Full name:** [Azera\Db\Database](../../src/Db/Database.php)
 
 Class Database
 
@@ -385,7 +385,7 @@ Return the underlying PDO connection instance.
 
 ### builder() · [source](../../src/Db/Database.php#L659)
 
-`public function builder(): Merlin\Db\Query`
+`public function builder(): Azera\Db\Query`
 
 Create a new Query builder instance associated with this database connection.
 

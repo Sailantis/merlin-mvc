@@ -1,6 +1,6 @@
 # 🧩 Class: SqliteSchemaProvider
 
-**Full name:** [Merlin\Sync\Schema\SqliteSchemaProvider](../../src/Sync/Schema/SqliteSchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\SqliteSchemaProvider](../../src/Sync/Schema/SqliteSchemaProvider.php)
 
 ## 🚀 Public methods
 
@@ -21,7 +21,7 @@
 
 ---
 
-### listTables() · [source](../../src/Sync/Schema/SqliteSchemaProvider.php#L12)
+### listTables() · [source](../../src/Sync/Schema/SqliteSchemaProvider.php#L10)
 
 `public function listTables(string|null $schema = null): array`
 
@@ -38,9 +38,9 @@
 
 ---
 
-### getTableSchema() · [source](../../src/Sync/Schema/SqliteSchemaProvider.php#L21)
+### getTableSchema() · [source](../../src/Sync/Schema/SqliteSchemaProvider.php#L19)
 
-`public function getTableSchema(string $table, string|null $schema = null): Merlin\Sync\Schema\TableSchema`
+`public function getTableSchema(string $table, string|null $schema = null): Azera\Sync\Schema\TableSchema`
 
 **🧭 Parameters**
 

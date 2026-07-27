@@ -1,6 +1,6 @@
 # 🧩 Class: AddProperty
 
-**Full name:** [Merlin\Sync\AddProperty](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\AddProperty](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

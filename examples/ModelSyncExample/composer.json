@@ -1,6 +1,6 @@
 {
   "require": {
-    "sailantis/merlin-mvc": "latest"
+    "sailantis/azera-framework": "*"
   },
   "autoload": {
     "psr-4": {

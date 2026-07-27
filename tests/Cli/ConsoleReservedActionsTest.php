@@ -1,10 +1,10 @@
 <?php
-namespace Merlin\Tests\Cli;
+namespace Azera\Tests\Cli;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Cli\Console;
-use Merlin\Cli\Task;
+use Azera\Cli\Console;
+use Azera\Cli\Task;
 use PHPUnit\Framework\TestCase;
 
 // ---------------------------------------------------------------------------

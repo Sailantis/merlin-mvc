@@ -1,11 +1,11 @@
 <?php
-namespace Merlin\ReadWriteConnectionExample;
+namespace Azera\ReadWriteConnectionExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Core\Model;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Core\Model;
 
 /**
  * Example: Setting up read/write database connections

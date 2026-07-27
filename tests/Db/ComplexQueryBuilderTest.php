@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/TestDatabase.php';
 
-use Merlin\Db\Sql;
-use Merlin\Db\Query;
-use Merlin\Db\Condition;
+use Azera\Db\Sql;
+use Azera\Db\Query;
+use Azera\Db\Condition;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -353,7 +353,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testJoinConditionWithAndProducesValidCountSql(): void
     {
         $db = new TestMysqlDatabase();
-        $q = new \Merlin\Db\Query($db);
+        $q = new \Azera\Db\Query($db);
 
         $q->table('v2_bible_text text')
             ->join('v2_bible_book book', 'book.translation_id = text.translation_id and book.number = text.book_number')

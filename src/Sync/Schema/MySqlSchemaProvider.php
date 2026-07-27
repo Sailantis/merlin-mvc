@@ -1,21 +1,19 @@
 <?php
-namespace Merlin\Sync\Schema;
+namespace Azera\Sync\Schema;
 
 use PDO;
 
 class MySqlSchemaProvider implements SchemaProvider
 {
-    public function __construct(private PDO $pdo)
-    {
-    }
+    public function __construct(private PDO $pdo) {}
 
     public function listTables(?string $schema = null): array
     {
-        $stmt = $this->pdo->query("
-            SELECT TABLE_NAME 
+        $stmt = $this->pdo->query(
+            "SELECT TABLE_NAME 
             FROM INFORMATION_SCHEMA.TABLES 
-            WHERE TABLE_SCHEMA = DATABASE()
-        ");
+            WHERE TABLE_SCHEMA = DATABASE()"
+        );
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -36,12 +34,12 @@ class MySqlSchemaProvider implements SchemaProvider
 
     private function loadTableComment(string $table): ?string
     {
-        $stmt = $this->pdo->prepare("
-        SELECT TABLE_COMMENT
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = ?
-    ");
+        $stmt = $this->pdo->prepare(
+            "SELECT TABLE_COMMENT
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = ?"
+        );
         $stmt->execute([$table]);
 
         $comment = $stmt->fetchColumn();
@@ -50,12 +48,12 @@ class MySqlSchemaProvider implements SchemaProvider
 
     private function loadColumns(string $table): array
     {
-        $stmt = $this->pdo->prepare("
-            SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, COLUMN_COMMENT
+        $stmt = $this->pdo->prepare(
+            "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, COLUMN_KEY, COLUMN_COMMENT
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
-            ORDER BY ORDINAL_POSITION
-        ");
+            ORDER BY ORDINAL_POSITION"
+        );
         $stmt->execute([$table]);
 
         $result = [];

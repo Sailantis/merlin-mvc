@@ -1,10 +1,10 @@
 # 🧩 Class: PlatesAdapter
 
-**Full name:** [Merlin\Core\Engines\Adapters\PlatesAdapter](../../src/Core/Engines/Adapters/PlatesAdapter.php)
+**Full name:** [Azera\Core\Engines\Adapters\PlatesAdapter](../../src/Core/Engines/Adapters/PlatesAdapter.php)
 
 Plates template engine adapter.
 
-Wraps League/Plates so Merlin applications can use `.plates.php` templates.
+Wraps League/Plates so Azera applications can use `.plates.php` templates.
 Requires `league/plates` to be installed:
 
 ```sh

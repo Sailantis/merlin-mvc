@@ -1,12 +1,12 @@
 # 🧩 Class: ResultSet
 
-**Full name:** [Merlin\Db\ResultSet](../../src/Db/ResultSet.php)
+**Full name:** [Azera\Db\ResultSet](../../src/Db/ResultSet.php)
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Db/ResultSet.php#L37)
+### __construct() · [source](../../src/Db/ResultSet.php#L38)
 
-`public function __construct(Merlin\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, Merlin\Core\Model|null $model = null): mixed`
+`public function __construct(Azera\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, Azera\Core\Model|null $model = null): mixed`
 
 Create a new ResultSet wrapping a PDO statement result.
 
@@ -27,7 +27,7 @@ Create a new ResultSet wrapping a PDO statement result.
 
 ---
 
-### fetch() · [source](../../src/Db/ResultSet.php#L59)
+### fetch() · [source](../../src/Db/ResultSet.php#L60)
 
 `public function fetch(): object|array|false`
 
@@ -41,9 +41,9 @@ Fetch next row as object or array depending on fetch mode.
 
 ---
 
-### fetchArray() · [source](../../src/Db/ResultSet.php#L69)
+### fetchAssoc() · [source](../../src/Db/ResultSet.php#L70)
 
-`public function fetchArray(): array|false`
+`public function fetchAssoc(): array|false`
 
 Fetch next row as associative array.
 
@@ -55,7 +55,7 @@ Fetch next row as associative array.
 
 ---
 
-### fetchObject() · [source](../../src/Db/ResultSet.php#L79)
+### fetchObject() · [source](../../src/Db/ResultSet.php#L80)
 
 `public function fetchObject(): object|false`
 
@@ -69,7 +69,7 @@ Fetch next row as object.
 
 ---
 
-### fetchColumn() · [source](../../src/Db/ResultSet.php#L90)
+### fetchColumn() · [source](../../src/Db/ResultSet.php#L91)
 
 `public function fetchColumn(int $column = 0): mixed`
 
@@ -89,9 +89,9 @@ Fetch next row as a single column value.
 
 ---
 
-### fetchAllArray() · [source](../../src/Db/ResultSet.php#L100)
+### fetchAllAssoc() · [source](../../src/Db/ResultSet.php#L101)
 
-`public function fetchAllArray(): array`
+`public function fetchAllAssoc(): array`
 
 Return all rows as associative array.
 
@@ -103,7 +103,7 @@ Return all rows as associative array.
 
 ---
 
-### fetchAllObject() · [source](../../src/Db/ResultSet.php#L111)
+### fetchAllObject() · [source](../../src/Db/ResultSet.php#L112)
 
 `public function fetchAllObject(): array`
 
@@ -117,7 +117,7 @@ Return all rows as object.
 
 ---
 
-### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L123)
+### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L124)
 
 `public function fetchAllColumn(int $column = 0): array`
 
@@ -137,7 +137,7 @@ Fetch all values from a single column.
 
 ---
 
-### fetchAll() · [source](../../src/Db/ResultSet.php#L135)
+### fetchAll() · [source](../../src/Db/ResultSet.php#L136)
 
 `public function fetchAll(int $fetchMode = 0): array`
 
@@ -157,7 +157,7 @@ Fetch all rows as objects or arrays depending on fetch mode.
 
 ---
 
-### setFetchMode() · [source](../../src/Db/ResultSet.php#L146)
+### setFetchMode() · [source](../../src/Db/ResultSet.php#L147)
 
 `public function setFetchMode(int $fetchMode): void`
 
@@ -176,9 +176,9 @@ Set the default fetch mode for this result set.
 
 ---
 
-### nextModel() · [source](../../src/Db/ResultSet.php#L155)
+### nextModel() · [source](../../src/Db/ResultSet.php#L156)
 
-`public function nextModel(): Merlin\Core\Model|null`
+`public function nextModel(): Azera\Core\Model|null`
 
 Get the next model from the result set, or false if there are no more models. This method will attempt to hydrate a model if a model class was provided when the ResultSet was created. If no model class was provided, it will return false.
 
@@ -190,9 +190,9 @@ Get the next model from the result set, or false if there are no more models. Th
 
 ---
 
-### firstModel() · [source](../../src/Db/ResultSet.php#L192)
+### firstModel() · [source](../../src/Db/ResultSet.php#L193)
 
-`public function firstModel(): Merlin\Core\Model|null`
+`public function firstModel(): Azera\Core\Model|null`
 
 Get first model or object from result set.
 
@@ -204,7 +204,7 @@ Get first model or object from result set.
 
 ---
 
-### allModels() · [source](../../src/Db/ResultSet.php#L218)
+### allModels() · [source](../../src/Db/ResultSet.php#L219)
 
 `public function allModels(): array`
 
@@ -221,7 +221,7 @@ Returns an empty array when no model class was provided at construction.
 
 ---
 
-### getSql() · [source](../../src/Db/ResultSet.php#L236)
+### getSql() · [source](../../src/Db/ResultSet.php#L237)
 
 `public function getSql(): string|null`
 
@@ -235,7 +235,7 @@ Return the SQL statement that was executed to produce this result set, if availa
 
 ---
 
-### getBindings() · [source](../../src/Db/ResultSet.php#L245)
+### getBindings() · [source](../../src/Db/ResultSet.php#L246)
 
 `public function getBindings(): array|null`
 
@@ -249,9 +249,9 @@ Return the variables that were bound to the SQL statement, if available.
 
 ---
 
-### reexecute() · [source](../../src/Db/ResultSet.php#L254)
+### refresh() · [source](../../src/Db/ResultSet.php#L255)
 
-`public function reexecute(): void`
+`public function refresh(): void`
 
 Execute the query again to repopulate the result set.
 
@@ -262,7 +262,7 @@ Execute the query again to repopulate the result set.
 
 ---
 
-### rewind() · [source](../../src/Db/ResultSet.php#L270)
+### rewind() · [source](../../src/Db/ResultSet.php#L271)
 
 `public function rewind(): void`
 
@@ -275,7 +275,7 @@ Rewind is a no-op: the result set cursor is forward-only.
 
 ---
 
-### current() · [source](../../src/Db/ResultSet.php#L276)
+### current() · [source](../../src/Db/ResultSet.php#L277)
 
 `public function current(): mixed`
 
@@ -288,7 +288,7 @@ Return the current row (fetched lazily on first access).
 
 ---
 
-### key() · [source](../../src/Db/ResultSet.php#L286)
+### key() · [source](../../src/Db/ResultSet.php#L287)
 
 `public function key(): int`
 
@@ -301,7 +301,7 @@ Return the zero-based position of the current row within this traversal.
 
 ---
 
-### next() · [source](../../src/Db/ResultSet.php#L292)
+### next() · [source](../../src/Db/ResultSet.php#L293)
 
 `public function next(): void`
 
@@ -314,7 +314,7 @@ Advance to the next row.
 
 ---
 
-### valid() · [source](../../src/Db/ResultSet.php#L299)
+### valid() · [source](../../src/Db/ResultSet.php#L300)
 
 `public function valid(): bool`
 
@@ -327,7 +327,7 @@ Return true while the current row is not false/null (i.e., while rows remain).
 
 ---
 
-### count() · [source](../../src/Db/ResultSet.php#L308)
+### count() · [source](../../src/Db/ResultSet.php#L309)
 
 `public function count(): int`
 

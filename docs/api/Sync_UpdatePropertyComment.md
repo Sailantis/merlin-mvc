@@ -1,6 +1,6 @@
 # 🧩 Class: UpdatePropertyComment
 
-**Full name:** [Merlin\Sync\UpdatePropertyComment](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\UpdatePropertyComment](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

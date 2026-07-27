@@ -1,6 +1,6 @@
 # 🧩 Class: Paginator
 
-**Full name:** [Merlin\Db\Paginator](../../src/Db/Paginator.php)
+**Full name:** [Azera\Db\Paginator](../../src/Db/Paginator.php)
 
 Paginator class for paginating database query results.
 
@@ -8,7 +8,7 @@ Paginator class for paginating database query results.
 
 ### __construct() · [source](../../src/Db/Paginator.php#L30)
 
-`public function __construct(Merlin\Db\Query $builder, int $page = 1, int $pageSize = 30, bool $reverse = false): mixed`
+`public function __construct(Azera\Db\Query $builder, int $page = 1, int $pageSize = 30, bool $reverse = false): mixed`
 
 Create a new Paginator instance.
 

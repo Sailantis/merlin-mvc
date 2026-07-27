@@ -1,11 +1,11 @@
 <?php
-namespace Merlin\Core;
+namespace Azera\Core;
 
-use Merlin\AppContext;
-use Merlin\Http\Cookies;
-use Merlin\Http\Request;
-use Merlin\Http\Session;
-use Merlin\Http\Response;
+use Azera\AppContext;
+use Azera\Http\Cookies;
+use Azera\Http\Request;
+use Azera\Http\Session;
+use Azera\Http\Response;
 
 /**
  * MVC Controller class

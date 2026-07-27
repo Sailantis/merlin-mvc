@@ -1,6 +1,6 @@
 # 🧩 Class: Request
 
-**Full name:** [Merlin\Http\Request](../../src/Http/Request.php)
+**Full name:** [Azera\Http\Request](../../src/Http/Request.php)
 
 Class Request
 A simple HTTP request handler that abstracts away PHP's superglobals and provides convenient methods to access request data.
@@ -557,7 +557,7 @@ Get the Content-Type header from the request
 
 ### getFile() · [source](../../src/Http/Request.php#L629)
 
-`public function getFile(string $key): Merlin\Http\UploadedFile|null`
+`public function getFile(string $key): Azera\Http\UploadedFile|null`
 
 Get the first uploaded file for a given field name, or null if not present
 

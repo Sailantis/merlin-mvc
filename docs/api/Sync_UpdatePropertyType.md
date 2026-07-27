@@ -1,6 +1,6 @@
 # 🧩 Class: UpdatePropertyType
 
-**Full name:** [Merlin\Sync\UpdatePropertyType](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\UpdatePropertyType](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
 /**
  * Holds the result of synchronising a single model file against the database schema.

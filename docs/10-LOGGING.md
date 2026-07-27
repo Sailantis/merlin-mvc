@@ -2,7 +2,7 @@
 
 **Monitor and debug your application**  Set up comprehensive logging for database queries, application events, and errors. Learn how to use event listeners, integrate with popular logging libraries, and track performance metrics.
 
-Merlin supports logging through event listeners on database operations and custom middleware.
+Azera supports logging through event listeners on database operations and custom middleware.
 Integrate your own logger or observability solution via `Database::addListener()` hooks and middleware.
 
 ## Database Listeners
@@ -123,9 +123,9 @@ $db = (new Database($dsn, $user, $pass))
 Capturing and logging exceptions is critical for debugging production issues. Middleware is the ideal place to implement global exception handling.
 
 ```php
-use Merlin\Core\MiddlewareInterface;
-use Merlin\AppContext;
-use Merlin\Http\Response;
+use Azera\Core\MiddlewareInterface;
+use Azera\AppContext;
+use Azera\Http\Response;
 
 class ExceptionMiddleware implements MiddlewareInterface
 {

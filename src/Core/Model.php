@@ -1,12 +1,12 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
-use Merlin\AppContext;
-use Merlin\Db\Query;
+use Azera\AppContext;
+use Azera\Db\Query;
 use ReflectionClass;
-use Merlin\Db\Database;
-use Merlin\Db\ResultSet;
+use Azera\Db\Database;
+use Azera\Db\ResultSet;
 
 /**
  * @template T of Model
@@ -486,7 +486,7 @@ abstract class Model
 
 		if ($db->getDriver() === 'pgsql') {
 			$result = $builder->returning(['*'])->insert($values);
-			if ($result instanceof ResultSet && ($row = $result->fetchArray())) {
+			if ($result instanceof ResultSet && ($row = $result->fetchAssoc())) {
 				foreach ($row as $field => $value) {
 					if (isset($missingMap[$field]) || !isset($this->$field)) {
 						$this->$field = $value;
@@ -537,7 +537,7 @@ abstract class Model
 	/**
 	 * Set both the read and write database role for this model class.
 	 *
-	 * @param string $role Named role registered with {@see \Merlin\Db\DatabaseManager}.
+	 * @param string $role Named role registered with {@see \Azera\Db\DatabaseManager}.
 	 */
 	public static function setDefaultRole(string $role): void
 	{
@@ -548,7 +548,7 @@ abstract class Model
 	/**
 	 * Set the database role used for SELECT queries on this model class.
 	 *
-	 * @param string $role Named read role registered with {@see \Merlin\Db\DatabaseManager}.
+	 * @param string $role Named read role registered with {@see \Azera\Db\DatabaseManager}.
 	 */
 	public static function setDefaultReadRole(string $role): void
 	{
@@ -558,7 +558,7 @@ abstract class Model
 	/**
 	 * Set the database role used for INSERT/UPDATE/DELETE queries on this model class.
 	 *
-	 * @param string $role Named write role registered with {@see \Merlin\Db\DatabaseManager}.
+	 * @param string $role Named write role registered with {@see \Azera\Db\DatabaseManager}.
 	 */
 	public static function setDefaultWriteRole(string $role): void
 	{
@@ -588,9 +588,9 @@ abstract class Model
 	/**
 	 * Return the database connection used for read (SELECT) queries.
 	 *
-	 * Resolves the configured read role via {@see \Merlin\Db\DatabaseManager::getOrDefault()}.
+	 * Resolves the configured read role via {@see \Azera\Db\DatabaseManager::getOrDefault()}.
 	 *
-	 * @return \Merlin\Db\Database
+	 * @return \Azera\Db\Database
 	 */
 	public function readConnection(): Database
 	{
@@ -601,9 +601,9 @@ abstract class Model
 	/**
 	 * Return the database connection used for write (INSERT/UPDATE/DELETE) queries.
 	 *
-	 * Resolves the configured write role via {@see \Merlin\Db\DatabaseManager::getOrDefault()}.
+	 * Resolves the configured write role via {@see \Azera\Db\DatabaseManager::getOrDefault()}.
 	 *
-	 * @return \Merlin\Db\Database
+	 * @return \Azera\Db\Database
 	 */
 	public function writeConnection(): Database
 	{

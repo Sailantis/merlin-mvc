@@ -1,6 +1,6 @@
 # ModelSyncExample – Model Synchronisation Demo
 
-This example demonstrates the **DB → PHP** model synchronisation feature of the Merlin framework.  
+This example demonstrates the **DB → PHP** model synchronisation feature of the Azera framework.  
 You set up a database, run the sync task, and the framework automatically populates your model classes with typed PHP properties derived from the live database schema.
 
 ---

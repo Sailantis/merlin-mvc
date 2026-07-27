@@ -1,20 +1,20 @@
 # Models & ORM
 
-**Work with database records as objects** - Discover Merlin's Active Record implementation for elegant database interactions. Learn about model configuration, static query helpers, CRUD operations, state tracking, and read/write connections.
+**Work with database records as objects** - Discover Azera's Active Record implementation for elegant database interactions. Learn about model configuration, static query helpers, CRUD operations, state tracking, and read/write connections.
 
-Merlin models use an Active Record style API backed by `Merlin\Db\Query`.
+Azera models use an Active Record style API backed by `Azera\Db\Query`.
 
 ---
 
 ## Define a Model
 
-Extend `Merlin\Core\Model` and declare public properties for your table columns. No registration or mapping is needed — Merlin infers the table name from the class name automatically.
+Extend `Azera\Core\Model` and declare public properties for your table columns. No registration or mapping is needed — Azera infers the table name from the class name automatically.
 
 ```php
 <?php
 namespace App\Models;
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 class User extends Model
 {
@@ -47,7 +47,7 @@ class OrderItem extends Model
 By default, class names are converted to snake_case (`AdminUser` → `admin_user`). Enable automatic pluralization globally:
 
 ```php
-use Merlin\Core\ModelMapping;
+use Azera\Core\ModelMapping;
 
 ModelMapping::usePluralTableNames(true);
 // User → users, AdminUser → admin_users, Person → people
@@ -232,8 +232,8 @@ Properties whose names start with `__` are considered internal and are never inc
 Connections are managed by `DatabaseManager` using named **roles**. Register them in your bootstrap:
 
 ```php
-use Merlin\AppContext;
-use Merlin\Db\Database;
+use Azera\AppContext;
+use Azera\Db\Database;
 
 $mgr = AppContext::instance()->dbManager();
 $mgr->set('write', new Database('mysql:host=primary;dbname=myapp', 'rw', 'secret'));
@@ -258,7 +258,7 @@ User::setDefaultWriteRole('primary');
 Call `setDefaultRole()` on the base `Model` class to change the default for every model that has not set its own role:
 
 ```php
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 Model::setDefaultRole('default'); // reset everything to 'default'
 ```
@@ -285,8 +285,8 @@ $db = $user->writeConnection();  // Database (write role)
 ### Register a mapping
 
 ```php
-use Merlin\Db\Query;
-use Merlin\Core\ModelMapping;
+use Azera\Db\Query;
+use Azera\Core\ModelMapping;
 
 $mapping = ModelMapping::fromArray([
     // simple: name => table

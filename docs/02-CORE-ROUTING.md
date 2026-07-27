@@ -1,16 +1,16 @@
 # MVC Routing
 
-**Map URLs to controllers** - Master Merlin's routing system to define URL patterns, handle parameters, group routes, and apply middleware. Learn how to create RESTful routes, named routes, and custom parameter validation.
+**Map URLs to controllers** - Master Azera's routing system to define URL patterns, handle parameters, group routes, and apply middleware. Learn how to create RESTful routes, named routes, and custom parameter validation.
 
-`Merlin\Core\Router` matches URI + HTTP method to controller/action metadata.
-`Merlin\Core\Dispatcher` executes that route and returns a `Response`.
+`Azera\Core\Router` matches URI + HTTP method to controller/action metadata.
+`Azera\Core\Dispatcher` executes that route and returns a `Response`.
 
 ## Basic Usage
 
 ```php
-use Merlin\AppContext;
-use Merlin\Core\Dispatcher;
-use Merlin\Core\Router;
+use Azera\AppContext;
+use Azera\Core\Dispatcher;
+use Azera\Core\Router;
 
 $ctx = AppContext::instance();
 
@@ -168,7 +168,7 @@ $url = $router->urlFor('user.view', ['id' => 42], ['tab' => 'profile']);
 Define your own validation rules for route parameters. This is useful for application-specific formats like slugs, SKUs, or reference codes.
 
 ```php
-$router->addType('slug', fn(string $v) => preg_match('/^[a-z0-9-]+$/', $v));
+$router->type('slug', fn(string $v) => preg_match('/^[a-z0-9-]+$/', $v));
 $router->add('GET', '/posts/{slug:slug}', 'PostController::showAction');
 ```
 
@@ -320,7 +320,7 @@ class Greeter
 #### 2. Register the Service in AppContext
 
 ```php
-use Merlin\AppContext;
+use Azera\AppContext;
 use App\Services\Greeter;
 
 $ctx = AppContext::instance();

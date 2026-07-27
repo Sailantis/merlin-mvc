@@ -1,6 +1,6 @@
 # 🧩 Class: DatabaseManager
 
-**Full name:** [Merlin\Db\DatabaseManager](../../src/Db/DatabaseManager.php)
+**Full name:** [Azera\Db\DatabaseManager](../../src/Db/DatabaseManager.php)
 
 Manages multiple database connections (roles) and their factories.
 
@@ -10,7 +10,7 @@ This class allows the definition of multiple database connections (e.g. "default
 
 ### set() · [source](../../src/Db/DatabaseManager.php#L32)
 
-`public function set(string $role, Merlin\Db\Database|callable $factory): static`
+`public function set(string $role, Azera\Db\Database|callable $factory): static`
 
 Define a database connection for a specific role.
 
@@ -118,7 +118,7 @@ Check if a database role is defined.
 
 ### get() · [source](../../src/Db/DatabaseManager.php#L114)
 
-`public function get(string $role): Merlin\Db\Database`
+`public function get(string $role): Azera\Db\Database`
 
 Get the Database instance for a specific role.
 
@@ -142,7 +142,7 @@ Get the Database instance for a specific role.
 
 ### getOrDefault() · [source](../../src/Db/DatabaseManager.php#L153)
 
-`public function getOrDefault(string $role): Merlin\Db\Database`
+`public function getOrDefault(string $role): Azera\Db\Database`
 
 Get the Database instance for a specific role, or the default if the role is not defined.
 
@@ -166,7 +166,7 @@ Get the Database instance for a specific role, or the default if the role is not
 
 ### getDefault() · [source](../../src/Db/DatabaseManager.php#L168)
 
-`public function getDefault(): Merlin\Db\Database`
+`public function getDefault(): Azera\Db\Database`
 
 Get the default Database instance.
 
@@ -178,6 +178,34 @@ Get the default Database instance.
 **⚠️ Throws**
 
 - RuntimeException  If no default database is configured
+
+
+---
+
+### roles() · [source](../../src/Db/DatabaseManager.php#L181)
+
+`public function roles(): array`
+
+Return the names of all registered database roles.
+
+**➡️ Return value**
+
+- Type: array
+- Description: List of role names (e.g. ["default", "read", "write"]).
+
+
+---
+
+### defaultRole() · [source](../../src/Db/DatabaseManager.php#L191)
+
+`public function defaultRole(): string|null`
+
+Return the name of the default database role, or null if none is configured.
+
+**➡️ Return value**
+
+- Type: string|null
+- Description: The default role name.
 
 
 

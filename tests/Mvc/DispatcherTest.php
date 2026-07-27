@@ -1,16 +1,16 @@
 <?php
-namespace Merlin\Tests\Mvc;
+namespace Azera\Tests\Mvc;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/PhpThunder/AuthController.php';
 
-use Merlin\AppContext;
-use Merlin\Http\Session;
-use Merlin\Http\Response;
-use Merlin\Core\Controller;
-use Merlin\Core\Dispatcher;
-use Merlin\Core\MiddlewareInterface;
-use Merlin\Core\Router;
+use Azera\AppContext;
+use Azera\Http\Session;
+use Azera\Http\Response;
+use Azera\Core\Controller;
+use Azera\Core\Dispatcher;
+use Azera\Core\MiddlewareInterface;
+use Azera\Core\Router;
 use PHPUnit\Framework\TestCase;
 // --- Helper controllers / middleware (top-level declarations) ---
 
@@ -254,7 +254,7 @@ class DispatcherTest extends TestCase
         $this->assertSame(['namespace' => 'PhpThunder'], $route['override']);
 
         $disp = new Dispatcher();
-        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+        $disp->setBaseNamespace('\\Azera\\Tests\\Mvc');
 
         $res = $disp->dispatch($route);
 
@@ -285,7 +285,7 @@ class DispatcherTest extends TestCase
         ], $route['override']);
 
         $disp = new Dispatcher();
-        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+        $disp->setBaseNamespace('\\Azera\\Tests\\Mvc');
 
         $res = $disp->dispatch($route);
 
@@ -295,7 +295,7 @@ class DispatcherTest extends TestCase
     public function testDynamicVarsAddSuffixesButOverrideDoesNot(): void
     {
         $disp = new Dispatcher();
-        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+        $disp->setBaseNamespace('\\Azera\\Tests\\Mvc');
 
         $res = $disp->dispatch([
             'vars' => [
@@ -317,14 +317,14 @@ class DispatcherTest extends TestCase
             'override' => [
                 'controller' => 'RoutingStateController',
                 'action' => 'fromOverride',
-                'namespace' => '\\Merlin\\Tests\\Mvc',
+                'namespace' => '\\Azera\\Tests\\Mvc',
             ],
             'groups' => [],
         ]);
 
         $this->assertEquals('application/json', $this->responseHeaders($res)['Content-Type']);
         $payload = json_decode($this->responseBody($res), true);
-        $this->assertEquals('\\Merlin\\Tests\\Mvc\\RoutingStateController', $payload['controller']);
+        $this->assertEquals('\\Azera\\Tests\\Mvc\\RoutingStateController', $payload['controller']);
         $this->assertEquals('fromOverride', $payload['action']);
     }
 
@@ -333,7 +333,7 @@ class DispatcherTest extends TestCase
         $context = new AppContext();
         AppContext::setInstance($context); // Ensure singleton instance is used
         $disp = new Dispatcher();
-        $disp->setBaseNamespace('\\Merlin\\Tests\\Mvc');
+        $disp->setBaseNamespace('\\Azera\\Tests\\Mvc');
 
         $res = $disp->dispatch([
             'vars' => [
@@ -345,7 +345,7 @@ class DispatcherTest extends TestCase
             'override' => [
                 'controller' => 'RoutingStateController',
                 'action' => 'fromOverride',
-                'namespace' => '\\Merlin\\Tests\\Mvc',
+                'namespace' => '\\Azera\\Tests\\Mvc',
             ],
         ]);
 
@@ -357,7 +357,7 @@ class DispatcherTest extends TestCase
         $stored = $context->route();
         $this->assertNotNull($stored);
         $this->assertSame([], $stored->groups);
-        $this->assertSame('\\Merlin\\Tests\\Mvc\\RoutingStateController', $stored->controller);
+        $this->assertSame('\\Azera\\Tests\\Mvc\\RoutingStateController', $stored->controller);
         $this->assertSame('fromOverride', $stored->action);
         $this->assertSame(['x', 'y'], $stored->vars['args']);
         $this->assertSame([42, ['x', 'y']], $stored->params);
@@ -379,7 +379,7 @@ class DispatcherTest extends TestCase
             'override' => [
                 'controller' => 'RoutingStateController',
                 'action' => 'fromOverride',
-                'namespace' => '\\Merlin\\Tests\\Mvc',
+                'namespace' => '\\Azera\\Tests\\Mvc',
             ],
         ]);
 
@@ -409,7 +409,7 @@ class DispatcherTest extends TestCase
         AppContext::setInstance($context);
         $disp = new Dispatcher();
 
-        $this->expectException(\Merlin\Core\Exceptions\ActionNotFoundException::class);
+        $this->expectException(\Azera\Core\Exceptions\ActionNotFoundException::class);
 
         $disp->dispatch($this->routeWithOverride(
             DTResponseController::class,

@@ -23,12 +23,10 @@ chdir(__DIR__);
 
 require __DIR__ . '/bootstrap.php';
 
-use Merlin\Cli\Console;
+use Azera\Cli\Console;
 
 $console = new Console();
 
 $console->process(
-    $argv[1] ?? null,
-    $argv[2] ?? null,
-    array_slice($argv, 3)
+    array_slice($argv, 1)
 );

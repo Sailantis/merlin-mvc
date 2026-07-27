@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
 
 class Exception extends \Exception

@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
 /**
  * SQL Value Object - Tagged Union for SQL Expressions

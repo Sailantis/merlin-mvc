@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\AdvancedQueryBuilderExample;
+namespace Azera\AdvancedQueryBuilderExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Db\Sql;
-use Merlin\Core\Model;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Db\Sql;
+use Azera\Core\Model;
 
 /**
  * Example: Advanced Query Building with Sql and Complex Queries

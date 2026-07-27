@@ -1,11 +1,11 @@
 <?php
-namespace Merlin\SaveCreateUpdateExample;
+namespace Azera\SaveCreateUpdateExample;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Core\Model;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Core\Model;
 
 /**
  * Example: Using Model save(), create(), update(), delete() methods
@@ -370,7 +370,7 @@ echo "\n\n";
 
 echo "=== ERROR HANDLING ===\n\n";
 
-use Merlin\Db\Exception;
+use Azera\Db\Exception;
 
 try {
     // Try to update without ID

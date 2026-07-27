@@ -1,6 +1,6 @@
 # 🧩 Class: Dispatcher
 
-**Full name:** [Merlin\Core\Dispatcher](../../src/Core/Dispatcher.php)
+**Full name:** [Azera\Core\Dispatcher](../../src/Core/Dispatcher.php)
 
 ## 🚀 Public methods
 
@@ -19,7 +19,7 @@ Create a new Dispatcher and bind it to the current [`AppContext`](AppContext.md)
 
 ### addMiddleware() · [source](../../src/Core/Dispatcher.php#L46)
 
-`public function addMiddleware(Merlin\Core\MiddlewareInterface $mw): void`
+`public function addMiddleware(Azera\Core\MiddlewareInterface $mw): void`
 
 Register a middleware that runs on every dispatched request.
 
@@ -172,7 +172,7 @@ Set the default action name.
 
 ### dispatch() · [source](../../src/Core/Dispatcher.php#L152)
 
-`public function dispatch(array $routeInfo): Merlin\Http\Response`
+`public function dispatch(array $routeInfo): Azera\Http\Response`
 
 Dispatch a request to the appropriate controller and action based on the provided routing information. This method will determine the controller class and action method to invoke, build the middleware pipeline, and execute the controller action, returning the resulting Response.
 

@@ -1,6 +1,6 @@
 # 🧩 Class: ParsedModel
 
-**Full name:** [Merlin\Sync\ParsedModel](../../src/Sync/ModelParser.php)
+**Full name:** [Azera\Sync\ParsedModel](../../src/Sync/ModelParser.php)
 
 ## 🌍 Public Properties
 

@@ -1,11 +1,11 @@
 <?php
 
-namespace Merlin\Tests\Validation;
+namespace Azera\Tests\Validation;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Validation\ValidationException;
-use Merlin\Validation\Validator;
+use Azera\Validation\ValidationException;
+use Azera\Validation\Validator;
 use PHPUnit\Framework\TestCase;
 
 class ValidatorTest extends TestCase
@@ -265,11 +265,11 @@ class ValidatorTest extends TestCase
 
     public function testListValidatesEachElement(): void
     {
-        $v = new Validator(['tags' => ['php', 'merlin', 'web']]);
+        $v = new Validator(['tags' => ['php', 'azera', 'web']]);
         $v->field('tags')->list(fn($f) => $f->string()->max(20));
 
         $this->assertFalse($v->fails());
-        $this->assertSame(['php', 'merlin', 'web'], $v->validated()['tags']);
+        $this->assertSame(['php', 'azera', 'web'], $v->validated()['tags']);
     }
 
     public function testListCoercesElementTypes(): void

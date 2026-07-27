@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Sync\Schema;
+namespace Azera\Sync\Schema;
 
 interface SchemaProvider
 {

@@ -1,12 +1,10 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
-use Merlin\Db\Database;
-use Merlin\Db\DatabaseManager;
-use Merlin\Sync\Schema\MySqlSchemaProvider;
-use Merlin\Sync\Schema\PostgresSchemaProvider;
-use Merlin\Sync\Schema\SchemaProvider;
-use Merlin\Sync\Schema\SqliteSchemaProvider;
+use Azera\Db\Database;
+use Azera\Db\DatabaseManager;
+use Azera\Sync\Schema\SchemaProvider;
+use Azera\Sync\Schema\SchemaProviderFactory;
 use RuntimeException;
 
 class SyncRunner
@@ -16,8 +14,9 @@ class SyncRunner
 
     public function __construct(
         private DatabaseManager $dbManager
-    ) {
-        $this->diff = new ModelDiff();
+    )
+    {
+        $this->diff      = new ModelDiff();
         $this->generator = new CodeGenerator();
     }
 
@@ -136,7 +135,8 @@ class SyncRunner
         string $className,
         string $tableName,
         ?string $schema = null
-    ): void {
+    ): void
+    {
         if (file_exists($filePath)) {
             throw new RuntimeException("File already exists: {$filePath}");
         }
@@ -155,7 +155,7 @@ class SyncRunner
 
 namespace {$namespace};
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 class {$className} extends Model
 {
@@ -184,6 +184,23 @@ PHP;
     }
 
     /**
+     * Resolve both the table name and optional DB schema for a model file.
+     * Returns null if the file cannot be parsed or the class is not a valid Model.
+     *
+     * @return array{0: string, 1: ?string}|null  [$tableName, $schema]
+     */
+    public function getModelInfo(string $filePath): ?array
+    {
+        try {
+            $parser = new ModelParser($filePath);
+            $parsed = $parser->parse();
+            return $this->resolveModelInfo($parsed->className);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * Instantiate the model class (without calling its constructor) and extract
      * both the table name (source) and the optional DB schema (schema).
      *
@@ -191,12 +208,12 @@ PHP;
      */
     private function resolveModelInfo(string $className): array
     {
-        $ref = new \ReflectionClass($className);
+        $ref      = new \ReflectionClass($className);
         $instance = $ref->newInstanceWithoutConstructor();
 
-        if (!$instance instanceof \Merlin\Core\Model) {
+        if (!$instance instanceof \Azera\Core\Model) {
             throw new RuntimeException(
-                "Class {$className} is not an instance of Merlin\\Mvc\\Model"
+                "Class {$className} is not an instance of Azera\\Mvc\\Model"
             );
         }
 
@@ -205,15 +222,6 @@ PHP;
 
     private function buildProvider(Database $db): SchemaProvider
     {
-        $pdo = $db->getInternalConnection();
-
-        return match ($db->getDriver()) {
-            'mysql' => new MySqlSchemaProvider($pdo),
-            'pgsql' => new PostgresSchemaProvider($pdo),
-            'sqlite' => new SqliteSchemaProvider($pdo),
-            default => throw new RuntimeException(
-                "No schema provider available for driver '{$db->getDriver()}'"
-            ),
-        };
+        return SchemaProviderFactory::create($db);
     }
 }

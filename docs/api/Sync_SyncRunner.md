@@ -1,12 +1,12 @@
 # 🧩 Class: SyncRunner
 
-**Full name:** [Merlin\Sync\SyncRunner](../../src/Sync/SyncRunner.php)
+**Full name:** [Azera\Sync\SyncRunner](../../src/Sync/SyncRunner.php)
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Sync/SyncRunner.php#L17)
+### __construct() · [source](../../src/Sync/SyncRunner.php#L15)
 
-`public function __construct(Merlin\Db\DatabaseManager $dbManager): mixed`
+`public function __construct(Azera\Db\DatabaseManager $dbManager): mixed`
 
 **🧭 Parameters**
 
@@ -21,9 +21,9 @@
 
 ---
 
-### syncModel() · [source](../../src/Sync/SyncRunner.php#L35)
+### syncModel() · [source](../../src/Sync/SyncRunner.php#L34)
 
-`public function syncModel(string $filePath, bool $dryRun = false, string $dbRole = 'read', Merlin\Sync\SyncOptions|null $options = null): Merlin\Sync\SyncResult`
+`public function syncModel(string $filePath, bool $dryRun = false, string $dbRole = 'read', Azera\Sync\SyncOptions|null $options = null): Azera\Sync\SyncResult`
 
 Synchronise a single model file against the database schema.
 
@@ -43,9 +43,9 @@ Synchronise a single model file against the database schema.
 
 ---
 
-### syncAll() · [source](../../src/Sync/SyncRunner.php#L101)
+### syncAll() · [source](../../src/Sync/SyncRunner.php#L100)
 
-`public function syncAll(array $modelFiles, bool $dryRun = false, string $dbRole = 'read', Merlin\Sync\SyncOptions|null $options = null): array`
+`public function syncAll(array $modelFiles, bool $dryRun = false, string $dbRole = 'read', Azera\Sync\SyncOptions|null $options = null): array`
 
 Synchronise multiple model files.
 
@@ -65,7 +65,7 @@ Synchronise multiple model files.
 
 ---
 
-### listDatabaseTables() · [source](../../src/Sync/SyncRunner.php#L120)
+### listDatabaseTables() · [source](../../src/Sync/SyncRunner.php#L119)
 
 `public function listDatabaseTables(string $dbRole = 'read', string|null $schema = null): array`
 
@@ -85,7 +85,7 @@ Return all table names in the database for the given role and optional schema.
 
 ---
 
-### createModelFile() · [source](../../src/Sync/SyncRunner.php#L133)
+### createModelFile() · [source](../../src/Sync/SyncRunner.php#L132)
 
 `public function createModelFile(string $filePath, string $namespace, string $className, string $tableName, string|null $schema = null): void`
 
@@ -129,6 +129,28 @@ Returns null if the file cannot be parsed or the class is not a valid Model.
 **➡️ Return value**
 
 - Type: string|null
+
+
+---
+
+### getModelInfo() · [source](../../src/Sync/SyncRunner.php#L192)
+
+`public function getModelInfo(string $filePath): array|null`
+
+Resolve both the table name and optional DB schema for a model file.
+
+Returns null if the file cannot be parsed or the class is not a valid Model.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$filePath` | string | - |  |
+
+**➡️ Return value**
+
+- Type: array|null
+- Description: [$tableName, $schema]
 
 
 

@@ -1,6 +1,6 @@
 # 🔌 Interface: SchemaProvider
 
-**Full name:** [Merlin\Sync\Schema\SchemaProvider](../../src/Sync/Schema/SchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\SchemaProvider](../../src/Sync/Schema/SchemaProvider.php)
 
 ## 🚀 Public methods
 
@@ -23,7 +23,7 @@
 
 ### getTableSchema() · [source](../../src/Sync/Schema/SchemaProvider.php#L18)
 
-`public function getTableSchema(string $table, string|null $schema = null): Merlin\Sync\Schema\TableSchema`
+`public function getTableSchema(string $table, string|null $schema = null): Azera\Sync\Schema\TableSchema`
 
 **🧭 Parameters**
 

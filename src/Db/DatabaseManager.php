@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Db;
+namespace Azera\Db;
 
 use RuntimeException;
 
@@ -171,5 +171,25 @@ class DatabaseManager
             throw new RuntimeException("No database configured");
         }
         return $this->get($this->defaultRole);
+    }
+
+    /**
+     * Return the names of all registered database roles.
+     *
+     * @return string[] List of role names (e.g. ["default", "read", "write"]).
+     */
+    public function roles(): array
+    {
+        return array_keys($this->factories);
+    }
+
+    /**
+     * Return the name of the default database role, or null if none is configured.
+     *
+     * @return string|null The default role name.
+     */
+    public function defaultRole(): ?string
+    {
+        return $this->defaultRole;
     }
 }

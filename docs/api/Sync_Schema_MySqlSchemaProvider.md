@@ -1,6 +1,6 @@
 # 🧩 Class: MySqlSchemaProvider
 
-**Full name:** [Merlin\Sync\Schema\MySqlSchemaProvider](../../src/Sync/Schema/MySqlSchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\MySqlSchemaProvider](../../src/Sync/Schema/MySqlSchemaProvider.php)
 
 ## 🚀 Public methods
 
@@ -21,7 +21,7 @@
 
 ---
 
-### listTables() · [source](../../src/Sync/Schema/MySqlSchemaProvider.php#L12)
+### listTables() · [source](../../src/Sync/Schema/MySqlSchemaProvider.php#L10)
 
 `public function listTables(string|null $schema = null): array`
 
@@ -38,9 +38,9 @@
 
 ---
 
-### getTableSchema() · [source](../../src/Sync/Schema/MySqlSchemaProvider.php#L23)
+### getTableSchema() · [source](../../src/Sync/Schema/MySqlSchemaProvider.php#L21)
 
-`public function getTableSchema(string $table, string|null $schema = null): Merlin\Sync\Schema\TableSchema`
+`public function getTableSchema(string $table, string|null $schema = null): Azera\Sync\Schema\TableSchema`
 
 **🧭 Parameters**
 

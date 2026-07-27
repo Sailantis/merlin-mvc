@@ -1,7 +1,7 @@
 <?php
-namespace Merlin\Tests\Mvc;
+namespace Azera\Tests\Mvc;
 
-use Merlin\Core\Router;
+use Azera\Core\Router;
 use PHPUnit\Framework\TestCase;
 
 require_once __DIR__ . '/../../vendor/autoload.php';

@@ -1,10 +1,10 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/TestDatabase.php';
 
-use Merlin\Db\Sql;
+use Azera\Db\Sql;
 use PHPUnit\Framework\TestCase;
 
 class SqlNodeTest extends TestCase
@@ -13,7 +13,7 @@ class SqlNodeTest extends TestCase
     private function serializeViaCondition($value): string
     {
         $db = new TestPgDatabase();
-        $cb = new \Merlin\Db\Condition($db);
+        $cb = new \Azera\Db\Condition($db);
         $cb->where('x = :v', ['v' => $value]);
         return $cb->toSql();
     }
@@ -28,12 +28,12 @@ class SqlNodeTest extends TestCase
     public function testPgArrayConditionBuilder(): void
     {
         $db = new TestPgDatabase();
-        $cb = new \Merlin\Db\Condition($db);
+        $cb = new \Azera\Db\Condition($db);
 
         $cb->where('col = :v', ['v' => Sql::pgArray(['a', 'b', 'c'])]);
         $this->assertEquals("(col = '{\"a\",\"b\",\"c\"}')", $cb->toSql());
 
-        $cb2 = new \Merlin\Db\Condition($db);
+        $cb2 = new \Azera\Db\Condition($db);
         $cb2->where('col = :v', ['v' => Sql::pgArray([['a', 'b'], ['c', 'd']])]);
         $this->assertStringContainsString('{"a","b"', $cb2->toSql());
     }
@@ -102,7 +102,7 @@ class SqlNodeTest extends TestCase
     public function testParamNodeEmitsNamedBindingReference(): void
     {
         $db = new TestPgDatabase();
-        $cb = new \Merlin\Db\Condition($db);
+        $cb = new \Azera\Db\Condition($db);
 
         $cb->where('col = :v', ['v' => Sql::param('id')]);
         $sql = $cb->toSql();
@@ -115,7 +115,7 @@ class SqlNodeTest extends TestCase
     public function testJsonNodeSerialization(): void
     {
         $db = new TestPgDatabase();
-        $cb = new \Merlin\Db\Condition($db);
+        $cb = new \Azera\Db\Condition($db);
 
         $cb->where('data = :v', ['v' => Sql::json(['a' => 1, 'b' => 'x'])]);
         $this->assertEquals("(data = '{\"a\":1,\"b\":\"x\"}')", $cb->toSql());
@@ -124,7 +124,7 @@ class SqlNodeTest extends TestCase
     public function testFunctionWithParamAndLiteral(): void
     {
         $db = new TestPgDatabase();
-        $cb = new \Merlin\Db\Condition($db);
+        $cb = new \Azera\Db\Condition($db);
 
         $fn = Sql::func('concat', ['pre_', Sql::param('id')]);
         $cb->where('col = :v', ['v' => $fn]);

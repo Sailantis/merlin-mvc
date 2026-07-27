@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
 /**
  * Class to map models

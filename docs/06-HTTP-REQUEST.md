@@ -1,11 +1,11 @@
 # HTTP Request
 
-`Merlin\Http\Request` provides normalized access to all incoming request data: query parameters, POST fields, uploaded files, headers, and more.
+`Azera\Http\Request` provides normalized access to all incoming request data: query parameters, POST fields, uploaded files, headers, and more.
 
 Obtain the request object from `AppContext` rather than instantiating it directly:
 
 ```php
-$request = \Merlin\AppContext::instance()->request();
+$request = \Azera\AppContext::instance()->request();
 // or inside a controller:
 $request = $this->request();
 ```
@@ -162,7 +162,7 @@ foreach ($request->getFiles('docs') as $doc) {
 ## Controller Example
 
 ```php
-class UserController extends \Merlin\Core\Controller
+class UserController extends \Azera\Core\Controller
 {
     public function createAction(): array
     {

@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
 /**
  * Configuration options that control the behavior of the model-sync process.

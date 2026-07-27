@@ -1,12 +1,12 @@
 # Validation
 
-Merlin includes a fluent input validation component that validates and coerces associative arrays (such as form POST data or decoded JSON) against a set of declarative field rules.
+Azera includes a fluent input validation component that validates and coerces associative arrays (such as form POST data or decoded JSON) against a set of declarative field rules.
 
 ## Quick Start
 
 ```php
-use Merlin\Validation\Validator;
-use Merlin\Validation\ValidationException;
+use Azera\Validation\Validator;
+use Azera\Validation\ValidationException;
 
 $v = new Validator($request->post());
 

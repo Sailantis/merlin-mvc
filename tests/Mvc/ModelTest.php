@@ -1,16 +1,16 @@
 <?php
-namespace Merlin\Tests\Mvc;
+namespace Azera\Tests\Mvc;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../Db/TestDatabase.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Query;
-use Merlin\Core\ModelMapping;
-use Merlin\Tests\Db\TestPgDatabase;
+use Azera\AppContext;
+use Azera\Db\Query;
+use Azera\Core\ModelMapping;
+use Azera\Tests\Db\TestPgDatabase;
 use PHPUnit\Framework\TestCase;
 
-class DummyModel extends \Merlin\Core\Model
+class DummyModel extends \Azera\Core\Model
 {
     public $id;
     public $name;
@@ -22,7 +22,7 @@ class DummyModel extends \Merlin\Core\Model
     }
 }
 
-class DummyDefaultedModel extends \Merlin\Core\Model
+class DummyDefaultedModel extends \Azera\Core\Model
 {
     public $id;
     public $name;

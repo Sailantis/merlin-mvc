@@ -1,10 +1,10 @@
 # 🧩 Class: BladeAdapter
 
-**Full name:** [Merlin\Core\Engines\Adapters\BladeAdapter](../../src/Core/Engines/Adapters/BladeAdapter.php)
+**Full name:** [Azera\Core\Engines\Adapters\BladeAdapter](../../src/Core/Engines/Adapters/BladeAdapter.php)
 
 Blade template engine adapter.
 
-Wraps Laravel's Illuminate/View Blade compiler so Merlin applications can
+Wraps Laravel's Illuminate/View Blade compiler so Azera applications can
 use `.blade.php` templates.  Requires `illuminate/view` to be installed:
 
 ```sh

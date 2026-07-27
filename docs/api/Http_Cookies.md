@@ -1,6 +1,6 @@
 # 🧩 Class: Cookies
 
-**Full name:** [Merlin\Http\Cookies](../../src/Http/Cookies.php)
+**Full name:** [Azera\Http\Cookies](../../src/Http/Cookies.php)
 
 Cookie jar that manages a collection of [`Cookie`](Http_Cookie.md) instances for the current request.
 
@@ -34,7 +34,7 @@ returned; otherwise the value is read from $_COOKIE.
 
 ### cookie() · [source](../../src/Http/Cookies.php#L41)
 
-`public function cookie(string $name): Merlin\Http\Cookie`
+`public function cookie(string $name): Azera\Http\Cookie`
 
 Get (or lazily create) a [`Cookie`](Http_Cookie.md) instance for the given name.
 
@@ -56,7 +56,7 @@ or sending the cookie.
 
 ### set() · [source](../../src/Http/Cookies.php#L61)
 
-`public function set(string $name, mixed $value, int $expires = 0, string $path = '/', string $domain = '', bool $secure = false, bool $httpOnly = true): Merlin\Http\Cookie`
+`public function set(string $name, mixed $value, int $expires = 0, string $path = '/', string $domain = '', bool $secure = false, bool $httpOnly = true): Azera\Http\Cookie`
 
 Create and register a new [`Cookie`](Http_Cookie.md) with the given parameters.
 

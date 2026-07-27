@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 /**
  * Sync by file path:   php console.php model-sync model app/Models/Comment.php --apply

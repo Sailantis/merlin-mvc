@@ -1,6 +1,6 @@
 # 🧩 Class: Sql
 
-**Full name:** [Merlin\Db\Sql](../../src/Db/Sql.php)
+**Full name:** [Azera\Db\Sql](../../src/Db/Sql.php)
 
 SQL Value Object - Tagged Union for SQL Expressions
 
@@ -289,7 +289,7 @@ Plain strings are treated as raw SQL tokens (not serialized)
 
 ### case() · [source](../../src/Db/Sql.php#L230)
 
-`public static function case(): Merlin\Db\SqlCase`
+`public static function case(): Azera\Db\SqlCase`
 
 CASE expression builder
 
@@ -303,7 +303,7 @@ CASE expression builder
 
 ### subQuery() · [source](../../src/Db/Sql.php#L240)
 
-`public static function subQuery(Merlin\Db\Query $query): static`
+`public static function subQuery(Azera\Db\Query $query): static`
 
 Subquery expression - wraps a Query instance as a subquery
 

@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Http;
+namespace Azera\Http;
 
 /**
  * Wrapper around a PHP session array that provides typed accessors and

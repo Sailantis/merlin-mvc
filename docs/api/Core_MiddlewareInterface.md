@@ -1,8 +1,8 @@
 # 🔌 Interface: MiddlewareInterface
 
-**Full name:** [Merlin\Core\MiddlewareInterface](../../src/Core/MiddlewareInterface.php)
+**Full name:** [Azera\Core\MiddlewareInterface](../../src/Core/MiddlewareInterface.php)
 
-Contract for all middleware classes in the Merlin pipeline.
+Contract for all middleware classes in the Azera pipeline.
 
 Implementations receive the application context and a callable representing
 the remainder of the pipeline. They can short-circuit processing by returning
@@ -11,9 +11,9 @@ optionally modifying its result.
 
 ## 🚀 Public methods
 
-### process() · [source](../../src/Core/MiddlewareInterface.php#L25)
+### process() · [source](../../src/Core/MiddlewareInterface.php#L26)
 
-`public function process(Merlin\AppContext $context, callable $next): Merlin\Http\Response|null`
+`public function process(Azera\AppContext $context, callable $next): Azera\Http\Response|null`
 
 Process the incoming request and optionally delegate to the next handler.
 

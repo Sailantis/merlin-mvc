@@ -1,6 +1,6 @@
 # 🧩 Class: Model
 
-**Full name:** [Merlin\Core\Model](../../src/Core/Model.php)
+**Full name:** [Azera\Core\Model](../../src/Core/Model.php)
 
 ## 🚀 Public methods
 
@@ -53,7 +53,7 @@ Override this method if your model has a different primary key or composite keys
 
 ### query() · [source](../../src/Core/Model.php#L75)
 
-`public static function query(string|null $alias = null): Merlin\Db\Query`
+`public static function query(string|null $alias = null): Azera\Db\Query`
 
 Start a new query builder for this model. By default, it creates a Query with the model's source as the table.
 
@@ -218,7 +218,7 @@ Finds the first model matching the given conditions or returns null if none foun
 
 ### findAll() · [source](../../src/Core/Model.php#L236)
 
-`public static function findAll(array $conditions = []): Merlin\Db\ResultSet`
+`public static function findAll(array $conditions = []): Azera\Db\ResultSet`
 
 Find all models matching the given conditions. If no conditions are provided, it returns all models. Returns a ResultSet of model instances.
 
@@ -445,7 +445,7 @@ Set the database role used for INSERT/UPDATE/DELETE queries on this model class.
 
 ### readConnection() · [source](../../src/Core/Model.php#L595)
 
-`public function readConnection(): Merlin\Db\Database`
+`public function readConnection(): Azera\Db\Database`
 
 Return the database connection used for read (SELECT) queries.
 
@@ -460,7 +460,7 @@ Resolves the configured read role via [`DatabaseManager::getOrDefault()`](Db_Dat
 
 ### writeConnection() · [source](../../src/Core/Model.php#L608)
 
-`public function writeConnection(): Merlin\Db\Database`
+`public function writeConnection(): Azera\Db\Database`
 
 Return the database connection used for write (INSERT/UPDATE/DELETE) queries.
 

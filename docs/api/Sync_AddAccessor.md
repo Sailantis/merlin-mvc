@@ -1,6 +1,6 @@
 # 🧩 Class: AddAccessor
 
-**Full name:** [Merlin\Sync\AddAccessor](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\AddAccessor](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

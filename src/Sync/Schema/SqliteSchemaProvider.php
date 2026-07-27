@@ -1,19 +1,17 @@
 <?php
-namespace Merlin\Sync\Schema;
+namespace Azera\Sync\Schema;
 
 use PDO;
 
 class SqliteSchemaProvider implements SchemaProvider
 {
-    public function __construct(private PDO $pdo)
-    {
-    }
+    public function __construct(private PDO $pdo) {}
 
     public function listTables(?string $schema = null): array
     {
-        $stmt = $this->pdo->query("
-            SELECT name FROM sqlite_master WHERE type='table'
-        ");
+        $stmt = $this->pdo->query(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        );
 
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
@@ -22,7 +20,7 @@ class SqliteSchemaProvider implements SchemaProvider
     {
         return new TableSchema(
             $table,
-            null, // SQLite does not support table comments
+            null,
             $this->loadColumns($table),
             $this->loadIndexes($table)
         );
@@ -40,7 +38,7 @@ class SqliteSchemaProvider implements SchemaProvider
                 nullable: !$col['notnull'],
                 default: $col['dflt_value'],
                 primary: $col['pk'] == 1,
-                comment: null // SQLite does not support column comments
+                comment: null
             );
         }
 
@@ -49,14 +47,14 @@ class SqliteSchemaProvider implements SchemaProvider
 
     private function loadIndexes(string $table): array
     {
-        $stmt = $this->pdo->query("PRAGMA index_list('$table')");
+        $stmt    = $this->pdo->query("PRAGMA index_list('$table')");
         $indexes = [];
 
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $idx) {
-            $name = $idx['name'];
+            $name   = $idx['name'];
             $unique = $idx['unique'] == 1;
 
-            $stmt2 = $this->pdo->query("PRAGMA index_info('$name')");
+            $stmt2   = $this->pdo->query("PRAGMA index_info('$name')");
             $columns = array_column($stmt2->fetchAll(PDO::FETCH_ASSOC), 'name');
 
             $indexes[] = new IndexSchema($name, $unique, $columns);

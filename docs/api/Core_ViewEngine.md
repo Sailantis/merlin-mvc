@@ -1,6 +1,6 @@
 # 🧩 Class: ViewEngine
 
-**Full name:** [Merlin\Core\ViewEngine](../../src/Core/ViewEngine.php)
+**Full name:** [Azera\Core\ViewEngine](../../src/Core/ViewEngine.php)
 
 Abstract base for all view engine implementations.
 
@@ -11,7 +11,7 @@ implement the three abstract rendering methods.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Core/ViewEngine.php#L26)
+### __construct() · [source](../../src/Core/ViewEngine.php#L29)
 
 `public function __construct(array $vars = []): mixed`
 
@@ -30,7 +30,7 @@ Create a new ViewEngine instance.
 
 ---
 
-### setExtension() · [source](../../src/Core/ViewEngine.php#L37)
+### setExtension() · [source](../../src/Core/ViewEngine.php#L40)
 
 `public function setExtension(string $ext): static`
 
@@ -49,7 +49,7 @@ Set the view file extension for this instance.
 
 ---
 
-### getExtension() · [source](../../src/Core/ViewEngine.php#L51)
+### getExtension() · [source](../../src/Core/ViewEngine.php#L54)
 
 `public function getExtension(): string`
 
@@ -63,7 +63,7 @@ Get the effective file extension used when resolving templates.
 
 ---
 
-### addNamespace() · [source](../../src/Core/ViewEngine.php#L65)
+### addNamespace() · [source](../../src/Core/ViewEngine.php#L68)
 
 `public function addNamespace(string $name, string $path): static`
 
@@ -85,7 +85,7 @@ Views can be referenced using the syntax "namespace::view.name".
 
 ---
 
-### getNamespaces() · [source](../../src/Core/ViewEngine.php#L76)
+### getNamespaces() · [source](../../src/Core/ViewEngine.php#L79)
 
 `public function getNamespaces(): array`
 
@@ -99,7 +99,7 @@ Get the currently registered view namespaces.
 
 ---
 
-### setViewPath() · [source](../../src/Core/ViewEngine.php#L88)
+### setViewPath() · [source](../../src/Core/ViewEngine.php#L91)
 
 `public function setViewPath(string $path): static`
 
@@ -118,7 +118,7 @@ Set the base path for resolving relative view names.
 
 ---
 
-### getViewPath() · [source](../../src/Core/ViewEngine.php#L99)
+### getViewPath() · [source](../../src/Core/ViewEngine.php#L102)
 
 `public function getViewPath(): string`
 
@@ -132,7 +132,7 @@ Get the currently configured base path for view resolution.
 
 ---
 
-### setLayout() · [source](../../src/Core/ViewEngine.php#L113)
+### setLayout() · [source](../../src/Core/ViewEngine.php#L116)
 
 `public function setLayout(string|null $layout): static`
 
@@ -154,7 +154,7 @@ rendered view output.
 
 ---
 
-### getLayout() · [source](../../src/Core/ViewEngine.php#L124)
+### getLayout() · [source](../../src/Core/ViewEngine.php#L127)
 
 `public function getLayout(): string|null`
 
@@ -168,7 +168,7 @@ Get the currently configured layout view name.
 
 ---
 
-### setVar() · [source](../../src/Core/ViewEngine.php#L136)
+### setVar() · [source](../../src/Core/ViewEngine.php#L139)
 
 `public function setVar(string $name, mixed $value): static`
 
@@ -188,7 +188,7 @@ Set a single view variable.
 
 ---
 
-### setVars() · [source](../../src/Core/ViewEngine.php#L150)
+### setVars() · [source](../../src/Core/ViewEngine.php#L153)
 
 `public function setVars(array $vars): static`
 
@@ -209,7 +209,7 @@ Later values override earlier ones for the same keys.
 
 ---
 
-### render() · [source](../../src/Core/ViewEngine.php#L163)
+### render() · [source](../../src/Core/ViewEngine.php#L166)
 
 `public function render(string $view, array $vars = []): string`
 
@@ -230,7 +230,7 @@ Render a view (and optional layout) and return the result.
 
 ---
 
-### renderPartial() · [source](../../src/Core/ViewEngine.php#L172)
+### renderPartial() · [source](../../src/Core/ViewEngine.php#L175)
 
 `public function renderPartial(string $view, array $vars = []): string`
 
@@ -251,7 +251,7 @@ Render a partial view (without applying a layout) and return the output.
 
 ---
 
-### renderLayout() · [source](../../src/Core/ViewEngine.php#L184)
+### renderLayout() · [source](../../src/Core/ViewEngine.php#L187)
 
 `public function renderLayout(string $layout, string $content, array $vars = []): string`
 
@@ -275,7 +275,7 @@ The layout receives the rendered view in the `content` variable.
 
 ---
 
-### getRenderDepth() · [source](../../src/Core/ViewEngine.php#L192)
+### getRenderDepth() · [source](../../src/Core/ViewEngine.php#L195)
 
 `public function getRenderDepth(): int`
 
@@ -290,7 +290,7 @@ Get current render nesting depth. Useful to detect top-level renders
 
 ---
 
-### addFilter() · [source](../../src/Core/ViewEngine.php#L266)
+### addFilter() · [source](../../src/Core/ViewEngine.php#L269)
 
 `public function addFilter(string $name, callable $fn): static`
 
@@ -313,7 +313,7 @@ e.g. `{{ value|name }}` or `{{ value|name(arg) }}`.
 
 ---
 
-### addFunction() · [source](../../src/Core/ViewEngine.php#L281)
+### addFunction() · [source](../../src/Core/ViewEngine.php#L284)
 
 `public function addFunction(string $name, callable $fn): static`
 
@@ -336,7 +336,7 @@ This is distinct from filters, which transform a piped value.
 
 ---
 
-### getDriver() · [source](../../src/Core/ViewEngine.php#L296)
+### getDriver() · [source](../../src/Core/ViewEngine.php#L299)
 
 `public function getDriver(): mixed`
 
@@ -354,7 +354,7 @@ separate driver object (Clarity, Native).
 
 ---
 
-### setCachePath() · [source](../../src/Core/ViewEngine.php#L304)
+### setCachePath() · [source](../../src/Core/ViewEngine.php#L308)
 
 `public function setCachePath(string $path): static`
 
@@ -373,7 +373,7 @@ Set the directory where compiled templates should be cached.
 
 ---
 
-### getCachePath() · [source](../../src/Core/ViewEngine.php#L312)
+### getCachePath() · [source](../../src/Core/ViewEngine.php#L316)
 
 `public function getCachePath(): string`
 
@@ -386,7 +386,7 @@ Get the currently configured cache directory.
 
 ---
 
-### flushCache() · [source](../../src/Core/ViewEngine.php#L320)
+### flushCache() · [source](../../src/Core/ViewEngine.php#L324)
 
 `public function flushCache(): static`
 

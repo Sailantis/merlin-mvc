@@ -1,14 +1,14 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/TestDatabase.php';
 
-use Merlin\Db\Sql;
-use Merlin\Db\Query;
-use Merlin\AppContext;
-use Merlin\Db\Condition;
-use Merlin\Core\ModelMapping;
+use Azera\Db\Sql;
+use Azera\Db\Query;
+use Azera\AppContext;
+use Azera\Db\Condition;
+use Azera\Core\ModelMapping;
 use PHPUnit\Framework\TestCase;
 
 class SelectBuilderTest extends TestCase
@@ -57,10 +57,10 @@ class SelectBuilderTest extends TestCase
         $c = Condition::new()
             ->where('Model.age >=', 18)
             ->where('Model.status', 'active')
-            ->groupStart()
-            ->where('Model.role', 'admin')
-            ->orWhere('Model.role', 'moderator')
-            ->groupEnd();
+            ->group(function (Condition $g) {
+                $g->where('Model.role', 'admin')
+                  ->orWhere('Model.role', 'moderator');
+            });
 
         $sb->where($c);
 

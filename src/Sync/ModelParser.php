@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
 use ReflectionClass;
 use RuntimeException;

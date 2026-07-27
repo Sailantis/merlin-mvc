@@ -1,9 +1,9 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
-use Merlin\Db\Exceptions\TransactionLostException;
-use Merlin\Core\Model;
+use Azera\Db\Exceptions\TransactionLostException;
+use Azera\Core\Model;
 
 use PDO;
 use PDOException;

@@ -1,8 +1,8 @@
 <?php
 
-namespace Merlin\Core\Exceptions;
+namespace Azera\Core\Exceptions;
 
-use Merlin\Core\Exception;
+use Azera\Core\Exception;
 
 /**
  * Exception thrown when a requested controller action is not found.

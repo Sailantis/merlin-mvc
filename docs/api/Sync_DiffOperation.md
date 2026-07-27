@@ -1,6 +1,6 @@
 # 🧩 Class: DiffOperation
 
-**Full name:** [Merlin\Sync\DiffOperation](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\DiffOperation](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

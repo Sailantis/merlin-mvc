@@ -1,7 +1,7 @@
 <?php
-namespace Merlin\Sync;
+namespace Azera\Sync;
 
-use Merlin\Sync\Schema\TableSchema;
+use Azera\Sync\Schema\TableSchema;
 
 class ModelDiff
 {
@@ -112,7 +112,7 @@ class ModelDiff
         return $ops;
     }
 
-    private function mapColumnToPhpType(\Merlin\Sync\Schema\ColumnSchema $col): string
+    private function mapColumnToPhpType(\Azera\Sync\Schema\ColumnSchema $col): string
     {
         $base = $this->mapDbTypeToPhp($col->type);
         return ($col->nullable && !$col->primary) ? '?' . $base : $base;

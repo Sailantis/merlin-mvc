@@ -1,10 +1,10 @@
 # 🧩 Class: TwigAdapter
 
-**Full name:** [Merlin\Core\Engines\Adapters\TwigAdapter](../../src/Core/Engines/Adapters/TwigAdapter.php)
+**Full name:** [Azera\Core\Engines\Adapters\TwigAdapter](../../src/Core/Engines/Adapters/TwigAdapter.php)
 
 Twig template engine adapter.
 
-Wraps Twig/Twig so Merlin applications can use `.twig` templates.
+Wraps Twig/Twig so Azera applications can use `.twig` templates.
 Requires `twig/twig` to be installed:
 
 ```sh

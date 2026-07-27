@@ -1,6 +1,6 @@
 # 🧩 Class: FieldValidator
 
-**Full name:** [Merlin\Validation\FieldValidator](../../src/Validation/FieldValidator.php)
+**Full name:** [Azera\Validation\FieldValidator](../../src/Validation/FieldValidator.php)
 
 Fluent validator for a single input field.
 

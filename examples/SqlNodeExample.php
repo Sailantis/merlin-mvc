@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\SqlNodeExample;
+namespace Azera\SqlNodeExample;
 
 /**
  * Sql Usage Examples
@@ -9,8 +9,8 @@ namespace Merlin\SqlNodeExample;
  * while maintaining backward compatibility with existing code.
  */
 
-use Merlin\Db\Sql;
-use Merlin\Db\Query;
+use Azera\Db\Sql;
+use Azera\Db\Query;
 
 // ============================================================================
 // BASIC USAGE: Existing behavior is preserved

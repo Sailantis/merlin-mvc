@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\Core\Engines\Adapters;
+namespace Azera\Core\Engines\Adapters;
 
-use Merlin\Core\ViewEngine;
+use Azera\Core\ViewEngine;
 
 /**
  * Blade template engine adapter.
  *
- * Wraps Laravel's Illuminate/View Blade compiler so Merlin applications can
+ * Wraps Laravel's Illuminate/View Blade compiler so Azera applications can
  * use `.blade.php` templates.  Requires `illuminate/view` to be installed:
  *
  * ```sh
@@ -200,9 +200,9 @@ class BladeAdapter extends ViewEngine
     // -------------------------------------------------------------------------
 
     /**
-     * Convert a Merlin view name to Blade dot-notation.
+     * Convert a Azera view name to Blade dot-notation.
      *
-     * | Merlin              | Blade               |
+     * | Azera              | Blade               |
      * |---------------------|---------------------|
      * | `home/index`        | `home.index`        |
      * | `home.index`        | `home.index`        |

@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Cli;
+namespace Azera\Cli;
 
 use ReflectionClass;
 
@@ -19,52 +19,78 @@ class Console
     protected array $namespaces = ['App\\Tasks'];
     protected array $taskPaths = [];
     protected array $tasks = [
-        'model-sync' => \Merlin\Cli\Tasks\ModelSyncTask::class,
+        'about'  => \Azera\Cli\Tasks\AboutTask::class,
+        'db'     => \Azera\Cli\Tasks\DbTask::class,
+        'model'  => \Azera\Cli\Tasks\ModelTask::class,
+        'routes' => \Azera\Cli\Tasks\RoutesTask::class,
+        'serve'  => \Azera\Cli\Tasks\ServeTask::class,
     ]; // taskName => class
-    /** @var array<string,string> class => absolute file path, populated during cold discovery */
+
     protected array $taskClassFiles = [];
     protected string $scriptName;
     protected bool $coerceParams = false;
     protected bool $useColors;
+    protected bool $hasTruecolor;
     protected string $defaultAction = "runAction";
     /** @var string|null Raw help text (same format as docblock Options/Notes sections) shown globally in all help output. */
     protected ?string $globalHelp = null;
+    /**
+     * Explicit composer/project root used for PSR-4 resolution and task
+     * discovery. When set, it takes precedence over the walk-up heuristic in
+     * findComposerRoot(). This lets a bin script that already located the
+     * project root point the Console at it directly.
+     */
+    protected ?string $composerRoot = null;
 
     protected const ANSI = [
         'reset' => "\033[0m",
         // basic styles
-        'bold' => "\033[1m",
-        'dim' => "\033[2m",
-        'red' => "\033[31m",
-        'green' => "\033[32m",
-        'yellow' => "\033[33m",
-        'blue' => "\033[34m",
+        'bold'    => "\033[1m",
+        'dim'     => "\033[2m",
+        'red'     => "\033[31m",
+        'green'   => "\033[32m",
+        'yellow'  => "\033[33m",
+        'blue'    => "\033[34m",
         'magenta' => "\033[35m",
-        'cyan' => "\033[36m",
-        'white' => "\033[37m",
+        'cyan'    => "\033[36m",
+        'white'   => "\033[37m",
         // Bright variants (prefix with 'b')
-        'gray' => "\033[90m",
-        'bred' => "\033[91m",
-        'bgreen' => "\033[92m",
-        'byellow' => "\033[93m",
-        'bblue' => "\033[94m",
+        'gray'     => "\033[90m",
+        'bred'     => "\033[91m",
+        'bgreen'   => "\033[92m",
+        'byellow'  => "\033[93m",
+        'bblue'    => "\033[94m",
         'bmagenta' => "\033[95m",
-        'bcyan' => "\033[96m",
+        'bcyan'    => "\033[96m",
         // Background colors (prefix with 'bg-')
-        'bg-black' => "\033[40m",
-        'bg-red' => "\033[41m",
-        'bg-green' => "\033[42m",
-        'bg-yellow' => "\033[43m",
-        'bg-blue' => "\033[44m",
+        'bg-black'   => "\033[40m",
+        'bg-red'     => "\033[41m",
+        'bg-green'   => "\033[42m",
+        'bg-yellow'  => "\033[43m",
+        'bg-blue'    => "\033[44m",
         'bg-magenta' => "\033[45m",
-        'bg-cyan' => "\033[46m",
-        'bg-white' => "\033[47m",
+        'bg-cyan'    => "\033[46m",
+        'bg-white'   => "\033[47m",
     ];
 
     public const STYLE_ERROR = ['bg-red', 'white', 'bold'];
     public const STYLE_WARN = ['byellow'];
     public const STYLE_INFO = ['bcyan'];
     public const STYLE_SUCCESS = ['bgreen'];
+
+    /**
+     * "Shrink" marker: a line containing only this Unicode glyph (↰) in a
+     * docblock tells the parser to render a tight line break — a new line
+     * with NO blank line before it — instead of the default behaviour
+     * (single \n collapses into the previous line; a blank line renders
+     * a blank line). It is the compact counterpart of a blank line.
+     *
+     * The marker is stored internally as the ASCII record-separator (0x1E)
+     * so it survives the section-splitting in parseDocComment() and can be
+     * recognised by the renderers without colliding with real text.
+     */
+    public const SHRINK_MARKER = "\u{21B0}"; // ↰
+    protected const SHRINK_SENTINEL = "\x1E";
     public const STYLE_MUTED = ['gray'];
 
     /**
@@ -74,7 +100,7 @@ class Console
      */
     protected const RESERVED_ACTIONS = [
         'beforeAction' => true,
-        'afterAction' => true
+        'afterAction'  => true
     ];
 
     protected $sectionStyles = ['bmagenta', '#e998ee'];
@@ -93,8 +119,9 @@ class Console
      */
     public function __construct(string $scriptName = null)
     {
-        $this->scriptName = $scriptName ?? basename($_SERVER['argv'][0] ?? 'console.php');
-        $this->useColors = $this->detectColorSupport();
+        $this->scriptName   = $scriptName ?? basename($_SERVER['argv'][0] ?? 'console.php');
+        $this->useColors    = $this->detectColorSupport();
+        $this->hasTruecolor = $this->useColors && $this->detectTruecolorSupport();
     }
 
     /**
@@ -155,7 +182,7 @@ class Console
     /**
      * Get the default action method name used when no action is specified on the command line.
      *
-     * @return string Default action method name (without namespace), e.g. "runAction".
+     * @return string Default action method name (without namespace), e.g. "execAction".
      */
     public function getDefaultAction(): string
     {
@@ -165,7 +192,7 @@ class Console
     /**
      * Set the default action method name used when no action is specified on the command line.
      *
-     * @param string $defaultAction Action method name, e.g. "runAction".
+     * @param string $defaultAction Action method name, e.g. "execAction".
      * @throws \InvalidArgumentException If the given name is empty.
      */
     public function setDefaultAction(string $defaultAction): void
@@ -182,6 +209,23 @@ class Console
         $this->tasks = [];
     }
 
+    /**
+     * Explicitly set the composer/project root directory used for PSR-4
+     * resolution and task autodiscovery. When set, this takes precedence
+     * over the walk-up heuristic in findComposerRoot().
+     *
+     * Pass the project root directory (the folder containing composer.json)
+     * so that task discovery scans the project's own autoload paths instead
+     * of the framework's.
+     *
+     * @param string|null $dir Absolute path to the project root, or null to
+     *                         fall back to automatic detection.
+     */
+    public function setComposerRoot(?string $dir): void
+    {
+        $this->composerRoot = $dir;
+    }
+
     // -------------------------------------------------------------------------
     //  Color / output helpers
     // -------------------------------------------------------------------------
@@ -193,6 +237,113 @@ class Console
                 && @sapi_windows_vt100_support(STDOUT);
         }
         return function_exists('stream_isatty') && stream_isatty(STDOUT);
+    }
+
+    /**
+     * Check whether the terminal advertises 24-bit truecolor support.
+     *
+     * Terminals that don't support truecolor may misinterpret the
+     * \033[38;2;R;G;Bm (foreground) escape sequence and render it as a
+     * background fill instead. This is commonly seen on XShell over SSH
+     * when the terminal type is set to a non-truecolor mode.
+     */
+    protected function detectTruecolorSupport(): bool
+    {
+        // ---------------------------------------------------------------------
+        // 1) Windows: VT100 = Truecolor (Windows Terminal, ConPTY, PowerShell 7)
+        // ---------------------------------------------------------------------
+        if (PHP_OS_FAMILY === 'Windows') {
+            // sapi_windows_vt100_support() is the most reliable indicator
+            if (
+                function_exists('sapi_windows_vt100_support') &&
+                @sapi_windows_vt100_support(STDOUT)
+            ) {
+                return true;
+            }
+
+            // Git Bash / MSYS2 / MinTTY -> Truecolor
+            $termProgram = getenv('TERM_PROGRAM') ?: '';
+            if (str_contains($termProgram, 'mintty')) {
+                return true;
+            }
+
+            // VS Code Terminal -> Truecolor
+            if (getenv('TERM_PROGRAM') === 'vscode') {
+                return true;
+            }
+
+            // Windows Terminal does not set TERM reliably, but Truecolor is always available
+            if (getenv('WT_SESSION')) {
+                return true;
+            }
+
+            // Classic console (conhost.exe) -> unreliable
+            // -> no Truecolor
+            return false;
+        }
+
+        // ---------------------------------------------------------------------
+        // 2) Unix: COLORTERM is the strongest indicator
+        // ---------------------------------------------------------------------
+        $colorterm = strtolower(getenv('COLORTERM') ?: '');
+        if ($colorterm === 'truecolor' || $colorterm === '24bit') {
+            return true;
+        }
+
+        // ---------------------------------------------------------------------
+        // 3) TERM-Hints (xterm-256color, screen-256color, tmux-256color)
+        // ---------------------------------------------------------------------
+        $term = strtolower(getenv('TERM') ?: '');
+        if (
+            str_contains($term, 'truecolor') ||
+            str_contains($term, '24bit') ||
+            str_contains($term, '256color')
+        ) {
+            return true;
+        }
+
+        // ---------------------------------------------------------------------
+        // 4) SSH-Clients: PuTTY, XShell, MobaXterm, iTerm2, etc.
+        // ---------------------------------------------------------------------
+
+        // iTerm2 → Truecolor
+        if (getenv('TERM_PROGRAM') === 'iTerm.app') {
+            return true;
+        }
+
+        // MobaXterm → Truecolor
+        if (getenv('MobaXterm')) {
+            return true;
+        }
+
+        // PuTTY -> no Truecolor
+        if (getenv('PUTTY')) {
+            return false;
+        }
+
+        // XShell -> Truecolor only if TERM is set correctly
+        if (getenv('XDG_SESSION_TYPE') === 'x11' && str_contains($term, '256color')) {
+            return true;
+        }
+
+        // ---------------------------------------------------------------------
+        // 5) WSL: Truecolor always available
+        // ---------------------------------------------------------------------
+        if (getenv('WSL_DISTRO_NAME')) {
+            return true;
+        }
+
+        // ---------------------------------------------------------------------
+        // 6) Fallback: If we have a TTY but no info -> assume 256color
+        // ---------------------------------------------------------------------
+        if (function_exists('stream_isatty') && stream_isatty(STDOUT)) {
+            return true; // 256color or better
+        }
+
+        // ---------------------------------------------------------------------
+        // 7) No TTY -> no Truecolor
+        // ---------------------------------------------------------------------
+        return false;
     }
 
     /**
@@ -218,7 +369,7 @@ class Console
      * @param bool $background Whether this color is for background (true) or foreground (false).
      * @return string The ANSI escape code for the specified color, or an empty string if colors are disabled or input is invalid.
      */
-    public function color(string|int $r, ?int $g = null, ?int $b = null, $background = false): string
+    public function color(string|int $r, ?int $g = null, ?int $b = null, bool $background = false): string
     {
         if (!$this->useColors) {
             return '';
@@ -228,16 +379,16 @@ class Console
 
         // Hex-Mode?
         if ($g === null && $b === null) {
-            $hex = (string)$r;
+            $hex = (string) $r;
 
             if (str_starts_with($hex, 'bg')) {
                 // Set Background explicitly
                 $code = 48;
-                $hex = ltrim(substr($hex, 2), ' :;-');
+                $hex  = ltrim(substr($hex, 2), ' :;-');
             } elseif (str_starts_with($hex, 'fg')) {
                 // Set Foreground explicitly
                 $code = 38;
-                $hex = ltrim(substr($hex, 2), ' :;-');
+                $hex  = ltrim(substr($hex, 2), ' :;-');
             } elseif (str_starts_with($hex, "\033")) {
                 // Already an ANSI code
                 return $hex;
@@ -277,7 +428,14 @@ class Console
         }
         $open = '';
         foreach ($styles as $s) {
-            $open .= self::ANSI[$s] ?? $this->color($s) ?: $s;
+            // Use named ANSI codes directly; only use color() for hex colors,
+            // and skip hex colors entirely when truecolor is not supported
+            // to avoid background-fill misrendering on limited terminals.
+            if (isset(self::ANSI[$s])) {
+                $open .= self::ANSI[$s];
+            } elseif ($this->hasTruecolor) {
+                $open .= $this->color($s);
+            }
         }
         return $open . $text . self::ANSI['reset'];
     }
@@ -393,35 +551,120 @@ class Console
     }
 
     /**
-     * Process the given task, action, and parameters.
+     * Primary entry point. Accepts the full argv slice (without the script
+     * name) and handles global flags before positional dispatch.
      *
-     * @param string|null $task The name of the task to execute.
-     * @param string|null $action The name of the action to execute within the task.
-     * @param array $params An array of parameters to pass to the action method.
+     * Recognised forms:
+     *   azera                              → overview help
+     *   azera --help | -h                  → overview help
+     *   azera help                         → overview help
+     *   azera help <task>                  → help for <task>
+     *   azera <task>                       → default action
+     *   azera <task> --help | -h           → help for <task>
+     *   azera <task> <action>              → dispatch action
+     *   azera <task> <action> [args...]    → dispatch action with options
+     *   azera [args...] <task> [args...]   → global opts are peeled off
+     *                                              before positional parsing
+     *
+     * Tokens that look like flags (start with '-' or '--') and appear before
+     * the first non-flag token are stripped from the positional stream and
+     * stored in $globalOptions; tasks can read them via
+     * $this->options('global.<name>') or via the merged $task->options array.
+     *
+     * @param string[] $argv Raw argv slice (argv[1..] from PHP's $argv).
      */
-    public function process(?string $task = null, ?string $action = null, array $params = []): void
+    public function process(array $argv): void
     {
         $this->autodiscover();
 
-        // If no task provided, show overview
-        if (!$task) {
-            $this->helpOverview();
-            return;
+        // 1) Strip leading flag-only tokens. Stop as soon as we hit a
+        //    non-flag token, which is always the task name (if any).
+        $leadingFlags = [];
+        $i            = 0;
+        while ($i < count($argv)) {
+            $tok = $argv[$i];
+            if ($tok === '' || $tok[0] !== '-') {
+                break;
+            }
+            // Reject the bare "-" stdin convention as a task name.
+            if ($tok === '-') {
+                break;
+            }
+            $leadingFlags[] = $tok;
+            $i++;
         }
+        $rest = array_slice($argv, $i);
 
-        // help handling
-        if ($task === 'help') {
-            $target = $action ?? null;
-            if ($target) {
-                $this->helpTask($target);
+        // 2) --help / -h anywhere in the remaining argv wins.
+        //    The non-flag token immediately before --help (if any) names the
+        //    help target. Otherwise show the overview.
+        $helpIndex = null;
+        foreach ($rest as $j => $t) {
+            if ($t === '--help' || $t === '-h') {
+                $helpIndex = $j;
+                break;
+            }
+        }
+        if ($helpIndex !== null) {
+            $target = $rest[$helpIndex - 1] ?? null;
+            if ($target !== null && $target !== '' && $target[0] !== '-') {
+                // Strip the :verb suffix — help is per-task, not per-action
+                $taskKey = strtolower(explode(':', $target, 2)[0]);
+                $this->helpTask($taskKey);
             } else {
                 $this->helpOverview();
             }
             return;
         }
 
-        // run the requested task/action
-        $this->dispatch($task, $action, $params);
+        // 3) process "help" word
+        $task = $rest[0] ?? null;
+        if ($task === 'help') {
+            $target = $rest[1] ?? null;
+            if ($target) {
+                // Strip the :verb suffix — help is per-task, not per-action
+                $taskKey = strtolower(explode(':', $target, 2)[0]);
+                $this->helpTask($taskKey);
+            } else {
+                $this->helpOverview();
+            }
+            return;
+        }
+
+        // 4) Empty after stripping flags + help = overview.
+        if ($task === null || $task === '') {
+            $this->helpOverview();
+            return;
+        }
+
+        // 5) Parse the command token. It may be "domain:verb" (colon
+        //    layout) or a bare "domain" (falls back to defaultAction or
+        //    single-action detection in dispatch()).
+        if (str_contains($task, ':')) {
+            [$taskName, $action] = explode(':', $task, 2);
+            $rest = array_slice($rest, 1);
+        } elseif (!empty($rest[1]) && $rest[1][0] !== '-') {
+            // Legacy two-word layout: "domain verb"
+            $taskName = $task;
+            $action   = $rest[1];
+            $rest     = array_slice($rest, 2);
+        } else {
+            $taskName = $task;
+            $action   = null;
+            $rest     = array_slice($rest, 1);
+        }
+
+        if (!empty($leadingFlags)) {
+            // Merge leading flags into the task's options array. This allows
+            // tasks to read them via $this->options('global.<name>') or via
+            // the merged $task->options array.
+            $rest = array_merge($leadingFlags, $rest);
+        }
+
+        // 6) Normal positional dispatch. Options that belonged to the task
+        //    (e.g. `azera model:sync-all --apply`) are still split by
+        //    dispatch()'s call to splitArgs().
+        $this->dispatch($taskName, $action, $rest);
     }
 
     protected function dispatch(string $taskName, ?string $actionName, array $params): void
@@ -455,8 +698,8 @@ class Console
             // (so the "action" arg is actually the first positional param).
             // For multi-action tasks with an unrecognised action name, show
             // task help instead to prevent silently swallowing typos.
-            $hasDefault = \method_exists($task, $this->defaultAction);
-            $ref = new ReflectionClass($class);
+            $hasDefault        = \method_exists($task, $this->defaultAction);
+            $ref               = new ReflectionClass($class);
             $publicActionCount = 0;
             foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
                 $name = $m->getName();
@@ -490,6 +733,7 @@ class Console
 
         // call method with params
         [$params, $options] = $this->splitArgs($params);
+
         $task->options = $options;
         $task->console = $this;
         $task->beforeAction($method, $params);
@@ -509,8 +753,8 @@ class Console
         // convert dashed or colon or snake to camelCase then append Action
         $action = str_replace(':', '-', $action);
         $action = str_replace('_', '-', $action);
-        $parts = explode('-', $action);
-        $camel = array_shift($parts);
+        $parts  = explode('-', $action);
+        $camel  = array_shift($parts);
         foreach ($parts as $p) {
             $camel .= ucfirst($p);
         }
@@ -565,8 +809,8 @@ class Console
         if ($composerDir === null) {
             return $cache = [];
         }
-        $json = json_decode(file_get_contents($composerDir . '/composer.json'), true);
-        $raw = $json['autoload']['psr-4'] ?? [];
+        $json   = json_decode(file_get_contents($composerDir . '/composer.json'), true);
+        $raw    = $json['autoload']['psr-4'] ?? [];
         $result = [];
         foreach ($raw as $ns => $dir) {
             $result[$ns] = rtrim($composerDir . DIRECTORY_SEPARATOR . ltrim($dir, '/\\'), DIRECTORY_SEPARATOR);
@@ -590,8 +834,17 @@ class Console
     public function findComposerRoot(): ?string
     {
         static $cache = false;
+
         if ($cache !== false) {
             return $cache;
+        }
+
+        // An explicitly provided project root always wins. This lets a bin
+        // script that already located the project (e.g. by walking up from
+        // CWD) point discovery at the project's composer.json instead of the
+        // framework's own.
+        if ($this->composerRoot !== null && is_file($this->composerRoot . '/composer.json')) {
+            return $cache = $this->composerRoot;
         }
 
         // Walk up from the currently executing script, which is the most likely location for composer.json in a typical project.
@@ -619,22 +872,22 @@ class Console
      */
     public function resolvePsr4Path(string $namespace): ?string
     {
-        $map = $this->readComposerPsr4();
-        $nsClean = rtrim($namespace, '\\');
+        $map        = $this->readComposerPsr4();
+        $nsClean    = rtrim($namespace, '\\');
         $bestPrefix = null;
-        $bestDir = null;
+        $bestDir    = null;
         foreach ($map as $prefix => $dir) {
             $prefixClean = rtrim($prefix, '\\');
             if ($nsClean === $prefixClean || str_starts_with($nsClean . '\\', $prefixClean . '\\')) {
                 if ($bestPrefix === null || strlen($prefixClean) > strlen($bestPrefix)) {
                     $bestPrefix = $prefixClean;
-                    $bestDir = $dir;
+                    $bestDir    = $dir;
                 }
             }
         }
         if ($bestPrefix !== null) {
             $suffix = ltrim(substr($nsClean, strlen($bestPrefix)), '\\');
-            $path = $suffix
+            $path   = $suffix
                 ? $bestDir . DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $suffix)
                 : $bestDir;
             return is_dir($path) ? $path : null;
@@ -727,7 +980,7 @@ class Console
         if (class_exists($class) && is_subclass_of($class, Task::class)) {
             $taskName = $this->taskNameFromClass($class);
             if (!isset($this->tasks[$taskName])) {
-                $this->tasks[$taskName] = $class;
+                $this->tasks[$taskName]       = $class;
                 $this->taskClassFiles[$class] = $file;
             }
         }
@@ -746,7 +999,7 @@ class Console
     public function helpOverview(): void
     {
         $this->writeln();
-        $this->writeln("Usage: $this->scriptName <task> <action> [args...]");
+        $this->writeln("Usage: $this->scriptName <task:action> [args...]");
         $this->writeln();
         $this->writeln($this->style('Available tasks and actions:', 'bold', 'white'));
         $termWidth = $this->terminalWidth();
@@ -760,9 +1013,9 @@ class Console
 
             // Task label column
             $labelWidth = 22;
-            $leftPad = 2; // leading spaces printed before label
-            $avail = max(10, $termWidth - $leftPad - $labelWidth - 1);
-            $descLines = $this->wrapText($desc, $avail);
+            $leftPad    = 2; // leading spaces printed before label
+            $avail      = max(10, $termWidth - $leftPad - $labelWidth - 1);
+            $descLines  = $this->wrapText($desc, $avail);
 
             $labelStyled = $this->style(str_pad($name, $labelWidth), ...$this->taskStyles);
             if (count($descLines) > 0 && $descLines[0] !== '') {
@@ -776,36 +1029,52 @@ class Console
                 $this->writeln('  ' . str_repeat(' ', $labelWidth) . ' ' . $this->style($descLines[$i], 'bold'));
             }
 
-            // Actions: action column is printed with 4 leading spaces + 2 spaces before the name
-            $actionLabelInner = 22; // base str_pad width used for actions
-            $actionLeft = 2 + 2;    // visual indent (leading spaces + inner padding)
+            // Actions: rendered as "task:action" with the colon prefix
+            $actionLabelInner   = 22;    // base str_pad width used for actions
+            $actionLeft         = 2 + 2; // visual indent (leading spaces + inner padding)
             $defaultActionLabel = method_exists($class, $this->defaultAction)
                 ? $this->methodToActionName($this->defaultAction)
                 : null;
             foreach ($actionDescriptions as $action => $actionDesc) {
+                // Render as "task:action" (colon layout)
+                $fullAction = $name . ':' . $action;
                 // If an action name is longer than the base label width, account
                 // for its actual length when calculating description wrap width
-                $labelWidth = max($actionLabelInner, strlen($action));
+                $labelWidth = max($actionLabelInner, strlen($fullAction));
                 // Reserve two spaces between action label and description
                 $actionAvail = max(10, $termWidth - $actionLeft - $labelWidth - 2);
 
                 $defaultMarker = $action === $defaultActionLabel
                     ? ' ' . $this->style('[default]', ...$this->muteStyles)
                     : '';
+                // Colour the task and action parts separately (matching the
+                // Usage/Examples highlight) so the task name stands out.
+                $styledLabel = $this->style(str_pad($fullAction, $labelWidth), ...$this->actionStyles);
+                if (str_contains($fullAction, ':')) {
+                    [$taskPart, $actionPart] = explode(':', $fullAction, 2);
+                    $padLen      = $labelWidth - strlen($fullAction);
+                    $styledLabel = $this->style($taskPart, ...$this->taskStyles)
+                        . $this->style(':', ...$this->muteStyles)
+                        . $this->style($actionPart, ...$this->actionStyles)
+                        . str_repeat(' ', max(0, $padLen));
+                }
+
                 if ($actionDesc === '') {
-                    $this->writeln(
-                        '    '
-                        . $this->style('  ' . str_pad($action, $labelWidth), ...$this->actionStyles)
-                        . $defaultMarker
-                    );
+                    if ($defaultMarker === '') {
+                        $this->writeln(
+                            '    '
+                            . '  ' . $styledLabel
+                            . $defaultMarker
+                        );
+                    }
                     continue;
                 }
 
                 $actionLines = $this->wrapText($actionDesc, $actionAvail);
-                $first = array_shift($actionLines);
+                $first       = array_shift($actionLines);
                 $this->writeln(
                     '  '
-                    . $this->style('  ' . str_pad($action, $labelWidth), ...$this->actionStyles)
+                    . '  ' . $styledLabel
                     . '  ' . $this->style($first)
                     . $defaultMarker
                 );
@@ -834,24 +1103,28 @@ class Console
     public function helpTask(string $task): void
     {
         $taskKey = strtolower($task);
-        $class = $this->tasks[$taskKey] ?? null;
+        $class   = $this->tasks[$taskKey] ?? null;
         if (!$class) {
             $this->writeln("Task '{$task}' not found.");
             return;
         }
 
-        $termWidth = $this->terminalWidth();
+        $termWidth     = $this->terminalWidth();
         $sectionStyles = $this->sectionStyles;
 
-        $ref = new ReflectionClass($class);
-        $doc = $ref->getDocComment() ?: '';
+        $ref  = new ReflectionClass($class);
+        $doc  = $ref->getDocComment() ?: '';
         $info = static::parseDocComment($doc, $this->scriptName);
 
         $this->writeln();
         $this->writeln($this->style('Task: ', ...$sectionStyles) . $this->style($taskKey, ...$this->taskStyles));
         //$this->writeln('      ' . $this->style(str_repeat('─', strlen($taskKey)), 'cyan'));
         $this->writeln();
-        $this->writeln($this->style($info['description'], 'bold', 'white'));
+        // The description section collapses single newlines into spaces, so
+        // any shrink sentinels (↰) would appear inline — strip them.
+        $descText = str_replace(self::SHRINK_SENTINEL, ' ', $info['description']);
+        $descText = preg_replace('/\s{2,}/', ' ', $descText) ?? $descText;
+        $this->writeln($this->style(trim($descText), 'bold', 'white'));
         $this->writeln();
 
         // list available actions
@@ -861,25 +1134,37 @@ class Console
             $this->writeln($this->style('Actions:', ...$sectionStyles));
 
             $actionLabelInner = 16;
-            $leadingSpaces = 2; // two leading spaces before task
-            // description starts after: leading + task + ' ' + actionLabel + '  '
-            // reserve two spaces between action and description
-            $descStartCol = $leadingSpaces + $actionLabelInner + 2;
-            $actionAvail = max(10, $termWidth - $descStartCol);
+            $leadingSpaces    = 2; // two leading spaces before task
+
+            $descStartCol       = $leadingSpaces + $actionLabelInner + 2;
+            $actionAvail        = max(10, $termWidth - $descStartCol);
             $defaultActionLabel = method_exists($class, $this->defaultAction)
                 ? $this->methodToActionName($this->defaultAction)
                 : null;
 
             foreach ($actions as $action => $actionDesc) {
+                $fullAction    = $taskKey . ':' . $action;
                 $defaultMarker = $action === $defaultActionLabel
                     ? ' ' . $this->style('[default]', ...$this->muteStyles)
                     : '';
                 $lines = $this->wrapText($actionDesc, $actionAvail);
                 $first = array_shift($lines);
 
+                // Colour the task and action parts separately (matching the
+                // Usage/Examples highlight) so the task name stands out.
+                $styledLabel = $this->style(str_pad($fullAction, $actionLabelInner), ...$this->actionStyles);
+                if (str_contains($fullAction, ':')) {
+                    [$taskPart, $actionPart] = explode(':', $fullAction, 2);
+                    $padLen      = $actionLabelInner - strlen($fullAction);
+                    $styledLabel = $this->style($taskPart, ...$this->taskStyles)
+                        . $this->style(':', ...$this->muteStyles)
+                        . $this->style($actionPart, ...$this->actionStyles)
+                        . str_repeat(' ', max(0, $padLen));
+                }
+
                 $this->writeln(
                     str_repeat(' ', $leadingSpaces)
-                    . $this->style(str_pad($action, $actionLabelInner), ...$this->actionStyles)
+                    . $styledLabel
                     . ($first !== '' ? '  ' . $this->style($first) : '')
                     . $defaultMarker
                 );
@@ -895,8 +1180,16 @@ class Console
         }
 
         $this->writeln($this->style('Usage:', ...$sectionStyles));
-        $actionsList = implode('|', array_keys($actions)) ?: '<action>';
-        $this->writeln('  ' . $this->style('php ' . $this->scriptName, ...$this->muteStyles) . ' ' . $this->style($taskKey, ...$this->taskStyles) . ' ' . $this->style($actionsList, ...$this->actionStyles) . ' [args...]');
+        $actionsList = implode(
+            '|',
+            array_map(
+                fn($a) =>
+                    $this->style($taskKey, ...$this->taskStyles) . ':' . $this->style($a, ...$this->actionStyles),
+                array_keys($actions)
+            )
+        )
+            ?: '<action>';
+        $this->writeln('  ' . $this->style($this->scriptName, ...$this->muteStyles) . ' ' . $actionsList . ' [args...]');
         if ($info['usage']) {
             $this->renderUsageBlock($info['usage'], $taskKey, $termWidth);
         }
@@ -925,7 +1218,7 @@ class Console
                     $prop = $taskRef->getProperty('showGlobalHelp');
                     $prop->setAccessible(true);
                     // Read default value from class definition (not from an instance)
-                    $showGlobal = (bool)($prop->hasDefaultValue() ? $prop->getDefaultValue() : true);
+                    $showGlobal = (bool) ($prop->hasDefaultValue() ? $prop->getDefaultValue() : true);
                 }
             }
             if ($showGlobal) {
@@ -940,14 +1233,14 @@ class Console
      * Token colouring rules:
      *   interpreter (php)   → dim
      *   script name         → dim
-     *   task name           → bold white
+     *   task name           → bold green
      *   action name         → bold cyan
      *   <placeholder>       → bright yellow
      *   [--option]          → green brackets, highlighted inner token
      *   --flag / --key=val  → green (val placeholder stays bright yellow)
      *   # comment           → gray
      *   positional arg      → white
-     *   continuation lines  → only option/arg tokens (no interpreter prefix)
+     *   continuation lines  → option/arg tokens, plus task:action if present
      */
     protected function highlightCommandLine(string $line, ?string $taskName = null): string
     {
@@ -960,7 +1253,7 @@ class Console
 
         // Preserve leading indentation
         $trimmed = ltrim($line);
-        $indent = substr($line, 0, strlen($line) - strlen($trimmed));
+        $indent  = substr($line, 0, strlen($line) - strlen($trimmed));
 
         if ($trimmed === '') {
             return $line;
@@ -969,14 +1262,22 @@ class Console
         // Split into (word, whitespace, word, whitespace …) keeping delimiters
         $parts = preg_split('/( +)/', $trimmed, -1, PREG_SPLIT_DELIM_CAPTURE);
 
-        // Detect whether this is a command line (starts with interpreter) or a
-        // continuation line (starts with options / placeholders)
+        // Detect whether this is a command line (starts with interpreter or
+        // directly with the script name) or a continuation line (starts with
+        // options / placeholders).
         $firstWord = $parts[0] ?? '';
-        $isCommand = (bool)preg_match('/^php\d*(?:\.exe)?$/i', $firstWord);
+        $isPhp     = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $firstWord);
+        $isScript  = !$isPhp && $firstWord === $this->scriptName;
+        $isCommand = $isPhp || $isScript;
 
-        $result = $indent;
+        $result    = $indent;
         $wordIndex = 0; // counts only non-whitespace tokens
         $inComment = false;
+
+        // When the line starts with the script name directly (no php prefix),
+        // the script is token 0 and the task:action is token 1.
+        $scriptIdx = $isPhp ? 1 : 0;
+        $actionIdx = $scriptIdx + 1;
 
         foreach ($parts as $part) {
             // Whitespace between tokens – pass through unchanged
@@ -1003,21 +1304,38 @@ class Console
             }
 
             if ($isCommand) {
-                $result .= match ($wordIndex) {
-                    0 => $this->style($part, ...$this->muteStyles),   // php
-                    1 => $this->style($part, ...$this->muteStyles),   // script
-                    2 => $this->style($part, ...$this->taskStyles),   // task
-                    3 => $this->style($part, ...$this->actionStyles), // action
-                    default => $this->highlightCliToken($part),
+                $result .= match (true) {
+                    $wordIndex === $scriptIdx => $this->style($part, ...$this->muteStyles), // script
+                    $wordIndex === $actionIdx => $this->highlightTaskAction($part),         // task:action or task
+                    default                   => $this->highlightCliToken($part),
                 };
             } else {
-                $result .= $this->highlightCliToken($part);
+                // Continuation line: still colour task:action tokens if present
+                $result .= str_contains($part, ':') && !str_starts_with($part, '--')
+                    ? $this->highlightTaskAction($part)
+                    : $this->highlightCliToken($part);
             }
 
             $wordIndex++;
         }
 
         return $result;
+    }
+
+    /**
+     * Colour a "task:action" token, splitting on the colon so the task
+     * part gets taskStyles and the action part gets actionStyles.
+     * If there's no colon, the whole token is styled as a task.
+     */
+    protected function highlightTaskAction(string $token): string
+    {
+        if (str_contains($token, ':')) {
+            [$task, $action] = explode(':', $token, 2);
+            return $this->style($task, ...$this->taskStyles)
+                . $this->style(':', ...$this->muteStyles)
+                . $this->style($action, ...$this->actionStyles);
+        }
+        return $this->style($token, ...$this->taskStyles);
     }
 
     /**
@@ -1076,10 +1394,17 @@ class Console
         if (!$class || !class_exists($class)) {
             return '';
         }
-        $ref = new ReflectionClass($class);
-        $doc = $ref->getDocComment() ?: '';
+        $ref  = new ReflectionClass($class);
+        $doc  = $ref->getDocComment() ?: '';
         $info = static::parseDocComment($doc, $this->scriptName);
-        return $info['description'] ? strtok($info['description'], "\n") : '';
+        if (!$info['description']) {
+            return '';
+        }
+        // The description collapses single newlines into spaces, so shrink
+        // sentinels (↰) would appear inline — strip them before taking the
+        // first line.
+        $desc = str_replace(self::SHRINK_SENTINEL, ' ', $info['description']);
+        return strtok($desc, "\n") ?: '';
     }
 
     /**
@@ -1094,7 +1419,7 @@ class Console
         if (!class_exists($class)) {
             return [];
         }
-        $ref = new ReflectionClass($class);
+        $ref     = new ReflectionClass($class);
         $actions = [];
         foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
             $name = $m->getName();
@@ -1104,8 +1429,8 @@ class Console
             if (isset(static::RESERVED_ACTIONS[$name])) {
                 continue;
             }
-            $actionName = $this->methodToActionName($name);
-            $doc = $m->getDocComment() ?: '';
+            $actionName           = $this->methodToActionName($name);
+            $doc                  = $m->getDocComment() ?: '';
             $actions[$actionName] = $this->extractDocHeader($doc);
         }
         return $actions;
@@ -1121,9 +1446,10 @@ class Console
         if ($doc === '') {
             return '';
         }
-        // Strip /** ... */ wrapper and leading " * "
+        // Strip /** ... */ wrapper and leading " * ". Use [ \t] instead of
+        // \s so blank comment lines keep their newline (see parseDocComment).
         $doc = trim(preg_replace('/^\/\*\*|\*\/$/', '', $doc));
-        $doc = preg_replace('/^\s*\*\s?/m', '', $doc);
+        $doc = preg_replace('/^[ \t]*\*[ \t]?/m', '', $doc);
 
         $parts = [];
         foreach (explode("\n", $doc) as $line) {
@@ -1142,7 +1468,7 @@ class Console
         spl_autoload_register(
             function ($class) use ($path) {
                 $parts = explode('\\', $class);
-                $file = $path . DIRECTORY_SEPARATOR . end($parts) . '.php';
+                $file  = $path . DIRECTORY_SEPARATOR . end($parts) . '.php';
                 if (is_file($file)) {
                     require_once $file;
                 }
@@ -1153,7 +1479,7 @@ class Console
     protected function splitArgs(array $args): array
     {
         $options = [];
-        $params = [];
+        $params  = [];
 
         for ($i = 0; $i < count($args); $i++) {
             $arg = $args[$i];
@@ -1213,11 +1539,11 @@ class Console
     public function coerceParam(string $param): int|float|bool|null|string
     {
         static $boolMap = [
-            'true' => true,
-            'on' => true,
+            'true'  => true,
+            'on'    => true,
             'false' => false,
-            'off' => false,
-            'null' => null,
+            'off'   => false,
+            'null'  => null,
         ];
 
         if (!$this->coerceParams) {
@@ -1242,12 +1568,12 @@ class Console
 
         // integer
         if (preg_match('/^-?\d+$/', $param)) {
-            return (int)$param;
+            return (int) $param;
         }
 
         // float
         if (preg_match('/^-?\d+\.\d+$/', $param)) {
-            return (float)$param;
+            return (float) $param;
         }
 
         return $param;
@@ -1256,19 +1582,32 @@ class Console
     protected static function parseDocComment(string $doc, string $scriptName): array
     {
         $doc = trim(preg_replace('/^\/\*\*|\*\/$/', '', $doc));
-        $doc = preg_replace('/^\s*\*\s?/m', '', $doc);
-        $doc = preg_replace('/^\s*[\w-]+\.php/', $scriptName, $doc);
-        $doc = str_replace('console.php', $scriptName, $doc);
+        // Strip the leading " * " docblock marker, but use [ \t] instead of
+        // \s so that blank comment lines (which contain only whitespace and
+        // a newline) keep their newline instead of being collapsed away.
+        $doc      = preg_replace('/^[ \t]*\*[ \t]?/m', '', $doc);
+        $doc      = preg_replace('/^\s*[\w-]+\.php/', $scriptName, $doc);
+        $doc      = str_replace('console.php', $scriptName, $doc);
         $sections = [
             'description' => '',
-            'usage' => '',
-            'options' => '',
-            'examples' => '',
+            'usage'       => '',
+            'options'     => '',
+            'examples'    => '',
         ];
         $current = 'description';
-        $doc = str_replace("\r", '', $doc);
+        $doc     = str_replace("\r", '', $doc);
         foreach (explode("\n", $doc) as $line) {
             $trim = trim($line);
+            // A line containing only the shrink marker (↰) requests a tight
+            // line break. Emit the sentinel on its own line so renderers can
+            // distinguish it from a real blank line (paragraph break) and
+            // from a normal single newline (which collapses into the
+            // previous line). The trailing \n puts the sentinel on its own
+            // line when the section text is later split by \n.
+            if ($trim === self::SHRINK_MARKER) {
+                $sections[$current] .= self::SHRINK_SENTINEL . "\n";
+                continue;
+            }
             if ($trim === '') {
                 $sections[$current] .= "\n";
                 continue;
@@ -1312,8 +1651,8 @@ class Console
 
         // 1) ENV
         $cols = getenv('COLUMNS');
-        if ($cols !== false && (int)$cols > 0) {
-            $w = (int)$cols;
+        if ($cols !== false && (int) $cols > 0) {
+            $w = (int) $cols;
             return $w;
         }
 
@@ -1323,8 +1662,8 @@ class Console
             if (function_exists('posix_isatty') && @posix_isatty(STDOUT)) {
                 $out = [];
                 @exec('tput cols 2>/dev/null', $out);
-                if (!empty($out) && is_array($out) && (int)$out[0] > 0) {
-                    $w = (int)$out[0];
+                if (!empty($out) && is_array($out) && (int) $out[0] > 0) {
+                    $w = (int) $out[0];
                     return $w;
                 }
             }
@@ -1340,7 +1679,7 @@ class Console
                             if ($columnPos-- > 0) {
                                 continue; // skip until we reach the column number
                             }
-                            $w = (int)$m[1];
+                            $w = (int) $m[1];
                             return $w;
                         }
                     }
@@ -1377,7 +1716,7 @@ class Console
         $headerPattern = '/^([A-Za-z][A-Za-z\s]*):\s*$/';
 
         $sections = []; // [['label' => string|null, 'lines' => string[]]]
-        $current = ['label' => null, 'lines' => []];
+        $current  = ['label' => null, 'lines' => []];
 
         foreach (explode("\n", str_replace("\r", '', $this->globalHelp)) as $line) {
             if (preg_match($headerPattern, rtrim($line), $m)) {
@@ -1395,8 +1734,8 @@ class Console
 
         // ── Render each section ──────────────────────────────────────────────
         foreach ($sections as $section) {
-            $label = $section['label'];
-            $body = implode("\n", $section['lines']);
+            $label       = $section['label'];
+            $body        = implode("\n", $section['lines']);
             $bodyTrimmed = trim($body);
 
             if ($label !== null) {
@@ -1423,8 +1762,14 @@ class Console
                 }
                 $this->writeln();
             } else {
-                // Prose / notes: word-wrap in muted color, 2-space indent
+                // Prose / notes: word-wrap in muted color, 2-space indent.
+                // A shrink sentinel (↰ in the source) is rendered as a tight
+                // line break (no blank line); other lines are wrapped.
                 foreach (explode("\n", $body) as $l) {
+                    if (trim($l) === self::SHRINK_SENTINEL) {
+                        $this->writeln();
+                        continue;
+                    }
                     $trimmed = trim($l);
                     if ($trimmed === '') {
                         $this->writeln();
@@ -1448,49 +1793,72 @@ class Console
      */
     protected function renderUsageBlock(string $usageText, string $taskKey, int $termWidth): void
     {
-        $taskPattern = '/^' . preg_quote($taskKey, '/') . '\b/i';
+        $taskPattern = '/^' . preg_quote($taskKey, '/') . '(?:[:\b]|\s)/i';
 
         // ── Pass 1: split into 'entry' and 'prose' items ─────────────────────
-        $items = [];
+        $items        = [];
         $currentEntry = null;
-        $emptyLine = false;
+        $emptyLine    = false;
+        $tightNext    = false; // a ↰ marker requested a tight break before the next prose line
 
         foreach (explode("\n", $usageText) as $ln) {
-            $ln = rtrim($ln);
+            $ln   = rtrim($ln);
             $trim = ltrim($ln);
 
             if ($trim === '') {
                 if ($currentEntry !== null) {
-                    $items[] = ['type' => 'entry', 'text' => $currentEntry];
+                    $items[]      = ['type' => 'entry', 'text' => $currentEntry];
                     $currentEntry = null;
                 }
                 $emptyLine = true;
+                $tightNext = false; // a real blank line overrides a pending tight break
                 continue;
             }
 
-            $trim = preg_replace('/^php\d*(?:\.exe)?\b\s*/i', '', $trim);
-            $trim = preg_replace('/^\w+\.php\b\s*/i', '', $trim);
-            $isEntryStart = (bool)preg_match('/^php\d*(?:\.exe)?\b/i', $trim)
-                || (bool)preg_match($taskPattern, $trim);
-            $isContinuation = (bool)preg_match('/^[\[<\-]/', $trim);
+            // A shrink sentinel (↰ in the source) requests a tight line
+            // break before the next prose line: no blank line, and the next
+            // line must NOT be joined into the previous prose block.
+            if ($trim === self::SHRINK_SENTINEL) {
+                if ($currentEntry !== null) {
+                    $items[]      = ['type' => 'entry', 'text' => $currentEntry];
+                    $currentEntry = null;
+                }
+                $tightNext = true;
+                $emptyLine = false;
+                continue;
+            }
+
+            $trim         = preg_replace('/^php\d*(?:\.exe)?\b\s*/i', '', $trim);
+            $trim         = preg_replace('/^\w+\.php\b\s*/i', '', $trim);
+            $isEntryStart = (bool) preg_match('/^php\d*(?:\.exe)?\b/i', $trim)
+                || (bool) preg_match($taskPattern, $trim);
+            $isContinuation = (bool) preg_match('/^[\[<\-]/', $trim);
 
             if ($isEntryStart) {
                 if ($currentEntry !== null) {
                     $items[] = ['type' => 'entry', 'text' => $currentEntry];
                 }
                 $currentEntry = $trim;
+                $tightNext    = false;
             } elseif ($isContinuation && $currentEntry !== null) {
                 $currentEntry .= ' ' . $trim;
             } else {
                 if ($currentEntry !== null) {
-                    $items[] = ['type' => 'entry', 'text' => $currentEntry];
+                    $items[]      = ['type' => 'entry', 'text' => $currentEntry];
                     $currentEntry = null;
                 }
-                if (!$emptyLine && !empty($items) && end($items)['type'] === 'prose') {
+                if ($tightNext) {
+                    // A ↰ marker forced a tight break: start a new prose item
+                    // with no blank line before it and no joining.
+                    $items[]   = ['type' => 'prose', 'text' => $trim, 'blankBefore' => false, 'tight' => true];
+                    $tightNext = false;
+                } elseif (!$emptyLine && !empty($items) && end($items)['type'] === 'prose') {
                     // append to previous prose block
                     $items[count($items) - 1]['text'] .= ' ' . $trim;
                 } else {
-                    $items[] = ['type' => 'prose', 'text' => $trim];
+                    // Record whether this prose item was preceded by a blank
+                    // line so the renderer can reproduce the visual gap.
+                    $items[] = ['type' => 'prose', 'text' => $trim, 'blankBefore' => $emptyLine];
                 }
             }
             $emptyLine = false;
@@ -1506,17 +1874,25 @@ class Console
                 continue;
             }
             $parts = preg_split('/\s+/', $item['text']);
-            $isPhp = (bool)preg_match('/^php\d*(?:\.exe)?$/i', $parts[0]);
-            $actionIdx = $isPhp ? 3 : 1;
+            $isPhp = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $parts[0]);
+            // In colon layout, the task:action is a single token at index 2 (php)
+            // or index 0 (no php). In legacy layout they are separate tokens.
+            if ($isPhp) {
+                // php script model:sync-all  → left = [php, script, model:sync-all]
+                $actionIdx = 2;
+            } else {
+                // model:sync-all  → left = [model:sync-all]
+                $actionIdx = 0;
+            }
             $actionIdx = min($actionIdx, count($parts) - 1);
             $leftParts = array_slice($parts, 0, $actionIdx + 1);
             $restParts = array_slice($parts, $actionIdx + 1);
             $leftPlain = implode(' ', $leftParts);
 
-            $item['isPhp'] = $isPhp;
+            $item['isPhp']     = $isPhp;
             $item['leftParts'] = $leftParts;
             $item['leftPlain'] = $leftPlain;
-            $item['rest'] = implode(' ', $restParts);
+            $item['rest']      = implode(' ', $restParts);
 
             $maxLeftLen = max($maxLeftLen, strlen($leftPlain));
         }
@@ -1524,14 +1900,26 @@ class Console
 
         // ── Pass 3: render ───────────────────────────────────────────────────
         $leadingSpaces = 2;
-        $descStartCol = $leadingSpaces + $maxLeftLen + 1;
-        $argAvail = max(10, $termWidth - $descStartCol);
-        $contIndent = str_repeat(' ', $descStartCol);
-        $addEmptyLine = true;
+        $descStartCol  = $leadingSpaces + $maxLeftLen + 1;
+        $argAvail      = max(10, $termWidth - $descStartCol);
+        $contIndent    = str_repeat(' ', $descStartCol);
+        $addEmptyLine  = true;
 
         foreach ($items as $item) {
 
             if ($item['type'] === 'prose') {
+                // A tight shrink marker with no text just forces a line break
+                // without a blank line. Skip it entirely if it has no text.
+                if (!empty($item['tight']) && $item['text'] === '') {
+                    continue;
+                }
+                // Reproduce a blank line that appeared in the source before
+                // this prose item, unless the renderer already emitted one
+                // (e.g. after an entry) via $addEmptyLine, or this is a tight
+                // break requested by a ↰ marker.
+                if (!empty($item['blankBefore']) && !$addEmptyLine && empty($item['tight'])) {
+                    $this->writeln();
+                }
                 if ($addEmptyLine) {
                     $this->writeln();
                     $addEmptyLine = false;
@@ -1548,19 +1936,19 @@ class Console
             foreach ($item['leftParts'] as $i => $tok) {
                 if ($item['isPhp']) {
                     $leftStyled[] = match ($i) {
-                        0, 1 => $this->style($tok, ...$this->muteStyles),
-                        2 => $this->style($tok, ...$this->taskStyles),
+                        0, 1    => $this->style($tok, ...$this->muteStyles),
+                        2       => $this->highlightTaskAction($tok),  // task:action
                         default => $this->style($tok, ...$this->actionStyles)
                     };
                 } else {
                     $leftStyled[] = $i === 0
-                        ? $this->style($tok, ...$this->taskStyles)
+                        ? $this->highlightTaskAction($tok)  // task:action
                         : $this->style($tok, ...$this->actionStyles);
                 }
             }
 
             // Pad left side so all args start at the same column
-            $padding = str_repeat(' ', $maxLeftLen - strlen($item['leftPlain']));
+            $padding  = str_repeat(' ', $maxLeftLen - strlen($item['leftPlain']));
             $argLines = $this->wrapText($item['rest'], $argAvail);
             $firstArg = array_shift($argLines);
 
@@ -1586,7 +1974,7 @@ class Console
     protected function renderOptionsBlock(string $optionsText, int $termWidth): void
     {
         // ── Pass 1: parse into token => full-description pairs ───────────────
-        $options = [];
+        $options      = [];
         $currentToken = null;
 
         foreach (explode("\n", $optionsText) as $line) {
@@ -1596,8 +1984,8 @@ class Console
             }
             if (str_starts_with($trim, '-')) {
                 // New option line – split at first run of 2+ spaces
-                $parts = preg_split('/\s{2,}/', $trim, 2);
-                $currentToken = $parts[0];
+                $parts                  = preg_split('/\s{2,}/', $trim, 2);
+                $currentToken           = $parts[0];
                 $options[$currentToken] = isset($parts[1]) ? trim($parts[1]) : '';
             } elseif ($currentToken !== null) {
                 // Continuation line – join into description
@@ -1617,14 +2005,14 @@ class Console
 
         // ── Pass 3: render ───────────────────────────────────────────────────
         $leadingSpaces = 2;
-        $gap = 2;
-        $descStartCol = $leadingSpaces + $maxTokenLen + $gap;
-        $descAvail = max(10, $termWidth - $descStartCol);
-        $contIndent = str_repeat(' ', $descStartCol);
+        $gap           = 2;
+        $descStartCol  = $leadingSpaces + $maxTokenLen + $gap;
+        $descAvail     = max(10, $termWidth - $descStartCol);
+        $contIndent    = str_repeat(' ', $descStartCol);
 
         foreach ($options as $token => $description) {
             $coloredToken = $this->highlightCliToken($token);
-            $padding = str_repeat(' ', $maxTokenLen - strlen($token) + $gap);
+            $padding      = str_repeat(' ', $maxTokenLen - strlen($token) + $gap);
 
             if ($description === '') {
                 $this->writeln(str_repeat(' ', $leadingSpaces) . $coloredToken);
@@ -1653,13 +2041,59 @@ class Console
      */
     public function wrapText(string $text, int $width): array
     {
-        $width = max(10, (int)$width);
+        $width = max(10, (int) $width);
         if ($text === '') {
             return [''];
         }
         $wrapped = wordwrap($text, $width, "\n");
-        $lines = explode("\n", $wrapped);
+        $lines   = explode("\n", $wrapped);
         return array_map(fn($l) => rtrim($l), $lines);
+    }
+
+    /**
+     * Print a simple table with unicode-aware column width calculation.
+     * @param array $headers The table headers as a numeric array.
+     * @param array $rows The table rows as numeric arrays.
+     */
+    public function printTable(array $headers, array $rows): void
+    {
+        $cols   = count($headers);
+        $widths = array_fill(0, $cols, 0);
+
+        $visibleLen = static function (string $s): int {
+            return mb_strwidth(preg_replace('/\e\[[0-9;]*m/', '', $s) ?? '');
+        };
+
+        for ($i = 0; $i < $cols; $i++) {
+            $widths[$i] = $visibleLen($headers[$i]);
+        }
+        foreach ($rows as $row) {
+            for ($i = 0; $i < $cols; $i++) {
+                $len = $visibleLen($row[$i] ?? '');
+                if ($len > $widths[$i]) {
+                    $widths[$i] = $len;
+                }
+            }
+        }
+
+        $pad = static function (string $s, int $w) use ($visibleLen): string {
+            $p = $w - $visibleLen($s);
+            return $p > 0 ? $s . str_repeat(' ', $p) : $s;
+        };
+
+        $printRow = function (array $cells) use ($cols, $pad, $widths): void {
+            $line = '';
+            for ($i = 0; $i < $cols; $i++) {
+                $line .= '  ' . $pad($cells[$i] ?? '', $widths[$i]);
+            }
+            $this->line(rtrim($line));
+        };
+
+        $printRow($headers);
+        $this->line('  ' . str_repeat('-', array_sum($widths) + 2 * $cols));
+        foreach ($rows as $row) {
+            $printRow($row);
+        }
     }
 
 }

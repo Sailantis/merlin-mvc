@@ -1,9 +1,9 @@
 <?php
-namespace Merlin\Tests\Mvc;
+namespace Azera\Tests\Mvc;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Core\Router;
+use Azera\Core\Router;
 use PHPUnit\Framework\TestCase;
 
 class RouterModernContractTest extends TestCase

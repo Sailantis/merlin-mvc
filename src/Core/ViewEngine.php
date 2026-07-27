@@ -1,5 +1,8 @@
 <?php
-namespace Merlin\Core;
+namespace Azera\Core;
+
+use LogicException;
+use RuntimeException;
 
 /**
  * Abstract base for all view engine implementations.
@@ -37,7 +40,7 @@ abstract class ViewEngine
     public function setExtension(string $ext): static
     {
         if ($ext !== '' && $ext[0] !== '.') {
-            $ext = '.' . $ext;
+            $ext = ".{$ext}";
         }
         $this->extension = $ext;
         return $this;
@@ -204,7 +207,7 @@ abstract class ViewEngine
     protected function resolveView(string $view): string
     {
         if ($view === '') {
-            throw new \RuntimeException("Empty view name");
+            throw new RuntimeException("Empty view name");
         }
 
         $ns = \strstr($view, '::', true);
@@ -213,7 +216,7 @@ abstract class ViewEngine
             $name = \substr($view, \strlen($ns) + 2);
 
             if (!isset($this->namespaces[$ns])) {
-                throw new \RuntimeException("Unknown view namespace: $ns");
+                throw new RuntimeException("Unknown view namespace: $ns");
             }
 
             return $this->namespaces[$ns] . '/' . \str_replace('.', '/', $name) . $this->extension;
@@ -265,7 +268,7 @@ abstract class ViewEngine
      */
     public function addFilter(string $name, callable $fn): static
     {
-        throw new \LogicException("Filters are not supported by this ViewEngine.");
+        throw new LogicException("Filters are not supported by this ViewEngine.");
     }
 
     /**
@@ -280,7 +283,7 @@ abstract class ViewEngine
      */
     public function addFunction(string $name, callable $fn): static
     {
-        throw new \LogicException("Functions are not supported by this ViewEngine.");
+        throw new LogicException("Functions are not supported by this ViewEngine.");
     }
 
     /**
@@ -300,10 +303,11 @@ abstract class ViewEngine
 
     /**
      * Set the directory where compiled templates should be cached.
+     * @param string $path
      */
     public function setCachePath(string $path): static
     {
-        throw new \LogicException("Caching is not supported by this ViewEngine.");
+        throw new LogicException("Caching is not supported by this ViewEngine.");
     }
 
     /**
@@ -311,7 +315,7 @@ abstract class ViewEngine
      */
     public function getCachePath(): string
     {
-        throw new \LogicException("Caching is not supported by this ViewEngine.");
+        throw new LogicException("Caching is not supported by this ViewEngine.");
     }
 
     /**
@@ -319,7 +323,7 @@ abstract class ViewEngine
      */
     public function flushCache(): static
     {
-        throw new \LogicException("Caching is not supported by this ViewEngine.");
+        throw new LogicException("Caching is not supported by this ViewEngine.");
     }
 
 }

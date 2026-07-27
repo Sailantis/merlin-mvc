@@ -1,8 +1,8 @@
 # Database Queries
 
-**Master the query builder** - Deep dive into Merlin's powerful and intuitive query builder. Learn how to construct complex SELECT queries, perform joins, use subqueries, aggregate data, and leverage prepared statements for security.
+**Master the query builder** - Deep dive into Azera's powerful and intuitive query builder. Learn how to construct complex SELECT queries, perform joins, use subqueries, aggregate data, and leverage prepared statements for security.
 
-Merlin uses a unified fluent query builder: `Merlin\Db\Query`.
+Azera uses a unified fluent query builder: `Azera\Db\Query`.
 You can access it directly via `Query::new()` or through models with `Model::query()`.
 
 ## Basic Setup
@@ -10,8 +10,8 @@ You can access it directly via `Query::new()` or through models with `Model::que
 Before running queries, configure database connection(s) in your application context. This makes the database available throughout your application.
 
 ```php
-use Merlin\AppContext;
-use Merlin\Db\Database;
+use Azera\AppContext;
+use Azera\Db\Database;
 
 AppContext::instance()->dbManager()->set('default', new Database(
     'mysql:host=localhost;dbname=myapp',
@@ -25,7 +25,7 @@ AppContext::instance()->dbManager()->set('default', new Database(
 You can build queries in two ways: directly using Query::new() for table-level operations, or through models for object-oriented workflows.
 
 ```php
-use Merlin\Db\Query;
+use Azera\Db\Query;
 
 // Plain table
 $q = Query::new()->table('users');
@@ -64,7 +64,7 @@ $emails = Query::new()
 
 ## WHERE Styles
 
-Merlin supports three where clause styles to accommodate different preferences. All are equally safe and use prepared statements behind the scenes.
+Azera supports three where clause styles to accommodate different preferences. All are equally safe and use prepared statements behind the scenes.
 
 ```php
 // Condition + inline values (values are escaped and inserted into SQL)
@@ -88,24 +88,27 @@ User::query()
 
 ## Condition Grouping
 
-Use `groupStart()` / `groupEnd()` to wrap parts of a WHERE clause in parentheses. The `orGroupStart()`, `notGroupStart()`, and `orNotGroupStart()` variants prefix the group with `OR`, `NOT`, or `OR NOT` respectively.
+Use `group()` with a callback to wrap parts of a WHERE clause in parentheses. The `orGroup()`, `notGroup()`, and `orNotGroup()` variants prefix the group with `OR`, `NOT`, or `OR NOT` respectively.
 
 ```php
 // WHERE (status = 'active') AND (role = 'admin' OR role = 'moderator')
 User::query()
     ->where('status', 'active')
-    ->groupStart()
-        ->where('role', 'admin')
-        ->orWhere('role', 'moderator')
-    ->groupEnd()
+    ->group(
+        fn(Condition $c) =>
+            $c->where('role', 'admin')
+                ->orWhere('role', 'moderator')
+    )
     ->select();
 
-// WHERE (status = 'active') AND NOT (banned = 1)
+// WHERE (status = 'active') AND NOT (role = 'admin' OR role = 'moderator')
 User::query()
     ->where('status', 'active')
-    ->notGroupStart()
-        ->where('banned', 1)
-    ->groupEnd()
+    ->notGroup(
+        fn(Condition $c) =>
+            $c->where('role', 'admin')
+                ->orWhere('role', 'moderator')
+    )
     ->select();
 ```
 
@@ -166,7 +169,7 @@ User::query()
 Use a `Query` instance as the table source for a derived table. The subquery is wrapped in parentheses and its bind parameters are automatically merged into the parent query.
 
 ```php
-use Merlin\Db\Query;
+use Azera\Db\Query;
 
 // Build the inner query independently
 $recent = Query::new()
@@ -379,7 +382,7 @@ $user = Query::new()
 
 ## Pagination with Paginator
 
-Use `Merlin\Db\Paginator` to paginate any query builder. The paginator runs a count() query first, then fetches the requested page using `LIMIT/OFFSET`.
+Use `Azera\Db\Paginator` to paginate any query builder. The paginator runs a count() query first, then fetches the requested page using `LIMIT/OFFSET`.
 
 ```php
 $paginator = User::query()
@@ -418,14 +421,14 @@ $messages = Query::new()
 
 ## Sql Expressions
 
-`Merlin\Db\Sql` is a typed value-object system for embedding SQL expressions inside query builder calls. All helpers are static factory methods; the resulting node is serialized to safe SQL at query-compile time.
+`Azera\Db\Sql` is a typed value-object system for embedding SQL expressions inside query builder calls. All helpers are static factory methods; the resulting node is serialized to safe SQL at query-compile time.
 
 ### Sql::raw() — literal SQL fragments
 
 Inject unescaped SQL. Optional `$inlineValues` replaces named placeholders with escaped literals before the fragment is inserted.
 
 ```php
-use Merlin\Db\Sql;
+use Azera\Db\Sql;
 
 // Increment counter in-place
 Post::query()
@@ -608,7 +611,7 @@ $sql = User::query()
 
 ## Transactions
 
-Use `Merlin\Db\Database` transaction methods:
+Use `Azera\Db\Database` transaction methods:
 
 ```php
 $db = AppContext::instance()->dbManager()->get('write');

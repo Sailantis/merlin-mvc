@@ -1,8 +1,8 @@
 # 🧩 Class: Exception
 
-**Full name:** [Merlin\Exception](../../src/Exception.php)
+**Full name:** [Azera\Exception](../../src/Exception.php)
 
-Base exception class for the Merlin framework.
+Base exception class for the Azera framework.
 
 ## 🚀 Public methods
 

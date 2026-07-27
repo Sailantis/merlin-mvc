@@ -1,12 +1,12 @@
 # 🧩 Class: CodeGenerator
 
-**Full name:** [Merlin\Sync\CodeGenerator](../../src/Sync/CodeGenerator.php)
+**Full name:** [Azera\Sync\CodeGenerator](../../src/Sync/CodeGenerator.php)
 
 ## 🚀 Public methods
 
 ### applyDiff() · [source](../../src/Sync/CodeGenerator.php#L8)
 
-`public function applyDiff(Merlin\Sync\ParsedModel $model, array $operations): string`
+`public function applyDiff(Azera\Sync\ParsedModel $model, array $operations): string`
 
 **🧭 Parameters**
 

@@ -2,11 +2,11 @@
 // Simple benchmark harness for view engines
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-use Merlin\Core\Engines\Adapters\TwigAdapter;
-use Merlin\Core\Engines\Adapters\PlatesAdapter;
-use Merlin\Core\Engines\Adapters\BladeAdapter;
-use Merlin\Core\Engines\ClarityEngine;
-use Merlin\Core\Engines\NativeEngine;
+use Azera\Core\Engines\Adapters\TwigAdapter;
+use Azera\Core\Engines\Adapters\PlatesAdapter;
+use Azera\Core\Engines\Adapters\BladeAdapter;
+use Azera\Core\Engines\ClarityEngine;
+use Azera\Core\Engines\NativeEngine;
 
 // CLI options: --engines=comma,separated --iterations-per-run=N --runs=N --out=prefix --no-penalty --penalty-separate
 $opts = getopt('', ['engines::', 'iterations-per-run::', 'runs::', 'out::', 'no-penalty', 'penalty-separate', 'items::']);

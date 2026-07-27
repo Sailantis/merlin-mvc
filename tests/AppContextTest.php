@@ -1,12 +1,12 @@
 <?php
 
-namespace Merlin\Tests;
+namespace Azera\Tests;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Http\Session;
-use Merlin\Core\ViewEngine;
+use Azera\AppContext;
+use Azera\Http\Session;
+use Azera\Core\ViewEngine;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 

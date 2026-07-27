@@ -1,6 +1,6 @@
 # 🧩 Class: Task
 
-**Full name:** [Merlin\Cli\Task](../../src/Cli/Task.php)
+**Full name:** [Azera\Cli\Task](../../src/Cli/Task.php)
 
 Base class for all CLI task classes.
 
@@ -265,7 +265,7 @@ Retrieve a parsed option value by key, with an optional default.
 
 ### context() · [source](../../src/Cli/Task.php#L134)
 
-`public function context(): Merlin\AppContext`
+`public function context(): Azera\AppContext`
 
 Get the current AppContext instance. Useful for accessing services.
 

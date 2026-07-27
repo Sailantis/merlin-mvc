@@ -1,6 +1,6 @@
 # 🧩 Class: RemoveProperty
 
-**Full name:** [Merlin\Sync\RemoveProperty](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\RemoveProperty](../../src/Sync/ModelDiff.php)
 
 ## 🌍 Public Properties
 

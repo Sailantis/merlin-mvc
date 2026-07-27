@@ -1,6 +1,6 @@
 # Getting Started
 
-**First steps** - This guide sets up a minimal Merlin project with MVC routing, models, and CLI tasks.
+**First steps** - This guide sets up a minimal Azera project with MVC routing, models, and CLI tasks.
 
 ## Requirements
 
@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-composer require sailantis/merlin-mvc
+composer require sailantis/azera-framework
 ```
 
 ## Recommended Structure
@@ -40,11 +40,11 @@ Create [public/index.php](../public/index.php):
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Http\Response;
-use Merlin\Http\SessionMiddleware;
-use Merlin\Core\Dispatcher;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Http\Response;
+use Azera\Http\SessionMiddleware;
+use Azera\Core\Dispatcher;
 
 // Initialize application context
 $ctx = AppContext::instance();
@@ -95,13 +95,13 @@ Create [app/Controllers/IndexController.php](../app/Controllers/IndexController.
 <?php
 namespace App\Controllers;
 
-use Merlin\Core\Controller;
+use Azera\Core\Controller;
 
 class IndexController extends Controller
 {
     public function indexAction(): string
     {
-        return 'Merlin is running.';
+        return 'Azera is running.';
     }
 }
 ```
@@ -126,7 +126,7 @@ public function indexAction(): string
 
 ## Minimal View
 
-Templates live under the view path configured in the bootstrap. By default, Merlin resolves them as `{controller}/{action}` relative to that path.
+Templates live under the view path configured in the bootstrap. By default, Azera resolves them as `{controller}/{action}` relative to that path.
 
 Create [views/home/index.php](../views/home/index.php):
 
@@ -165,7 +165,7 @@ Create [app/Models/User.php](../app/Models/User.php):
 <?php
 namespace App\Models;
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 
 class User extends Model
 {
@@ -191,7 +191,7 @@ $exists = User::exists(['email' => 'alice@example.com']);
 
 ## Middleware
 
-Middleware classes implement `Merlin\Core\MiddlewareInterface` and run before (and after) every controller action. Register global middleware on the dispatcher:
+Middleware classes implement `Azera\Core\MiddlewareInterface` and run before (and after) every controller action. Register global middleware on the dispatcher:
 
 ```php
 $dispatcher->addMiddleware(new SessionMiddleware());  // built-in: starts PHP session
@@ -208,18 +208,18 @@ Create [console.php](../console.php):
 <?php
 require_once __DIR__ . '/vendor/autoload.php';
 
-use Merlin\Cli\Console;
+use Azera\Cli\Console;
 
 $console = new Console();
 $console->process($argv[1] ?? null, $argv[2] ?? null, array_slice($argv, 3));
 ```
 
-`Console` auto-discovers every class whose name ends in `Task` under the registered namespace and registers it under a lowercase task name (`HelloTask` → `hello`). The built-in `Merlin\Cli\Tasks` namespace (containing `ModelSyncTask`) and `App\Tasks` are included automatically.
+`Console` auto-discovers every class whose name ends in `Task` under the registered namespace and registers it under a lowercase task name (`HelloTask` → `hello`). The built-in `Azera\Cli\Tasks` namespace (containing `ModelSyncTask`) and `App\Tasks` are included automatically.
 
 Run:
 
 ```bash
-php console.php hello world Merlin    # positional args
+php console.php hello world Azera    # positional args
 php console.php hello world --shout   # boolean flag
 php console.php help                  # overview of all tasks
 php console.php help hello            # detailed help for one task
@@ -227,14 +227,14 @@ php console.php help hello            # detailed help for one task
 
 ## About composer.json
 
-The simplest way to handle dependencies is through a `composer.json` file. This file manages dependencies, autoloading, and project metadata. Composer will automatically generate this file when you run `composer require sailantis/merlin-mvc`, but you can customize it as needed.
+The simplest way to handle dependencies is through a `composer.json` file. This file manages dependencies, autoloading, and project metadata. Composer will automatically generate this file when you run `composer require sailantis/azera-framework`, but you can customize it as needed.
 
 A minimal `composer.json` for your app might look like:
 
 ```json
 {
   "require": {
-    "sailantis/merlin-mvc": "latest"
+    "sailantis/azera-framework": "latest"
   },
   "autoload": {
     "psr-4": {
@@ -244,7 +244,7 @@ A minimal `composer.json` for your app might look like:
 }
 ```
 
-- The `require` section lists your dependencies, in our case we use Merlin.
+- The `require` section lists your dependencies, in our case we use Azera.
 - The `autoload` section tells Composer to autoload your app classes from the `app/` directory using PSR-4.
 - You can add scripts, dev dependencies, and other metadata as your project grows.
 

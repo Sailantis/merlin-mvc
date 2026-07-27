@@ -1,8 +1,8 @@
 <?php
 
-namespace Merlin\Db;
+namespace Azera\Db;
 
-use Merlin\Core\Model;
+use Azera\Core\Model;
 use PDO;
 use PDOStatement;
 
@@ -15,10 +15,11 @@ class ResultSet implements \Iterator, \Countable
 	protected PDOStatement $statement;
 	protected ?string $sqlStatement;
 	protected ?array $boundParams;
+	protected int $fetchMode;
+
 	/** @var class-string<TModel> */
 	protected ?string $modelClass;
-	protected int $fetchMode;
-	protected mixed $firstObject = null;
+	protected mixed $firstModel = null;
 
 	// Iterator state
 	protected mixed $currentRow = null;
@@ -66,7 +67,7 @@ class ResultSet implements \Iterator, \Countable
 	 * Fetch next row as associative array.
 	 * @return array|false The next row as an associative array, or false if there are no more rows.
 	 */
-	public function fetchArray(): array|false
+	public function fetchAssoc(): array|false
 	{
 		$this->position++;
 		return $this->statement->fetch(PDO::FETCH_ASSOC);
@@ -97,7 +98,7 @@ class ResultSet implements \Iterator, \Countable
 	 * Return all rows as associative array.
 	 * @return array<int, array<string, mixed>> An array of all remaining rows, each as an associative array.
 	 */
-	public function fetchAllArray(): array
+	public function fetchAllAssoc(): array
 	{
 		$result = $this->statement->fetchAll(PDO::FETCH_ASSOC);
 		$this->position += \count($result);
@@ -132,7 +133,7 @@ class ResultSet implements \Iterator, \Countable
 	 * @param int $fetchMode PDO::FETCH_* constant or 0 for default fetch mode
 	 * @return array An array of all remaining rows, each as an object or array depending on the fetch mode.
 	 */
-	public function fetchAll(int $fetchMode = 0): array
+	public function fetchAll(int $fetchMode = PDO::FETCH_DEFAULT): array
 	{
 		$result = $this->statement->fetchAll($fetchMode ?: $this->fetchMode);
 		$this->position += \count($result);
@@ -177,8 +178,8 @@ class ResultSet implements \Iterator, \Countable
 		}
 
 		// Cache first model if not cached yet
-		if ($this->firstObject === null) {
-			$this->firstObject = $model;
+		if ($this->firstModel === null) {
+			$this->firstModel = $model;
 		}
 
 		$this->position++;
@@ -192,8 +193,8 @@ class ResultSet implements \Iterator, \Countable
 	public function firstModel(): ?Model
 	{
 		// If already cached, return cached model
-		if ($this->firstObject !== null) {
-			return ($this->firstObject instanceof Model) ? $this->firstObject : null;
+		if ($this->firstModel !== null) {
+			return ($this->firstModel instanceof Model) ? $this->firstModel : null;
 		}
 		// If no model available, we cannot hydrate
 		if (!$this->modelClass) {
@@ -251,7 +252,7 @@ class ResultSet implements \Iterator, \Countable
 	 * Execute the query again to repopulate the result set.
 	 * @return void
 	 */
-	public function reexecute(): void
+	public function refresh(): void
 	{
 		$stmt = $this->db->query(
 			$this->sqlStatement,
@@ -261,7 +262,7 @@ class ResultSet implements \Iterator, \Countable
 		$this->currentRow = null;
 		$this->position = 0;
 		$this->initialized = false;
-		$this->firstObject = null;
+		$this->firstModel = null;
 	}
 
 	// Iterator methods

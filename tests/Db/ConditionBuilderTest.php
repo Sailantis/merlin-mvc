@@ -1,13 +1,12 @@
 <?php
-namespace Merlin\Tests\Db;
+namespace Azera\Tests\Db;
 
 require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/TestDatabase.php';
 
-use Merlin\Db\Sql;
-use Merlin\Db\Condition;
+use Azera\Db\Sql;
+use Azera\Db\Condition;
 use PHPUnit\Framework\TestCase;
-
 
 class ConditionBuilderTest extends TestCase
 {
@@ -53,10 +52,102 @@ class ConditionBuilderTest extends TestCase
         $cb = new Condition($db);
 
         $cb->where('a', 1)
-            ->groupStart()
-            ->where('b', 2)
-            ->orWhere('c', 3)
-            ->groupEnd();
+            ->group(function (Condition $g) {
+                $g->where('b', 2)
+                    ->orWhere('c', 3);
+            });
+
+        $cb->group(function (Condition $g) {
+            $g->where('d', 4)
+                ->orWhere('e', 5);
+        });
+
+        $this->assertEquals('("a" = 1) AND (("b" = 2) OR ("c" = 3))', $cb->toSql());
+    }
+
+    public function testOrGroup(): void
+    {
+        $db = new TestPgDatabase();
+        $cb = new Condition($db);
+
+        $cb->where('a', 1)
+            ->orGroup(
+                function (Condition $g) {
+                    $g->where('b', 2)
+                        ->where('c', 3);
+                }
+            );
+
+        $this->assertEquals('("a" = 1) OR (("b" = 2) AND ("c" = 3))', $cb->toSql());
+    }
+
+    public function testNotGroup(): void
+    {
+        $db = new TestPgDatabase();
+        $cb = new Condition($db);
+
+        $cb->where('a', 1)
+            ->notGroup(
+                function (Condition $g) {
+                    $g->where('b', 2)
+                        ->orWhere('c', 3);
+                }
+            );
+
+        $this->assertEquals('("a" = 1) AND NOT (("b" = 2) OR ("c" = 3))', $cb->toSql());
+    }
+
+    public function testOrNotGroup(): void
+    {
+        $db = new TestPgDatabase();
+        $cb = new Condition($db);
+
+        $cb->where('a', 1)
+            ->orNotGroup(
+                function (Condition $g) {
+                    $g->where('b', 2)
+                        ->orWhere('c', 3);
+                }
+            );
+
+        $this->assertEquals('("a" = 1) OR NOT (("b" = 2) OR ("c" = 3))', $cb->toSql());
+    }
+
+    public function testNestedGroupsWithCallback(): void
+    {
+        $db = new TestPgDatabase();
+        $cb = new Condition($db);
+
+        $cb->where('a', 1)
+            ->group(
+                function (Condition $g) {
+                    $g->where('b', 2)
+                        ->orGroup(
+                            function (Condition $g2) {
+                                $g2->where('c', 3)
+                                    ->where('d', 4);
+                            }
+                        );
+                }
+            );
+
+        $this->assertEquals(
+            '("a" = 1) AND (("b" = 2) OR (("c" = 3) AND ("d" = 4)))',
+            $cb->toSql()
+        );
+    }
+
+    public function testGroupStartGroupEndStillWork(): void
+    {
+        $db = new TestPgDatabase();
+        $cb = new Condition($db);
+
+        $cb->where('a', 1)
+            ->group(
+                fn(Condition $g) =>
+                    $g->where('b', 2)
+                        ->orWhere('c', 3)
+            );
 
         $this->assertEquals('("a" = 1) AND (("b" = 2) OR ("c" = 3))', $cb->toSql());
     }
@@ -137,7 +228,7 @@ class ConditionBuilderTest extends TestCase
         $cb->having(
             ':count > :min_orders',
             [
-                'count' => Sql::func('COUNT', [Sql::column('o.id')]),
+                'count'      => Sql::func('COUNT', [Sql::column('o.id')]),
                 'min_orders' => 5
             ]
         );

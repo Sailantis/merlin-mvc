@@ -2,19 +2,19 @@
 
 **Build your application logic and presentation** - Learn how to create controllers that handle requests, use dependency injection, work with the view engine, and render templates with layouts. Includes lifecycle hooks, middleware, and best practices.
 
-Controllers coordinate request handling and return responses. View rendering is handled by `Merlin\Core\ViewEngine`.
+Controllers coordinate request handling and return responses. View rendering is handled by `Azera\Core\ViewEngine`.
 
 ---
 
 ## Controller Basics
 
-Extend `Merlin\Core\Controller` and add public methods whose names end with `Action`. The `Dispatcher` resolves the controller and action from the matched route, injects dependencies, and invokes the action.
+Extend `Azera\Core\Controller` and add public methods whose names end with `Action`. The `Dispatcher` resolves the controller and action from the matched route, injects dependencies, and invokes the action.
 
 ```php
 <?php
 namespace App\Controllers;
 
-use Merlin\Core\Controller;
+use Azera\Core\Controller;
 
 class UserController extends Controller
 {
@@ -37,7 +37,7 @@ Action method parameters are resolved automatically by the `Dispatcher` in this 
 4. **Nullable** — injected as `null`
 
 ```php
-use Merlin\Db\DatabaseManager;
+use Azera\Db\DatabaseManager;
 
 class UserController extends Controller
 {
@@ -61,10 +61,10 @@ All helpers delegate to `AppContext` and are available anywhere inside the contr
 | Method             | Returns                         |
 | ------------------ | ------------------------------- |
 | `$this->context()` | `AppContext`                    |
-| `$this->request()` | `Merlin\Http\Request`           |
-| `$this->view()`    | `Merlin\Core\ViewEngine`         |
-| `$this->session()` | `Merlin\Http\Session` or `null` |
-| `$this->cookies()` | `Merlin\Http\Cookies`           |
+| `$this->request()` | `Azera\Http\Request`           |
+| `$this->view()`    | `Azera\Core\ViewEngine`         |
+| `$this->session()` | `Azera\Http\Session` or `null` |
+| `$this->cookies()` | `Azera\Http\Cookies`           |
 
 ---
 
@@ -74,14 +74,14 @@ The `Dispatcher` automatically converts controller return values into HTTP respo
 
 | Return type                  | Response produced                        |
 | ---------------------------- | ---------------------------------------- |
-| `Merlin\Http\Response`       | sent as-is                               |
+| `Azera\Http\Response`       | sent as-is                               |
 | `array` / `JsonSerializable` | `200 application/json`                   |
 | `string`                     | `200 text/html`                          |
 | `int`                        | status-only response (e.g. `return 403`) |
 | `null`                       | `204 No Content`                         |
 
 ```php
-use Merlin\Http\Response;
+use Azera\Http\Response;
 
 class HealthController extends Controller
 {
@@ -178,7 +178,7 @@ Middleware wraps the entire request pipeline around controller actions. The exec
 Global middleware → Route-group middleware → Controller middleware → Action middleware → beforeAction → action → afterAction
 ```
 
-Each middleware implements `Merlin\Core\MiddlewareInterface`:
+Each middleware implements `Azera\Core\MiddlewareInterface`:
 
 ```php
 interface MiddlewareInterface
@@ -195,9 +195,9 @@ Return `null` (or `$next($context)`) to pass control to the next layer. Return a
 <?php
 namespace App\Middleware;
 
-use Merlin\AppContext;
-use Merlin\Http\Response;
-use Merlin\Core\MiddlewareInterface;
+use Azera\AppContext;
+use Azera\Http\Response;
+use Azera\Core\MiddlewareInterface;
 
 class AuthMiddleware implements MiddlewareInterface
 {
@@ -299,7 +299,7 @@ The `ViewEngine` API is shared by all engines. The default engine is `ClarityEng
 Configure the view service in your bootstrap:
 
 ```php
-use Merlin\AppContext;
+use Azera\AppContext;
 
 $view = AppContext::instance()->view();
 $view->setViewPath(__DIR__ . '/../views');
@@ -388,11 +388,11 @@ echo $this->view()->renderPartial('mail::welcome', ['user' => $user]);
 
 ## Validating Input
 
-Validate and coerce request data with `Merlin\Validation\Validator` before using it in your controller logic or passing it to a model.
+Validate and coerce request data with `Azera\Validation\Validator` before using it in your controller logic or passing it to a model.
 
 ```php
-use Merlin\Validation\Validator;
-use Merlin\Validation\ValidationException;
+use Azera\Validation\Validator;
+use Azera\Validation\ValidationException;
 
 class UserController extends Controller
 {

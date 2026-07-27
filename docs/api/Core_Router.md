@@ -1,12 +1,12 @@
 # 🧩 Class: Router
 
-**Full name:** [Merlin\Core\Router](../../src/Core/Router.php)
+**Full name:** [Azera\Core\Router](../../src/Core/Router.php)
 
 A simple and efficient router for mapping HTTP requests to handlers based on URI patterns and HTTP methods. Supports static routes, typed parameters, optional segments, wildcards, and route groups with shared middleware, namespaces, or controllers. Routes are matched in order of specificity, with static routes taking precedence over dynamic ones. Named routes allow for easy URL generation.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Core/Router.php#L34)
+### __construct() · [source](../../src/Core/Router.php#L35)
 
 `public function __construct(): mixed`
 
@@ -19,9 +19,9 @@ Create a new Router instance.
 
 ---
 
-### addType() · [source](../../src/Core/Router.php#L66)
+### type() · [source](../../src/Core/Router.php#L67)
 
-`public function addType(string $name, callable $validator): static`
+`public function type(string $name, callable $validator): static`
 
 Register a custom type validator for route parameters.
 
@@ -42,14 +42,62 @@ Predefined types include 'int', 'alpha', 'alnum', 'uuid', and '*' (matches anyth
 **💡 Example**
 
 ```php
-$router->addType('slug', fn($v) => preg_match('/^[a-z0-9-]+$/', $v));
+$router->type('slug', fn($v) => preg_match('/^[a-z0-9-]+$/', $v));
 $router->add('GET', '/blog/{slug:slug}', 'Blog::view');
 ```
 
 
 ---
 
-### add() · [source](../../src/Core/Router.php#L80)
+### autoOptions() · [source](../../src/Core/Router.php#L84)
+
+`public function autoOptions(bool $enabled = true): static`
+
+Enable or disable automatic OPTIONS responses.
+
+When enabled, if an OPTIONS request is received for a path that has
+routes registered for other HTTP methods (GET, POST, etc.) but no
+explicit OPTIONS route, the router will return a synthetic match
+that the Dispatcher converts into a 204 response with Allow and
+CORS headers.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$enabled` | bool | `true` | Whether to enable auto-OPTIONS handling |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### getAllowedMethods() · [source](../../src/Core/Router.php#L97)
+
+`public function getAllowedMethods(string $uri): array`
+
+Get all HTTP methods that have routes matching the given URI.
+
+Useful for generating Allow headers for OPTIONS requests or 405 responses.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$uri` | string | - | The request URI (path) to check, e.g. "/blog/hello-world" |
+
+**➡️ Return value**
+
+- Type: array
+- Description: Array of HTTP methods (e.g., ['GET', 'POST'])
+
+
+---
+
+### add() · [source](../../src/Core/Router.php#L117)
 
 `public function add(array|string|null $method, string $pattern, array|string|null $handler = null): static`
 
@@ -71,7 +119,112 @@ Add a new route to the router. The route can be defined for specific HTTP method
 
 ---
 
-### setName() · [source](../../src/Core/Router.php#L152)
+### get() · [source](../../src/Core/Router.php#L204)
+
+`public function get(string $pattern, array|string|null $handler = null): static`
+
+Convenience method to add a GET route.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$pattern` | string | - | Route pattern (e.g., '/blog/{slug}') |
+| `$handler` | array\|string\|null | `null` | Optional handler definition to override controller/action |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### post() · [source](../../src/Core/Router.php#L216)
+
+`public function post(string $pattern, array|string|null $handler = null): static`
+
+Convenience method to add a POST route.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$pattern` | string | - | Route pattern (e.g., '/submit') |
+| `$handler` | array\|string\|null | `null` | Optional handler definition to override controller/action |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### put() · [source](../../src/Core/Router.php#L228)
+
+`public function put(string $pattern, array|string|null $handler = null): static`
+
+Convenience method to add a PUT route.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$pattern` | string | - | Route pattern (e.g., '/submit') |
+| `$handler` | array\|string\|null | `null` | Optional handler definition to override controller/action |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### delete() · [source](../../src/Core/Router.php#L240)
+
+`public function delete(string $pattern, array|string|null $handler = null): static`
+
+Convenience method to add a DELETE route.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$pattern` | string | - | Route pattern (e.g., '/submit') |
+| `$handler` | array\|string\|null | `null` | Optional handler definition to override controller/action |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### patch() · [source](../../src/Core/Router.php#L252)
+
+`public function patch(string $pattern, array|string|null $handler = null): static`
+
+Convenience method to add a PATCH route.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$pattern` | string | - | Route pattern (e.g., '/submit') |
+| `$handler` | array\|string\|null | `null` | Optional handler definition to override controller/action |
+
+**➡️ Return value**
+
+- Type: static
+- Description: For method chaining
+
+
+---
+
+### setName() · [source](../../src/Core/Router.php#L264)
 
 `public function setName(string $name): static`
 
@@ -95,7 +248,7 @@ Assign a name to the most recently added route. This allows you to generate URLs
 
 ---
 
-### hasNamedRoute() · [source](../../src/Core/Router.php#L171)
+### hasNamedRoute() · [source](../../src/Core/Router.php#L283)
 
 `public function hasNamedRoute(string $name): bool`
 
@@ -115,7 +268,7 @@ Check if a named route exists.
 
 ---
 
-### urlFor() · [source](../../src/Core/Router.php#L185)
+### urlFor() · [source](../../src/Core/Router.php#L297)
 
 `public function urlFor(string $name, array $params = [], array $query = []): string`
 
@@ -141,7 +294,27 @@ Generate a URL for a named route, substituting parameters as needed.
 
 ---
 
-### prefix() · [source](../../src/Core/Router.php#L241)
+### allRoutes() · [source](../../src/Core/Router.php#L324)
+
+`public function allRoutes(): array`
+
+Return all registered routes as a flat array.
+
+Each entry is an associative array with keys:
+- 'method':    HTTP method (GET, POST, …)
+- 'pattern':   Reconstructed path pattern (e.g. "/users/{id:int}")
+- 'handler':   The handler value (string, array, or null)
+- 'groups':    Middleware group names applied to this route
+- 'name':      Route name if one was assigned, or null
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### prefix() · [source](../../src/Core/Router.php#L463)
 
 `public function prefix(string $prefix, callable|null $callback = null): static`
 
@@ -169,7 +342,7 @@ $router->add('GET', '/dashboard', 'Admin::dashboard');
 
 ---
 
-### middleware() · [source](../../src/Core/Router.php#L275)
+### middleware() · [source](../../src/Core/Router.php#L497)
 
 `public function middleware(array|string $name, callable|null $callback = null): static`
 
@@ -197,7 +370,7 @@ $router->add('GET', '/admin/dashboard', 'Admin::dashboard');
 
 ---
 
-### namespace() · [source](../../src/Core/Router.php#L311)
+### namespace() · [source](../../src/Core/Router.php#L533)
 
 `public function namespace(string $namespace, callable|null $callback = null): static`
 
@@ -225,7 +398,7 @@ $router->add('GET', '/dashboard', 'Dashboard::view');
 
 ---
 
-### controller() · [source](../../src/Core/Router.php#L353)
+### controller() · [source](../../src/Core/Router.php#L575)
 
 `public function controller(string $controller, callable|null $callback = null): static`
 
@@ -253,7 +426,7 @@ $router->add('GET', '/dashboard', '::view');
 
 ---
 
-### match() · [source](../../src/Core/Router.php#L606)
+### match() · [source](../../src/Core/Router.php#L828)
 
 `public function match(string $uri, string $method = 'GET'): array|null`
 

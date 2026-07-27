@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Validation;
+namespace Azera\Validation;
 
 /**
  * Validates and coerces an associative input array against a set of field rules.

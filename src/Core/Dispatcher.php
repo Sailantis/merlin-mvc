@@ -1,14 +1,14 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
-use Merlin\AppContext;
-use Merlin\ResolvedRoute;
-use Merlin\Http\Response;
+use Azera\AppContext;
+use Azera\ResolvedRoute;
+use Azera\Http\Response;
 use InvalidArgumentException;
-use Merlin\Core\Exceptions\ActionNotFoundException;
-use Merlin\Core\Exceptions\InvalidControllerException;
-use Merlin\Core\Exceptions\ControllerNotFoundException;
+use Azera\Core\Exceptions\ActionNotFoundException;
+use Azera\Core\Exceptions\InvalidControllerException;
+use Azera\Core\Exceptions\ControllerNotFoundException;
 
 class Dispatcher
 {
@@ -151,6 +151,15 @@ class Dispatcher
      */
     public function dispatch(array $routeInfo): Response
     {
+        // Auto-OPTIONS: short-circuit before any controller resolution
+        if (!empty($routeInfo['__auto_options'])) {
+            $methods = implode(', ', $routeInfo['__allowed_methods']);
+            return Response::status(204)
+                ->setHeader('Allow', $methods)
+                ->setHeader('Access-Control-Allow-Methods', $methods)
+                ->setHeader('Access-Control-Allow-Headers', '*');
+        }
+
         $groups   = $routeInfo['groups'] ?? [];
         $vars     = $routeInfo['vars'] ?? [];
         $override = $routeInfo['override'] ?? [];
@@ -463,10 +472,10 @@ class Dispatcher
         // Core-Handler
         $core = fn() =>
             $this->invokeController(
-            $controller,
-            $action,
-            $params
-        );
+                $controller,
+                $action,
+                $params
+            );
 
         // If no middleware, return direct controller invocation
         if (empty($middleware)) {

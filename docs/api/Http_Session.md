@@ -1,6 +1,6 @@
 # 🧩 Class: Session
 
-**Full name:** [Merlin\Http\Session](../../src/Http/Session.php)
+**Full name:** [Azera\Http\Session](../../src/Http/Session.php)
 
 Wrapper around a PHP session array that provides typed accessors and
 a clean API for reading, writing, and clearing session data.

@@ -1,6 +1,6 @@
 # 🧩 Class: ModelParser
 
-**Full name:** [Merlin\Sync\ModelParser](../../src/Sync/ModelParser.php)
+**Full name:** [Azera\Sync\ModelParser](../../src/Sync/ModelParser.php)
 
 ## 🚀 Public methods
 
@@ -23,7 +23,7 @@
 
 ### parse() · [source](../../src/Sync/ModelParser.php#L13)
 
-`public function parse(): Merlin\Sync\ParsedModel`
+`public function parse(): Azera\Sync\ParsedModel`
 
 **➡️ Return value**
 

@@ -1,5 +1,5 @@
 <?php
-namespace Merlin\Http;
+namespace Azera\Http;
 
 /**
  * Represents an HTTP response.

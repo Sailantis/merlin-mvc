@@ -1,6 +1,6 @@
 # 🧩 Class: UploadedFile
 
-**Full name:** [Merlin\Http\UploadedFile](../../src/Http/UploadedFile.php)
+**Full name:** [Azera\Http\UploadedFile](../../src/Http/UploadedFile.php)
 
 Represents a single file uploaded with an HTTP multipart request.
 

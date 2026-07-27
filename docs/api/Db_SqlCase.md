@@ -1,6 +1,6 @@
 # 🧩 Class: SqlCase
 
-**Full name:** [Merlin\Db\SqlCase](../../src/Db/Sql.php)
+**Full name:** [Azera\Db\SqlCase](../../src/Db/Sql.php)
 
 Fluent builder for CASE expressions
 
@@ -47,7 +47,7 @@ Set ELSE default value
 
 ### end() · [source](../../src/Db/Sql.php#L530)
 
-`public function end(): Merlin\Db\Sql`
+`public function end(): Azera\Db\Sql`
 
 Finalize and return CASE expression as Sql
 

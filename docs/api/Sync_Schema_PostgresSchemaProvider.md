@@ -1,6 +1,6 @@
 # 🧩 Class: PostgresSchemaProvider
 
-**Full name:** [Merlin\Sync\Schema\PostgresSchemaProvider](../../src/Sync/Schema/PostgresSchemaProvider.php)
+**Full name:** [Azera\Sync\Schema\PostgresSchemaProvider](../../src/Sync/Schema/PostgresSchemaProvider.php)
 
 ## 🚀 Public methods
 
@@ -21,11 +21,14 @@
 
 ---
 
-### listTables() · [source](../../src/Sync/Schema/PostgresSchemaProvider.php#L15)
+### listTables() · [source](../../src/Sync/Schema/PostgresSchemaProvider.php#L16)
 
 `public function listTables(string|null $schema = null): array`
 
 Lists tables, views, materialized views, and foreign tables.
+
+PostgreSQL system schemas (pg_catalog, pg_toast, information_schema, …)
+are always excluded so that model tooling only sees user tables.
 
 **🧭 Parameters**
 
@@ -40,9 +43,9 @@ Lists tables, views, materialized views, and foreign tables.
 
 ---
 
-### getTableSchema() · [source](../../src/Sync/Schema/PostgresSchemaProvider.php#L38)
+### getTableSchema() · [source](../../src/Sync/Schema/PostgresSchemaProvider.php#L58)
 
-`public function getTableSchema(string $table, string|null $schema = null): Merlin\Sync\Schema\TableSchema`
+`public function getTableSchema(string $table, string|null $schema = null): Azera\Sync\Schema\TableSchema`
 
 **🧭 Parameters**
 

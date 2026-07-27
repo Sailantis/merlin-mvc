@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Core;
+namespace Azera\Core;
 
 
 class Exception extends \Exception

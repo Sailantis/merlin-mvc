@@ -2,7 +2,7 @@
 
 ![Clarity Logo](images/clarity-dsl-logo-opt.svg)
 
-**A sandboxed, compiled template engine for Merlin** – Clarity compiles `.clarity.html` files into PHP classes that are cached on disk. Templates can only access variables passed to `render()` and registered filters; arbitrary PHP code is intentionally disallowed.
+**A sandboxed, compiled template engine for Azera** – Clarity compiles `.clarity.html` files into PHP classes that are cached on disk. Templates can only access variables passed to `render()` and registered filters; arbitrary PHP code is intentionally disallowed.
 
 ---
 
@@ -11,7 +11,7 @@
 `ClarityEngine` is the default view engine. Configure it in your bootstrap:
 
 ```php
-use Merlin\AppContext;
+use Azera\AppContext;
 
 $ctx = AppContext::instance();
 
@@ -23,7 +23,7 @@ $ctx->view()
 To use plain-PHP templates instead, swap to `NativeEngine`:
 
 ```php
-use Merlin\Core\Engines\NativeEngine;
+use Azera\Core\Engines\NativeEngine;
 
 $ctx->setView(new NativeEngine());
 $ctx->view()->setViewPath(__DIR__ . '/../views');
@@ -490,12 +490,12 @@ You can find the full CSV/JSON outputs in the repository under `benchmarks/view-
 <?php
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use Merlin\AppContext;
-use Merlin\Db\Database;
-use Merlin\Http\Response;
-use Merlin\Http\SessionMiddleware;
-use Merlin\Core\Dispatcher;
-use Merlin\Core\Router;
+use Azera\AppContext;
+use Azera\Db\Database;
+use Azera\Http\Response;
+use Azera\Http\SessionMiddleware;
+use Azera\Core\Dispatcher;
+use Azera\Core\Router;
 
 $ctx = AppContext::instance();
 

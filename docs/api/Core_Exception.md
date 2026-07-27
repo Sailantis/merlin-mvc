@@ -1,6 +1,6 @@
 # 🧩 Class: Exception
 
-**Full name:** [Merlin\Core\Exception](../../src/Core/Exception.php)
+**Full name:** [Azera\Core\Exception](../../src/Core/Exception.php)
 
 ## 🚀 Public methods
 

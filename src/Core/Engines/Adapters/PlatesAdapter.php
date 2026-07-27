@@ -1,12 +1,12 @@
 <?php
-namespace Merlin\Core\Engines\Adapters;
+namespace Azera\Core\Engines\Adapters;
 
-use Merlin\Core\ViewEngine;
+use Azera\Core\ViewEngine;
 
 /**
  * Plates template engine adapter.
  *
- * Wraps League/Plates so Merlin applications can use `.plates.php` templates.
+ * Wraps League/Plates so Azera applications can use `.plates.php` templates.
  * Requires `league/plates` to be installed:
  *
  * ```sh
@@ -118,12 +118,12 @@ class PlatesAdapter extends ViewEngine
     // -------------------------------------------------------------------------
 
     /**
-     * Convert a Merlin view name to Plates format.
+     * Convert a Azera view name to Plates format.
      *
      * Plates uses `/` as the directory separator and `folder::template` for
      * namespaced views.  Dot-notation is converted to slashes.
      *
-     * | Merlin              | Plates              |
+     * | Azera              | Plates              |
      * |---------------------|---------------------|
      * | `home/index`        | `home/index`        |
      * | `home.index`        | `home/index`        |

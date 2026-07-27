@@ -1,10 +1,10 @@
 # Architecture
 
-**Understanding Merlin's design** - Learn how Merlin's core components fit together, from the AppContext service container to the MVC layer, database abstraction, and CLI tools. This guide explains the framework's architectural principles and design decisions.
+**Understanding Azera's design** - Learn how Azera's core components fit together, from the AppContext service container to the MVC layer, database abstraction, and CLI tools. This guide explains the framework's architectural principles and design decisions.
 
-This document outlines how core Merlin components work together.
+This document outlines how core Azera components work together.
 
-![Merlin Overall Architecture](images/architecture-overview.svg)
+![Azera Overall Architecture](images/architecture-overview.svg)
 
 ## Core Principles
 
@@ -16,7 +16,7 @@ This document outlines how core Merlin components work together.
 
 ## Main Components
 
-Merlin is organized into distinct layers, each handling a specific concern. Understanding these components helps you leverage the framework effectively.
+Azera is organized into distinct layers, each handling a specific concern. Understanding these components helps you leverage the framework effectively.
 
 ### `AppContext`
 
@@ -26,12 +26,12 @@ Built-in lazy service accessors:
 
 | Method        | Returns                                                |
 | ------------- | ------------------------------------------------------ |
-| `request()`   | `Merlin\Http\Request`                                  |
-| `view()`      | `Merlin\Core\ViewEngine`                                |
-| `session()`   | `Merlin\Http\Session\|null`                            |
-| `cookies()`   | `Merlin\Http\Cookies`                                  |
-| `dbManager()` | `Merlin\Db\DatabaseManager`                            |
-| `route()`     | `Merlin\ResolvedRoute\|null` – populated by Dispatcher |
+| `request()`   | `Azera\Http\Request`                                  |
+| `view()`      | `Azera\Core\ViewEngine`                                |
+| `session()`   | `Azera\Http\Session\|null`                            |
+| `cookies()`   | `Azera\Http\Cookies`                                  |
+| `dbManager()` | `Azera\Db\DatabaseManager`                            |
+| `route()`     | `Azera\ResolvedRoute\|null` – populated by Dispatcher |
 
 Custom services can be registered with `$ctx->set($id, new MyService())` or `$ctx->set($id, fn() => new MyService())` and retrieved with `$ctx->get($id)`. Registered callables are treated as zero-argument lazy factories and cached on first resolution. Auto-wiring is supported: unregistered class names are instantiated via reflection with their constructor dependencies resolved recursively from the container.
 
@@ -82,7 +82,7 @@ HTTP Request
 
 ## Data Flow
 
-Merlin offers flexibility in how you interact with the database. Choose the approach that fits your needs - models for object-oriented work, or Query for direct table access.
+Azera offers flexibility in how you interact with the database. Choose the approach that fits your needs - models for object-oriented work, or Query for direct table access.
 
 Two common entry points:
 
@@ -92,7 +92,7 @@ $user = User::find(10);
 $rows = User::query()->where('status', 'active')->select();
 
 // Table-centric
-$rows = Merlin\Db\Query::new()
+$rows = Azera\Db\Query::new()
     ->table('users')
     ->where('status', 'active')
     ->select();
@@ -102,7 +102,7 @@ Write operations are terminal builder calls (`insert`, `upsert`, `update`, `dele
 
 ## Read/Write Separation
 
-Merlin supports replica setups through `DatabaseManager` roles.
+Azera supports replica setups through `DatabaseManager` roles.
 
 Register named connections in bootstrap:
 
@@ -128,7 +128,7 @@ $ctx->dbManager()->set('default', new Database(...));
 
 ## Sync Layer
 
-Merlin ships a code-generation and schema-synchronisation subsystem under `Merlin\Sync`. It introspects a live database and updates (or generates) Model PHP files to match the schema, without requiring a separate migration runner.
+Azera ships a code-generation and schema-synchronisation subsystem under `Azera\Sync`. It introspects a live database and updates (or generates) Model PHP files to match the schema, without requiring a separate migration runner.
 
 Key components:
 
@@ -143,7 +143,7 @@ The CLI entry point is the built-in `ModelSyncTask`; the same `SyncRunner` API c
 
 ## Extensibility Points
 
-- Router custom parameter validators via `addType()`
+- Router custom parameter validators via `type()`
 - Router route groups via inline or scoped `prefix()`, `namespace()`, `controller()`, and `middleware()`
 - Dispatcher middleware groups and controller factory
 - Model overrides: `source()`, `schema()`, `idFields()`, `readConnection()`, `writeConnection()`

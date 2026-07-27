@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace Merlin\Http;
+namespace Azera\Http;
 
 use RuntimeException;
 

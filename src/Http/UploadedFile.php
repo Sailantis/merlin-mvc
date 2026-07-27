@@ -1,6 +1,6 @@
 <?php
 
-namespace Merlin\Http;
+namespace Azera\Http;
 
 /**
  * Represents a single file uploaded with an HTTP multipart request.

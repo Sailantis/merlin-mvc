@@ -1,12 +1,12 @@
 # 🧩 Class: ModelDiff
 
-**Full name:** [Merlin\Sync\ModelDiff](../../src/Sync/ModelDiff.php)
+**Full name:** [Azera\Sync\ModelDiff](../../src/Sync/ModelDiff.php)
 
 ## 🚀 Public methods
 
 ### diff() · [source](../../src/Sync/ModelDiff.php#L11)
 
-`public function diff(Merlin\Sync\Schema\TableSchema $table, Merlin\Sync\ParsedModel $model, Merlin\Sync\SyncOptions|null $options = null): array`
+`public function diff(Azera\Sync\Schema\TableSchema $table, Azera\Sync\ParsedModel $model, Azera\Sync\SyncOptions|null $options = null): array`
 
 **🧭 Parameters**
 
