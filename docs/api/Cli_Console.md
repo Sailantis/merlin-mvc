@@ -138,39 +138,22 @@ You can set $registerAutoload to true to automatically register a simple PSR-4 a
 
 ---
 
-### getDefaultAction() · [source](../../src/Cli/Console.php#L187)
+### singleActionMethod() · [source](../../src/Cli/Console.php#L188)
 
-`public function getDefaultAction(): string`
+`public function singleActionMethod(string $class): ?string`
 
-Get the default action method name used when no action is specified on the command line.
-
-**➡️ Return value**
-
-- Type: string
-- Description: Default action method name (without namespace), e.g. "execAction".
-
-
----
-
-### setDefaultAction() · [source](../../src/Cli/Console.php#L198)
-
-`public function setDefaultAction(string $defaultAction): void`
-
-Set the default action method name used when no action is specified on the command line.
+Return the single action method name for a task with exactly one public dispatchable action, or null when the task has 0 or 2+ actions.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$defaultAction` | string | - | Action method name, e.g. "execAction". |
+| `$class` | string | - | Fully-qualified task class name. |
 
 **➡️ Return value**
 
-- Type: void
-
-**⚠️ Throws**
-
-- InvalidArgumentException  If the given name is empty.
+- Type: ?string
+- Description: The method name (e.g. "runAction") or null.
 
 
 ---

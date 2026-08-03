@@ -19,19 +19,21 @@ class Console
     protected array $namespaces = ['App\\Tasks'];
     protected array $taskPaths = [];
     protected array $tasks = [
-        'about'  => \Azera\Cli\Tasks\AboutTask::class,
-        'db'     => \Azera\Cli\Tasks\DbTask::class,
-        'model'  => \Azera\Cli\Tasks\ModelTask::class,
-        'routes' => \Azera\Cli\Tasks\RoutesTask::class,
-        'serve'  => \Azera\Cli\Tasks\ServeTask::class,
+        'about'   => \Azera\Cli\Tasks\AboutTask::class,
+        'cache'   => \Azera\Cli\Tasks\CacheTask::class,
+        'db'      => \Azera\Cli\Tasks\DbTask::class,
+        'make'    => \Azera\Cli\Tasks\MakeTask::class,
+        'migrate' => \Azera\Cli\Tasks\MigrateTask::class,
+        'model'   => \Azera\Cli\Tasks\ModelTask::class,
+        'routes'  => \Azera\Cli\Tasks\RoutesTask::class,
+        'serve'   => \Azera\Cli\Tasks\ServeTask::class,
+        'test'    => \Azera\Cli\Tasks\TestTask::class,
     ]; // taskName => class
 
-    protected array $taskClassFiles = [];
     protected string $scriptName;
     protected bool $coerceParams = false;
     protected bool $useColors;
     protected bool $hasTruecolor;
-    protected string $defaultAction = "runAction";
     /** @var string|null Raw help text (same format as docblock Options/Notes sections) shown globally in all help output. */
     protected ?string $globalHelp = null;
     /**
@@ -117,7 +119,7 @@ class Console
      *
      * @param string|null $scriptName Optional custom script name for help output. Defaults to the basename of argv[0].
      */
-    public function __construct(string $scriptName = null)
+    public function __construct(?string $scriptName = null)
     {
         $this->scriptName   = $scriptName ?? basename($_SERVER['argv'][0] ?? 'console.php');
         $this->useColors    = $this->detectColorSupport();
@@ -180,27 +182,39 @@ class Console
     }
 
     /**
-     * Get the default action method name used when no action is specified on the command line.
+     * Returns the public dispatchable action methods on a task class,
+     * excluding the reserved lifecycle hooks (beforeAction/afterAction).
      *
-     * @return string Default action method name (without namespace), e.g. "execAction".
+     * @return array<string,\ReflectionMethod>
      */
-    public function getDefaultAction(): string
+    protected function taskActions(string $class): array
     {
-        return $this->defaultAction;
+        $ref     = new ReflectionClass($class);
+        $actions = [];
+        foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
+            $name = $m->getName();
+            if (!str_ends_with($name, 'Action')) {
+                continue;
+            }
+            if (isset(static::RESERVED_ACTIONS[$name])) {
+                continue;
+            }
+            $actions[$name] = $m;
+        }
+        return $actions;
     }
 
     /**
-     * Set the default action method name used when no action is specified on the command line.
+     * Return the single action method name for a task with exactly one
+     * public dispatchable action, or null when the task has 0 or 2+ actions.
      *
-     * @param string $defaultAction Action method name, e.g. "execAction".
-     * @throws \InvalidArgumentException If the given name is empty.
+     * @param string $class Fully-qualified task class name.
+     * @return string|null The method name (e.g. "runAction") or null.
      */
-    public function setDefaultAction(string $defaultAction): void
+    public function singleActionMethod(string $class): ?string
     {
-        if (empty($defaultAction)) {
-            throw new \InvalidArgumentException("Default action cannot be empty");
-        }
-        $this->defaultAction = $defaultAction;
+        $actions = $this->taskActions($class);
+        return count($actions) === 1 ? array_key_first($actions) : null;
     }
 
     /** Remove all registered tasks. Useful if you don't want to expose system tasks. */
@@ -638,8 +652,8 @@ class Console
         }
 
         // 5) Parse the command token. It may be "domain:verb" (colon
-        //    layout) or a bare "domain" (falls back to defaultAction or
-        //    single-action detection in dispatch()).
+        //    layout) or a bare "domain" (resolved to its single action or
+        //    shown as task help in dispatch()).
         if (str_contains($task, ':')) {
             [$taskName, $action] = explode(':', $task, 2);
             $rest = array_slice($rest, 1);
@@ -689,41 +703,28 @@ class Console
             return;
         }
 
-        // determine method name
-        $method = $this->actionToMethod($actionName);
+        // Resolve the action method. A task with exactly one public
+        // dispatchable action is a "single-action task": bare invocation
+        // (azera <task>) runs that action, and any non-action token is
+        // treated as its first positional parameter. For multi-action
+        // tasks, bare invocation shows task help and an unrecognised
+        // action name errors out — preventing typos from being swallowed.
+        $singleMethod       = $this->singleActionMethod($class);
+        $isSingleActionTask = $singleMethod !== null;
+        $method             = $this->actionToMethod($actionName);
 
         if (!$method || !\method_exists($task, $method)) {
-            // Only fall back to the default action automatically when no
-            // action was specified, or when this is a single-action task
-            // (so the "action" arg is actually the first positional param).
-            // For multi-action tasks with an unrecognised action name, show
-            // task help instead to prevent silently swallowing typos.
-            $hasDefault        = \method_exists($task, $this->defaultAction);
-            $ref               = new ReflectionClass($class);
-            $publicActionCount = 0;
-            foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
-                $name = $m->getName();
-                if (!str_ends_with($name, 'Action')) {
-                    continue;
-                }
-                if (isset(static::RESERVED_ACTIONS[$name])) {
-                    continue;
-                }
-                $publicActionCount++;
-            }
-            $isSingleActionTask = $publicActionCount <= 1;
-
-            if ($hasDefault && ($actionName === null || $actionName === '' || $isSingleActionTask)) {
-                $method = $this->defaultAction;
+            if ($isSingleActionTask) {
+                $method = $singleMethod;
                 if ($actionName !== null && $actionName !== '') {
-                    // treat the provided action as the first positional parameter
+                    // treat the provided token as the first positional parameter
                     array_unshift($params, $actionName);
                 }
             } else {
                 if (!empty($actionName)) {
                     $message = "Action '" . ($actionName ?? '') . "' not found on task '{$taskName}'. Showing task help.";
                 } else {
-                    $message = "No action specified for task '{$taskName}' and no default action found. Showing task help.";
+                    $message = "No action specified for task '{$taskName}'. Showing task help.";
                 }
                 $this->stderrln($this->style($message, ...static::STYLE_MUTED));
                 $this->helpTask($taskKey);
@@ -979,10 +980,9 @@ class Console
         }
         if (class_exists($class) && is_subclass_of($class, Task::class)) {
             $taskName = $this->taskNameFromClass($class);
-            if (!isset($this->tasks[$taskName])) {
-                $this->tasks[$taskName]       = $class;
-                $this->taskClassFiles[$class] = $file;
-            }
+            //if (!isset($this->tasks[$taskName])) {
+            $this->tasks[$taskName] = $class;
+            //}
         }
     }
 
@@ -1029,12 +1029,22 @@ class Console
                 $this->writeln('  ' . str_repeat(' ', $labelWidth) . ' ' . $this->style($descLines[$i], 'bold'));
             }
 
-            // Actions: rendered as "task:action" with the colon prefix
-            $actionLabelInner   = 22;    // base str_pad width used for actions
-            $actionLeft         = 2 + 2; // visual indent (leading spaces + inner padding)
-            $defaultActionLabel = method_exists($class, $this->defaultAction)
-                ? $this->methodToActionName($this->defaultAction)
-                : null;
+            // Actions: rendered as "task:action" with the colon prefix.
+            // For single-action tasks, the sole action is shown only when its
+            // name carries meaning beyond "do the task". By convention, an
+            // action named "run" means "execute the task itself" — it never
+            // adds information the task name doesn't already convey, so it is
+            // suppressed. Any other verb (compile, ingest-postfix, diff, …)
+            // was chosen to describe what the task does and is worth showing.
+            if ($this->singleActionMethod($class) !== null) {
+                $soleAction = array_key_first($actionDescriptions);
+                if ($soleAction === 'run') {
+                    continue;
+                }
+            }
+
+            $actionLabelInner = 22;    // base str_pad width used for actions
+            $actionLeft       = 2 + 2; // visual indent (leading spaces + inner padding)
             foreach ($actionDescriptions as $action => $actionDesc) {
                 // Render as "task:action" (colon layout)
                 $fullAction = $name . ':' . $action;
@@ -1044,9 +1054,6 @@ class Console
                 // Reserve two spaces between action label and description
                 $actionAvail = max(10, $termWidth - $actionLeft - $labelWidth - 2);
 
-                $defaultMarker = $action === $defaultActionLabel
-                    ? ' ' . $this->style('[default]', ...$this->muteStyles)
-                    : '';
                 // Colour the task and action parts separately (matching the
                 // Usage/Examples highlight) so the task name stands out.
                 $styledLabel = $this->style(str_pad($fullAction, $labelWidth), ...$this->actionStyles);
@@ -1060,13 +1067,7 @@ class Console
                 }
 
                 if ($actionDesc === '') {
-                    if ($defaultMarker === '') {
-                        $this->writeln(
-                            '    '
-                            . '  ' . $styledLabel
-                            . $defaultMarker
-                        );
-                    }
+                    $this->writeln('    ' . '  ' . $styledLabel);
                     continue;
                 }
 
@@ -1076,7 +1077,6 @@ class Console
                     '  '
                     . '  ' . $styledLabel
                     . '  ' . $this->style($first)
-                    . $defaultMarker
                 );
                 foreach ($actionLines as $ln) {
                     $this->writeln('  ' . str_repeat(' ', $labelWidth + 2) . '  ' . $this->style($ln));
@@ -1128,27 +1128,26 @@ class Console
         $this->writeln();
 
         // list available actions
-        $actions = $this->extractActionDescriptions($class);
+        $actions        = $this->extractActionDescriptions($class);
+        $isSingleAction = $this->singleActionMethod($class) !== null;
+        // A single-action task whose only action is "run" hides the Actions
+        // section entirely — "run" means "execute the task" and never adds
+        // information the task name doesn't already convey.
+        $hideSingleRun = $isSingleAction && array_key_first($actions) === 'run';
 
-        if (!empty($actions)) {
+        if (!empty($actions) && !$hideSingleRun) {
             $this->writeln($this->style('Actions:', ...$sectionStyles));
 
             $actionLabelInner = 16;
             $leadingSpaces    = 2; // two leading spaces before task
 
-            $descStartCol       = $leadingSpaces + $actionLabelInner + 2;
-            $actionAvail        = max(10, $termWidth - $descStartCol);
-            $defaultActionLabel = method_exists($class, $this->defaultAction)
-                ? $this->methodToActionName($this->defaultAction)
-                : null;
+            $descStartCol = $leadingSpaces + $actionLabelInner + 2;
+            $actionAvail  = max(10, $termWidth - $descStartCol);
 
             foreach ($actions as $action => $actionDesc) {
-                $fullAction    = $taskKey . ':' . $action;
-                $defaultMarker = $action === $defaultActionLabel
-                    ? ' ' . $this->style('[default]', ...$this->muteStyles)
-                    : '';
-                $lines = $this->wrapText($actionDesc, $actionAvail);
-                $first = array_shift($lines);
+                $fullAction = $taskKey . ':' . $action;
+                $lines      = $this->wrapText($actionDesc, $actionAvail);
+                $first      = array_shift($lines);
 
                 // Colour the task and action parts separately (matching the
                 // Usage/Examples highlight) so the task name stands out.
@@ -1160,13 +1159,14 @@ class Console
                         . $this->style(':', ...$this->muteStyles)
                         . $this->style($actionPart, ...$this->actionStyles)
                         . str_repeat(' ', max(0, $padLen));
+                } else {
+                    $styledLabel = $this->style($fullAction, ...$this->taskStyles);
                 }
 
                 $this->writeln(
                     str_repeat(' ', $leadingSpaces)
                     . $styledLabel
                     . ($first !== '' ? '  ' . $this->style($first) : '')
-                    . $defaultMarker
                 );
 
                 // continuation lines: indent to description column
@@ -1180,16 +1180,26 @@ class Console
         }
 
         $this->writeln($this->style('Usage:', ...$sectionStyles));
-        $actionsList = implode(
-            '|',
-            array_map(
-                fn($a) =>
-                    $this->style($taskKey, ...$this->taskStyles) . ':' . $this->style($a, ...$this->actionStyles),
-                array_keys($actions)
+        if ($isSingleAction && $hideSingleRun) {
+            // Sole action is "run" — it adds no information, so the task
+            // name alone is the usage.
+            $this->writeln(
+                '  ' . $this->style($this->scriptName, ...$this->muteStyles)
+                . ' ' . $this->style($taskKey, ...$this->taskStyles)
+                . ' [args...]'
+            );
+        } else {
+            $actionsList = implode(
+                '|',
+                array_map(
+                    fn($a) =>
+                        $this->style($taskKey, ...$this->taskStyles) . ':' . $this->style($a, ...$this->actionStyles),
+                    array_keys($actions)
+                )
             )
-        )
-            ?: '<action>';
-        $this->writeln('  ' . $this->style($this->scriptName, ...$this->muteStyles) . ' ' . $actionsList . ' [args...]');
+                ?: '<action>';
+            $this->writeln('  ' . $this->style($this->scriptName, ...$this->muteStyles) . ' ' . $actionsList . ' [args...]');
+        }
         if ($info['usage']) {
             $this->renderUsageBlock($info['usage'], $taskKey, $termWidth);
         }
@@ -1262,22 +1272,9 @@ class Console
         // Split into (word, whitespace, word, whitespace …) keeping delimiters
         $parts = preg_split('/( +)/', $trimmed, -1, PREG_SPLIT_DELIM_CAPTURE);
 
-        // Detect whether this is a command line (starts with interpreter or
-        // directly with the script name) or a continuation line (starts with
-        // options / placeholders).
-        $firstWord = $parts[0] ?? '';
-        $isPhp     = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $firstWord);
-        $isScript  = !$isPhp && $firstWord === $this->scriptName;
-        $isCommand = $isPhp || $isScript;
-
         $result    = $indent;
         $wordIndex = 0; // counts only non-whitespace tokens
         $inComment = false;
-
-        // When the line starts with the script name directly (no php prefix),
-        // the script is token 0 and the task:action is token 1.
-        $scriptIdx = $isPhp ? 1 : 0;
-        $actionIdx = $scriptIdx + 1;
 
         foreach ($parts as $part) {
             // Whitespace between tokens – pass through unchanged
@@ -1303,18 +1300,10 @@ class Console
                 continue;
             }
 
-            if ($isCommand) {
-                $result .= match (true) {
-                    $wordIndex === $scriptIdx => $this->style($part, ...$this->muteStyles), // script
-                    $wordIndex === $actionIdx => $this->highlightTaskAction($part),         // task:action or task
-                    default                   => $this->highlightCliToken($part),
-                };
-            } else {
-                // Continuation line: still colour task:action tokens if present
-                $result .= str_contains($part, ':') && !str_starts_with($part, '--')
-                    ? $this->highlightTaskAction($part)
-                    : $this->highlightCliToken($part);
-            }
+            // Continuation line: still colour task:action tokens if present
+            $result .= str_contains($part, ':') && !str_starts_with($part, '--')
+                ? $this->highlightTaskAction($part)
+                : $this->highlightCliToken($part);
 
             $wordIndex++;
         }
@@ -1330,12 +1319,16 @@ class Console
     protected function highlightTaskAction(string $token): string
     {
         if (str_contains($token, ':')) {
-            [$task, $action] = explode(':', $token, 2);
-            return $this->style($task, ...$this->taskStyles)
+            $task   = strtok($token, ':');
+            $action = substr($token, strlen($task) + 1);
+            return $this->style($this->scriptName, ...$this->muteStyles)
+                . ' '
+                . $this->style($task, ...$this->taskStyles)
                 . $this->style(':', ...$this->muteStyles)
                 . $this->style($action, ...$this->actionStyles);
         }
-        return $this->style($token, ...$this->taskStyles);
+        return $this->style($this->scriptName, ...$this->muteStyles) . ' '
+            . $this->style($token, ...$this->taskStyles);
     }
 
     /**
@@ -1586,8 +1579,6 @@ class Console
         // \s so that blank comment lines (which contain only whitespace and
         // a newline) keep their newline instead of being collapsed away.
         $doc      = preg_replace('/^[ \t]*\*[ \t]?/m', '', $doc);
-        $doc      = preg_replace('/^\s*[\w-]+\.php/', $scriptName, $doc);
-        $doc      = str_replace('console.php', $scriptName, $doc);
         $sections = [
             'description' => '',
             'usage'       => '',
@@ -1793,7 +1784,12 @@ class Console
      */
     protected function renderUsageBlock(string $usageText, string $taskKey, int $termWidth): void
     {
-        $taskPattern = '/^' . preg_quote($taskKey, '/') . '(?:[:\b]|\s)/i';
+        // Match the task name at the start of a line, optionally followed by
+        // ":action", whitespace, or end-of-line. A bare task name (e.g. a
+        // single "about" line) is a valid usage entry, so the trailing group
+        // is optional — without it, bare-name lines fall through to prose and
+        // are rendered unformatted.
+        $taskPattern = '/^' . preg_quote($taskKey, '/') . '(?:[:\b]|\s|$)?/i';
 
         // ── Pass 1: split into 'entry' and 'prose' items ─────────────────────
         $items        = [];
@@ -1828,10 +1824,7 @@ class Console
                 continue;
             }
 
-            $trim         = preg_replace('/^php\d*(?:\.exe)?\b\s*/i', '', $trim);
-            $trim         = preg_replace('/^\w+\.php\b\s*/i', '', $trim);
-            $isEntryStart = (bool) preg_match('/^php\d*(?:\.exe)?\b/i', $trim)
-                || (bool) preg_match($taskPattern, $trim);
+            $isEntryStart   = (bool) preg_match($taskPattern, $trim);
             $isContinuation = (bool) preg_match('/^[\[<\-]/', $trim);
 
             if ($isEntryStart) {
@@ -1874,22 +1867,13 @@ class Console
                 continue;
             }
             $parts = preg_split('/\s+/', $item['text']);
-            $isPhp = (bool) preg_match('/^php\d*(?:\.exe)?$/i', $parts[0]);
-            // In colon layout, the task:action is a single token at index 2 (php)
-            // or index 0 (no php). In legacy layout they are separate tokens.
-            if ($isPhp) {
-                // php script model:sync-all  → left = [php, script, model:sync-all]
-                $actionIdx = 2;
-            } else {
-                // model:sync-all  → left = [model:sync-all]
-                $actionIdx = 0;
-            }
+            // model:sync-all  → left = [model:sync-all]
+            $actionIdx = 0;
             $actionIdx = min($actionIdx, count($parts) - 1);
             $leftParts = array_slice($parts, 0, $actionIdx + 1);
             $restParts = array_slice($parts, $actionIdx + 1);
             $leftPlain = implode(' ', $leftParts);
 
-            $item['isPhp']     = $isPhp;
             $item['leftParts'] = $leftParts;
             $item['leftPlain'] = $leftPlain;
             $item['rest']      = implode(' ', $restParts);
@@ -1934,17 +1918,9 @@ class Console
             // Style left tokens
             $leftStyled = [];
             foreach ($item['leftParts'] as $i => $tok) {
-                if ($item['isPhp']) {
-                    $leftStyled[] = match ($i) {
-                        0, 1    => $this->style($tok, ...$this->muteStyles),
-                        2       => $this->highlightTaskAction($tok),  // task:action
-                        default => $this->style($tok, ...$this->actionStyles)
-                    };
-                } else {
-                    $leftStyled[] = $i === 0
-                        ? $this->highlightTaskAction($tok)  // task:action
-                        : $this->style($tok, ...$this->actionStyles);
-                }
+                $leftStyled[] = $i === 0
+                    ? $this->highlightTaskAction($tok)  // task:action
+                    : $this->style($tok, ...$this->actionStyles);
             }
 
             // Pad left side so all args start at the same column

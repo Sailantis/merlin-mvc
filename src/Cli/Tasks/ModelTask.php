@@ -60,21 +60,21 @@ use Azera\Sync\SyncRunner;
  *                               properties
  *
  * Examples:
- *   azera model:sync-all                                          # auto-discover App\Models
- *   azera model:sync-all  src/Models                              # dry-run
- *   azera model:sync-all  src/Models --apply                      # apply
- *   azera model:sync-all  src/Models --apply --generate-accessors # with accessors
- *   azera model:sync-all  src/Models --apply --field-visibility=protected
- *   azera model:sync-all  src/Models --apply --no-deprecate
- *   azera model:sync-all  src/Models --apply --create-missing --namespace=App\\Models
- *   azera model:sync     src/Models/User.php --apply               # file path
- *   azera model:sync     User --apply                              # short class name (PSR-4)
- *   azera model:sync     App\\Models\\User --apply                 # fully-qualified name
- *   azera model:sync     User --directory=src/Models --apply       # with directory hint
- *   azera model:new      User                                      # auto-discover App\Models dir
- *   azera model:new      User src/Models --namespace=App\\Models --apply
- *   azera model:list                                               # list all models + tables
- *   azera model:list     src/Models --missing                      # also show uncovered tables */
+ *   model:sync-all                                          # auto-discover App\Models
+ *   model:sync-all  src/Models                              # dry-run
+ *   model:sync-all  src/Models --apply                      # apply
+ *   model:sync-all  src/Models --apply --generate-accessors # with accessors
+ *   model:sync-all  src/Models --apply --field-visibility=protected
+ *   model:sync-all  src/Models --apply --no-deprecate
+ *   model:sync-all  src/Models --apply --create-missing --namespace=App\\Models
+ *   model:sync     src/Models/User.php --apply               # file path
+ *   model:sync     User --apply                              # short class name (PSR-4)
+ *   model:sync     App\\Models\\User --apply                 # fully-qualified name
+ *   model:sync     User --directory=src/Models --apply       # with directory hint
+ *   model:new      User                                      # auto-discover App\Models dir
+ *   model:new      User src/Models --namespace=App\\Models --apply
+ *   model:list                                               # list all models + tables
+ *   model:list     src/Models --missing                      # also show uncovered tables */
 class ModelTask extends Task
 {
     // -------------------------------------------------------------------------

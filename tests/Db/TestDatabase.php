@@ -44,7 +44,7 @@ class TestDatabase extends \Azera\Db\Database
         if ($str === null) {
             return 'NULL';
         }
-        return "'" . str_replace("'", "''", (string)$str) . "'";
+        return "'" . str_replace("'", "''", (string) $str) . "'";
     }
 
     /**
@@ -59,7 +59,7 @@ class TestDatabase extends \Azera\Db\Database
         }
 
         $this->queries[] = [
-            'sql' => $statement,
+            'sql'    => $statement,
             'params' => $args ?? []
         ];
 
@@ -85,7 +85,7 @@ class TestDatabase extends \Azera\Db\Database
 
         if ($sth instanceof TestPdoStatement) {
             $this->queries[] = [
-                'sql' => 'prepared statement',
+                'sql'    => 'prepared statement',
                 'params' => $params
             ];
             return $sth;
@@ -156,7 +156,7 @@ class TestDatabase extends \Azera\Db\Database
 
     public function lastInsertId($table = null, $field = null): string
     {
-        return (string)$this->lastInsertId;
+        return (string) $this->lastInsertId;
     }
 
     /**
@@ -193,10 +193,9 @@ class TestDatabase extends \Azera\Db\Database
     {
         static $handler = null;
         if ($handler === null) {
-            $handler = new class extends \PDO {
-                public function __construct()
-                {
-                }
+            $handler = new class extends \PDO
+            {
+                public function __construct() {}
                 #[\ReturnTypeWillChange]
                 public function getAttribute($attr)
                 {
@@ -228,10 +227,10 @@ class TestPdoStatement extends \PDOStatement
         $this->results = $results;
     }
 
-    public function setFetchMode($mode, ...$args): bool
+    public function setFetchMode($mode, ...$args): true
     {
-        $this->fetchMode = $mode;
-        $this->fetchClass = $mode === \PDO::FETCH_CLASS && isset($args[0]) ? (string)$args[0] : null;
+        $this->fetchMode  = $mode;
+        $this->fetchClass = $mode === \PDO::FETCH_CLASS && isset($args[0]) ? (string) $args[0] : null;
         return true;
     }
 
@@ -247,7 +246,7 @@ class TestPdoStatement extends \PDOStatement
             return false;
         }
 
-        $row = $this->results[$this->position++];
+        $row  = $this->results[$this->position++];
         $mode = $mode === \PDO::FETCH_BOTH ? $this->fetchMode : $mode;
 
         switch ($mode) {
@@ -265,7 +264,7 @@ class TestPdoStatement extends \PDOStatement
             case \PDO::FETCH_NUM:
                 return array_values($row);
             case \PDO::FETCH_OBJ:
-                return (object)$row;
+                return (object) $row;
             case \PDO::FETCH_BOTH:
             default:
                 return array_merge($row, array_values($row));

@@ -14,22 +14,22 @@ use PHPUnit\Framework\TestCase;
 class MultiActionTask extends Task
 {
     /** Does something useful. */
-    public function runAction(): void
-    {
-    }
+    public function runAction(): void {}
 
     /** Does something else. */
-    public function importAction(): void
-    {
-    }
+    public function importAction(): void {}
 }
 
 class SingleActionTask extends Task
 {
     /** Only action. */
-    public function runAction(): void
-    {
-    }
+    public function runAction(): void {}
+}
+
+class NamedSingleActionTask extends Task
+{
+    /** Only action, not called runAction. */
+    public function listAction(): void {}
 }
 
 // ---------------------------------------------------------------------------
@@ -41,6 +41,11 @@ class TestableConsole extends Console
     public function publicExtractActionDescriptions(string $class): array
     {
         return $this->extractActionDescriptions($class);
+    }
+
+    public function publicSingleActionMethod(string $class): ?string
+    {
+        return $this->singleActionMethod($class);
     }
 }
 
@@ -97,5 +102,39 @@ class ConsoleReservedActionsTest extends TestCase
 
         $this->assertCount(1, $actions, 'Single-action task should report exactly 1 action');
         $this->assertArrayHasKey('run', $actions);
+    }
+
+    public function testSingleActionTaskDetected(): void
+    {
+        // A task with exactly one real action must be reported as single-action
+        // by singleActionMethod(), returning the method name regardless of
+        // what that method is called (no magic "runAction" name required).
+        $this->assertSame(
+            'runAction',
+            $this->console->publicSingleActionMethod(SingleActionTask::class),
+            'singleActionMethod() should return the sole action method name'
+        );
+    }
+
+    public function testMultiActionTaskIsNotSingleAction(): void
+    {
+        // A task with two real actions is not single-action.
+        $this->assertNull(
+            $this->console->publicSingleActionMethod(MultiActionTask::class),
+            'singleActionMethod() should return null for multi-action tasks'
+        );
+    }
+
+    public function testSingleActionMethodDoesNotRequireRunActionName(): void
+    {
+        // The single action is named listAction, not runAction.  Before the
+        // configurable defaultAction was removed, bare invocation of this task
+        // would have failed because "runAction" did not exist.  Now the sole
+        // action is detected regardless of its name.
+        $this->assertSame(
+            'listAction',
+            $this->console->publicSingleActionMethod(NamedSingleActionTask::class),
+            'singleActionMethod() should detect the sole action by count, not by name'
+        );
     }
 }

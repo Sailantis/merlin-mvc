@@ -228,8 +228,9 @@ class AppContext
      * returned object will be cached. If the service is not registered but the identifier
      * is a class name, it will attempt to auto-wire and instantiate it.
      *
-     * @param string $id The identifier of the service to retrieve.
-     * @return object The service instance associated with the given identifier.
+     * @template T of object
+     * @param class-string<T> $id The identifier of the service to retrieve.
+     * @return T The service instance associated with the given identifier.
      * @throws RuntimeException If the service is not found and cannot be auto-wired.
      */
     public function get(string $id): object
@@ -258,8 +259,9 @@ class AppContext
      * is a class name, it will attempt to auto-wire and instantiate it. Returns null if
      * the service is not found, or if a registered factory currently resolves to null.
      *
-     * @param string $id The identifier of the service to retrieve.
-     * @return object|null The service instance associated with the given identifier, or null if not found.
+     * @template T of object
+     * @param class-string<T> $id The identifier of the service to retrieve.
+     * @return T|null The service instance associated with the given identifier, or null if not found.
      */
     public function tryGet(string $id): ?object
     {
@@ -285,8 +287,9 @@ class AppContext
      * Registered factories are resolved lazily. This method does not attempt to auto-wire
      * or instantiate classes that have not been registered explicitly.
      *
-     * @param string $id The identifier of the service to retrieve.
-     * @return object|null The service instance associated with the given identifier, or null if not found.
+     * @template T of object
+     * @param class-string<T> $id The identifier of the service to retrieve.
+     * @return T|null The service instance associated with the given identifier, or null if not found.
      */
     public function getOrNull(string $id): ?object
     {

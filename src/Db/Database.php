@@ -54,12 +54,12 @@ class Database
 	)
 	{
 		$this->connectString = $dsn;
-		$this->user = $user;
-		$this->pass = $pass;
+		$this->user          = $user;
+		$this->pass          = $pass;
 
 		$this->options = $options + [
 			PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_OBJ,
-			PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+			PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
 		];
 
 		// Extract driver name from DSN
@@ -132,13 +132,13 @@ class Database
 	): static
 	{
 		$this->autoReconnect = [
-			'enabled' => $enabled,
-			'maxAttempts' => $maxAttempts > 0 ? $maxAttempts : null,
-			'retryDelay' => $retryDelay,
+			'enabled'           => $enabled,
+			'maxAttempts'       => $maxAttempts > 0 ? $maxAttempts : null,
+			'retryDelay'        => $retryDelay,
 			'backoffMultiplier' => $backoffMultiplier,
-			'maxRetryDelay' => $maxRetryDelay,
-			'jitter' => $jitter,
-			'onReconnect' => $onReconnect,
+			'maxRetryDelay'     => $maxRetryDelay,
+			'jitter'            => $jitter,
+			'onReconnect'       => $onReconnect,
 		];
 		return $this;
 	}
@@ -172,8 +172,8 @@ class Database
 			}
 			if ($stmt === false) {
 				if ($stmt === false) {
-					$info = $this->pdo->errorInfo();
-					$ex = new PDOException($info[2] ?? 'Unknown error');
+					$info          = $this->pdo->errorInfo();
+					$ex            = new PDOException($info[2] ?? 'Unknown error');
 					$ex->errorInfo = $info;
 					throw $ex;
 				}
@@ -201,8 +201,8 @@ class Database
 			$this->fire('db.beforePrepare', $statement);
 			$stmt = $this->pdo->prepare($statement);
 			if ($stmt === false) {
-				$info = $this->pdo->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->pdo->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -236,8 +236,8 @@ class Database
 			$ok = $this->statement->execute($params);
 
 			if ($ok === false) {
-				$info = $this->statement->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->statement->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -262,9 +262,9 @@ class Database
 		$inTransaction = !empty($this->transactionLevel);
 		switch ($exception->errorInfo[1]) {
 			case 1213:
-				// Error: 1213 SQLSTATE: 40001 (ER_LOCK_DEADLOCK)
+
 			case '40P01':
-				// PGSQL: 40P01 – deadlock_detected
+
 			case 40001:
 				// Deadlock or timeout with automatic rollback occurred.
 				if ($inTransaction) {
@@ -277,9 +277,9 @@ class Database
 				// Re-run last command
 				return;
 			case 2006:
-				// Error: 2006 (CR_SERVER_GONE_ERROR)
+
 			case 2013:
-				// Error: 2013 (CR_SERVER_LOST)
+
 			case 8001:
 			case 8004:
 			case 8006:
@@ -291,7 +291,7 @@ class Database
 		throw $exception;
 	}
 
-	protected function handleReconnect(\Exception $exception = null)
+	protected function handleReconnect(?\Exception $exception = null)
 	{
 		// Get auto-reconnect configuration
 		$config = is_array($this->autoReconnect)
@@ -306,14 +306,14 @@ class Database
 		$inTransaction = !empty($this->transactionLevel);
 
 		// Get configuration with defaults
-		$maxAttempts = $config['maxAttempts'] ?? null; // null = unlimited
-		$retryDelay = $config['retryDelay'] ?? 1.0;
+		$maxAttempts       = $config['maxAttempts'] ?? null; // null = unlimited
+		$retryDelay        = $config['retryDelay'] ?? 1.0;
 		$backoffMultiplier = $config['backoffMultiplier'] ?? 2.0;
-		$maxRetryDelay = $config['maxRetryDelay'] ?? 30.0;
-		$useJitter = $config['jitter'] ?? true;
+		$maxRetryDelay     = $config['maxRetryDelay'] ?? 30.0;
+		$useJitter         = $config['jitter'] ?? true;
 		$reconnectCallback = $config['onReconnect'] ?? null;
 
-		$attempt = 1;
+		$attempt      = 1;
 		$currentDelay = $retryDelay;
 
 		while ($maxAttempts === null || $attempt <= $maxAttempts) {
@@ -335,13 +335,13 @@ class Database
 				}
 
 				if ($sleepTime >= 1) {
-					sleep((int)$sleepTime);
-					$remaining = $sleepTime - (int)$sleepTime;
+					sleep((int) $sleepTime);
+					$remaining = $sleepTime - (int) $sleepTime;
 					if ($remaining > 0) {
-						usleep((int)($remaining * 1000000));
+						usleep((int) ($remaining * 1000000));
 					}
 				} else {
-					usleep((int)($sleepTime * 1000000));
+					usleep((int) ($sleepTime * 1000000));
 				}
 			}
 
@@ -411,7 +411,7 @@ class Database
 	 */
 	public function selectAll(string $query, ?array $params = null, int $fetchMode = PDO::FETCH_DEFAULT): array
 	{
-		$sth = $this->query($query, $params);
+		$sth    = $this->query($query, $params);
 		$result = $sth->fetchAll($fetchMode);
 		$sth->closeCursor();
 		return $result;
@@ -433,12 +433,12 @@ class Database
 	 * @param string|null $field Primary key field name (PostgreSQL only).
 	 * @return string|bool The last insert ID as a string, or false on failure.
 	 */
-	public function lastInsertId(string $table = null, string $field = null): string|bool
+	public function lastInsertId(?string $table = null, ?string $field = null): string|bool
 	{
 		if (!empty($table) && !empty($field) && $this->driverName === 'pgsql') {
 			if ($table instanceof Model) {
 				$schema = $table->schema();
-				$table = $table->source();
+				$table  = $table->source();
 				if (!empty($schema)) {
 					$table = "$schema.$table";
 				}
@@ -447,8 +447,8 @@ class Database
 				"SELECT currval(pg_catalog.pg_get_serial_sequence(:table, :field))"
 			);
 			if ($stmt === false) {
-				$info = $this->pdo->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->pdo->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -492,8 +492,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info = $this->pdo->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->pdo->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -538,8 +538,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info = $this->pdo->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->pdo->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -584,8 +584,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info = $this->pdo->errorInfo();
-				$ex = new PDOException($info[2] ?? 'Unknown error');
+				$info          = $this->pdo->errorInfo();
+				$ex            = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -621,7 +621,7 @@ class Database
 	public function quoteIdentifier(?string ...$args): string
 	{
 		$quoted = '';
-		$sep = '';
+		$sep    = '';
 		foreach ($args as $arg) {
 			if ($arg === null) {
 				continue;

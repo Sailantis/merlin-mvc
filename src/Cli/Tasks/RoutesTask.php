@@ -9,7 +9,7 @@ use Azera\Cli\Task;
  * List all registered routes.
  *
  * Usage:
- *   azera routes:list
+ *   routes:list
  *
  * Displays a table of all routes registered via the Router, showing
  * HTTP method, path pattern, handler (controller::action), route name
@@ -75,12 +75,8 @@ class RoutesTask extends Task
         );
 
         $this->console->printTable($headers, $rows);
-        $this->muted("\n" . count($routes) . ' ' . (count($routes) > 1 ? 'routes' : 'route') . '.');
-    }
 
-    public function runAction(): void
-    {
-        $this->listAction();
+        $this->muted("\n" . count($routes) . ' ' . (count($routes) > 1 ? 'routes' : 'route') . '.');
     }
 
     // -----------------------------------------------------------------------

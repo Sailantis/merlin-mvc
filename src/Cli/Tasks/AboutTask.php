@@ -10,7 +10,7 @@ use Azera\Boot\BootstrapResolver;
  * Print diagnostic information about the current Azera project.
  *
  * Usage:
- *   azera about
+ *   about
  *
  * Shows framework version, PHP version, detected project root, resolved
  * bootstrap class, registered database roles, view engine, and loaded

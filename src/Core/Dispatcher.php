@@ -10,6 +10,9 @@ use Azera\Core\Exceptions\ActionNotFoundException;
 use Azera\Core\Exceptions\InvalidControllerException;
 use Azera\Core\Exceptions\ControllerNotFoundException;
 
+/** 
+ * Dispatcher is responsible for handling the execution of controller actions based on the current routing information. It builds a middleware pipeline, and invokes the action, returning a Response object. It supports global and group-based middleware, as well as controller and action-specific middleware.
+ */
 class Dispatcher
 {
     /**

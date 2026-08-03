@@ -119,20 +119,13 @@ class DatabaseTask extends Task
 
 ---
 
-## Default Action Behavior
+## Single-Action vs Multi-Action Tasks
 
-When a task is invoked without an explicit action name, or when the provided action doesn't match any method, `Console` may fall back to a **default action** (by default `runAction`).
+A task is either **single-action** (exactly one public `*Action` method, excluding the inherited `beforeAction`/`afterAction` hooks) or **multi-action** (two or more). The Console detects this automatically from the class — there is no global "default action" to configure, and no special method name is required.
 
-### Fallback Rules
+### Single-Action Tasks
 
-The default action is invoked when:
-
-1. **No action is specified** – e.g., `php console.php database` calls `DatabaseTask::runAction()` if it exists.
-2. **The task has exactly one public `*Action` method** – for single-action tasks, the "action" argument is treated as a positional parameter and passed to the default action.
-
-For **multi-action tasks** (tasks with more than one action method), an unrecognized action name shows an error and the task help page instead of silently falling back. This prevents typos from being silently ignored.
-
-### Example: Single-Action Task
+For a single-action task, the bare task name invokes its only action. Any non-flag token that isn't the action name is treated as the first positional parameter:
 
 ```php
 class EchoTask extends Task
@@ -147,12 +140,43 @@ class EchoTask extends Task
 ```bash
 php console.php echo                # calls runAction() with default
 php console.php echo "Hi there"     # calls runAction("Hi there")
-php console.php echo run "Hi"       # calls runAction("Hi") explicitly
+php console.php echo run "Hi"      # calls runAction("Hi") explicitly
 ```
 
-In this case, `"Hi there"` is treated as the first positional parameter to `runAction()`, not as an action name.
+In this case, `"Hi there"` is treated as the first positional parameter to `runAction()`, not as an action name. The action method name (`runAction`, `listAction`, …) is irrelevant — whichever method is the task's only action is the one that runs.
 
-### Example: Multi-Action Task
+#### Help display
+
+A single-action task's action name is shown in help **unless the action is `run`**. By convention, `run` means "execute the task itself" — it never adds information the task name doesn't already convey, so it is suppressed to keep the output clean. Any other verb (`compile`, `ingest-postfix`, `diff`, `list`, …) was chosen to describe what the task does and is shown.
+
+A `run`-action task shows no `Actions:` section and a bare usage line:
+
+```
+Task: echo
+
+Echo a message.
+
+Usage:
+  azera echo [args...]
+```
+
+A single-action task with a descriptive verb shows the action and a `task:action` usage line:
+
+```
+Task: docs
+
+Operate the documentation subsystem.
+
+Actions:
+  docs:compile    Compiles documentation for a specified project.
+
+Usage:
+  azera docs:compile [args...]
+```
+
+### Multi-Action Tasks
+
+For a multi-action task, you must name the action explicitly. The bare task name shows task help, and an unrecognized action name errors out and shows the help page instead of silently falling back — preventing typos from being swallowed.
 
 ```php
 class DatabaseTask extends Task
@@ -163,29 +187,17 @@ class DatabaseTask extends Task
 ```
 
 ```bash
-php console.php database            # error: no default action defined
+php console.php database            # shows task help (no implicit default)
 php console.php database migrate    # calls migrateAction()
 php console.php database typo       # error + shows task help (does NOT fall back)
 ```
 
-### Overriding the Default Action
-
-You can change the default action method name globally:
-
-```php
-$console->setDefaultAction('handleAction');  // default was 'runAction'
-```
-
-Or define a custom default action in your task (though you must still configure `Console` to recognize it).
-
-### Help Display
-
-The default action is marked with a `[default]` label in the help output:
+Help output lists each action as `task:action`:
 
 ```
 Actions:
-  run              [default]
-  migrate          Run database migrations.
+  database:migrate    Run database migrations.
+  database:seed       Seed the database with initial data.
 ```
 
 ---
@@ -388,10 +400,6 @@ $console->hasColors();          // bool
 
 // Color a string directly (useful for custom Console subclasses)
 echo $console->style('Hello!', 'bold', 'bgreen', '#5aff5a');
-
-// Default action (called when no action arg is provided; default: "runAction")
-$console->setDefaultAction('runAction');
-$console->getDefaultAction();
 
 // Parameter type coercion ("5" → 5, "true" → true, "null" → null)
 $console->setCoerceParams(true);
