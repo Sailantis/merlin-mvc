@@ -2,7 +2,6 @@
 
 namespace Azera\Cli;
 
-use Azera\Cli\Console\ArgParser;
 use Azera\Cli\Console\OutputRendering;
 use Azera\Cli\Console\HelpRendering;
 use Azera\Cli\Console\TaskDiscovery;
