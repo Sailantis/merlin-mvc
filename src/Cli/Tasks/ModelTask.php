@@ -32,7 +32,7 @@ use Azera\Sync\SyncRunner;
  *
  *   - A file path:               src/Models/User.php
  * ↰
- *   - A short class name:        User          (discovered via PSR-4 / --directory)
+ *   - A short class name:        User   (discovered via PSR-4 / --directory)
  * ↰
  *   - A fully-qualified name:    App\Models\User
  *
