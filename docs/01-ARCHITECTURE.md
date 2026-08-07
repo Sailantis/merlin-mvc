@@ -32,6 +32,11 @@ Built-in lazy service accessors:
 | `cookies()`   | `Azera\Http\Cookies`                                  |
 | `dbManager()` | `Azera\Db\DatabaseManager`                            |
 | `route()`     | `Azera\ResolvedRoute\|null` – populated by Dispatcher |
+| `logger()`    | `Psr\Log\LoggerInterface` – `NullLogger` by default  |
+| `events()`    | `Psr\EventDispatcher\EventDispatcherInterface` – `NullEventDispatcher` by default |
+| `cache()`     | `Psr\SimpleCache\CacheInterface` – `NullCache` by default |
+| `queue()`     | `Azera\Queue\QueueInterface` – throws if unregistered |
+| `config()`    | `Azera\Config\Config` – lazily created               |
 
 Custom services can be registered with `$ctx->set($id, new MyService())` or `$ctx->set($id, fn() => new MyService())` and retrieved with `$ctx->get($id)`. Registered callables are treated as zero-argument lazy factories and cached on first resolution. Auto-wiring is supported: unregistered class names are instantiated via reflection with their constructor dependencies resolved recursively from the container.
 
@@ -126,6 +131,41 @@ For single-database apps, register one connection under any name – models fall
 $ctx->dbManager()->set('default', new Database(...));
 ```
 
+## Enterprise Subsystems
+
+Azera provides opt-in enterprise subsystems that use PSR interfaces directly (no adapters needed):
+
+| Subsystem | PSR | Accessor | Default |
+|-----------|-----|----------|---------|
+| Logging | PSR-3 | `logger()` | `NullLogger` |
+| Events | PSR-14 | `events()` | `NullEventDispatcher` |
+| Cache | PSR-16 | `cache()` | `NullCache` |
+| Queue | — | `queue()` | throws if unregistered |
+| Config | — | `config()` | empty `Config` |
+
+All subsystems are **zero-cost when unused** — each accessor lazily returns a no-op default that does nothing, so calling code can always invoke `$ctx->logger()->info(...)` or `$ctx->events()->dispatch(...)` without null-checks. Register real implementations via `$ctx->set(InterfaceClass::class, $factory)` to activate them.
+
+### AOP (Aspect-Oriented Programming)
+
+Azera supports declarative cross-cutting concerns via PHP 8 attributes:
+
+- `#[Advised]` marks a class for proxy generation
+- `#[Transactional]` wraps methods in DB transactions
+- `#[Cache]` caches method return values
+- `#[Retry]` retries on failure with backoff
+- `#[Log]` logs method entry/exit/duration
+
+The `ProxyFactory` generates file-based proxy classes (OPcache'd) that extend the target and wrap advised methods. Services must be autowired (class string, not factory) for proxy generation. See [AOP](16-AOP.md).
+
+### Security
+
+- `CsrfMiddleware` — synchronizer token pattern, implements `MiddlewareInterface`
+- `RateLimiter` — cache-backed, fixed-window rate limiting
+- `Hasher` — password hashing (PHP `password_hash`/`password_verify`)
+- `AuthManagerInterface` / `GuardInterface` — authentication contracts
+
+See [Security](18-SECURITY-ENTERPRISE.md).
+
 ## Sync Layer
 
 Azera ships a code-generation and schema-synchronisation subsystem under `Azera\Sync`. It introspects a live database and updates (or generates) Model PHP files to match the schema, without requiring a separate migration runner.
@@ -148,3 +188,9 @@ The CLI entry point is the built-in `ModelSyncTask`; the same `SyncRunner` API c
 - Dispatcher middleware groups and controller factory
 - Model overrides: `source()`, `schema()`, `idFields()`, `readConnection()`, `writeConnection()`
 - Query SQL escape hatches via `Sql` nodes (`Sql::bind()` for PDO-bound params)
+- PSR-3 logger: register any `Psr\Log\LoggerInterface` implementation via `$ctx->set()`
+- PSR-14 events: register any `Psr\EventDispatcher\EventDispatcherInterface`, listen to typed events
+- PSR-16 cache: register any `Psr\SimpleCache\CacheInterface` implementation
+- Queue: register any `Azera\Queue\QueueInterface` implementation (SyncQueue or async driver)
+- AOP interceptors: `registerInterceptor(AdviceClass::class, $interceptor)` for custom advice attributes
+- Security: `CsrfMiddleware`, `RateLimiter`, `Hasher`, custom `GuardInterface` implementations

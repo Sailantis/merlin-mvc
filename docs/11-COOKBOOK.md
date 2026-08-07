@@ -557,3 +557,179 @@ php -r "echo base64_encode(random_bytes(32)) . PHP_EOL;"
 ```
 
 `Crypt` selects the best cipher available at runtime (libsodium ChaCha20-Poly1305 preferred, AES-256-GCM via OpenSSL as fallback). You do not need to care about cipher selection unless you have specific compliance requirements.
+
+## 20) Transactional Service with AOP
+
+Replace manual `begin/commit/rollback` boilerplate with `#[Transactional]`. Mark the class with `#[Advised]` and register it for autowiring:
+
+```php
+use Azera\Aop\Advised;
+use Azera\Aop\Transactional;
+
+#[Advised]
+class OrderService
+{
+    #[Transactional]
+    public function placeOrder(int $customerId, array $items): Order
+    {
+        $order = Order::create(['customer_id' => $customerId, ...]);
+
+        foreach ($items as $item) {
+            OrderItem::create(['order_id' => $order->id, ...]);
+        }
+
+        return $order;
+    }
+}
+```
+
+Register the service for autowiring (class string, not a factory) and register the interceptor:
+
+```php
+use Azera\Aop\TransactionalInterceptor;
+
+$ctx->registerInterceptor(Transactional::class, new TransactionalInterceptor($ctx->dbManager()));
+$ctx->set(OrderService::class); // autowired — proxy generated
+```
+
+No manual `begin/commit/rollback` — the interceptor handles it. See [AOP](16-AOP.md).
+
+## 21) Caching Method Results
+
+Cache expensive method results with `#[Cache]`:
+
+```php
+use Azera\Aop\Advised;
+use Azera\Aop\Cache;
+
+#[Advised]
+class ReportService
+{
+    #[Cache(ttl: 300, key: 'report_{type}_{date}')]
+    public function getReport(string $type, string $date): array
+    {
+        // Runs only on cache miss; result cached for 300 seconds
+        return $this->buildExpensiveReport($type, $date);
+    }
+}
+```
+
+Register the cache interceptor:
+
+```php
+use Azera\Aop\CacheInterceptor;
+
+$ctx->registerInterceptor(Cache::class, new CacheInterceptor($ctx->cache()));
+```
+
+The `{type}` and `{date}` placeholders are interpolated from the method arguments. See [AOP](16-AOP.md) and [Cache](14-CACHE.md).
+
+## 22) Dispatching Events
+
+Dispatch typed events and listen for them:
+
+```php
+// Event class
+class OrderShipped
+{
+    public function __construct(
+        public readonly int $orderId,
+        public readonly string $trackingNumber,
+    ) {}
+}
+
+// Dispatch
+$ctx->events()->dispatch(new OrderShipped($order->id, $tracking));
+
+// Listen (in bootstrap)
+$dispatcher->listen(OrderShipped::class, function (OrderShipped $event) use ($ctx) {
+    $ctx->logger()->info('Order shipped', ['id' => $event->orderId]);
+    // Send notification email, update external API, etc.
+});
+```
+
+Class-string listeners are autowired through AppContext:
+
+```php
+class ShipNotificationListener
+{
+    public function __construct(private SmtpMailer $mailer) {}
+
+    public function __invoke(OrderShipped $event): void
+    {
+        $this->mailer->send(...);
+    }
+}
+
+$dispatcher->listen(OrderShipped::class, ShipNotificationListener::class);
+```
+
+See [Events](13-EVENTS.md).
+
+## 23) Rate Limiting an Endpoint
+
+Protect endpoints against abuse with `RateLimiter`:
+
+```php
+use Azera\Security\RateLimiter;
+
+$limiter = new RateLimiter($ctx->cache());
+$ip = $ctx->request()->server('REMOTE_ADDR', '0.0.0.0');
+
+if (!$limiter->limit('api:' . $ip, 100, 60)) {
+    return Response::json(['error' => 'Rate limit exceeded'], 429);
+}
+```
+
+> Requires a persistent PSR-16 cache (Redis/Memcached) for multi-process rate limiting. `ArrayCache` only works within a single process. See [Security](18-SECURITY-ENTERPRISE.md).
+
+## 24) CSRF Protection
+
+Add `CsrfMiddleware` to the pipeline to protect state-changing requests:
+
+```php
+use Azera\Security\CsrfMiddleware;
+
+$dispatcher->addMiddleware(new CsrfMiddleware());
+```
+
+In views, include the token in forms:
+
+```html
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+```
+
+Generate the token in the controller:
+
+```php
+$session = $ctx->session();
+$token = (new CsrfMiddleware())->ensureToken($session);
+```
+
+See [Security](18-SECURITY-ENTERPRISE.md).
+
+## 25) Password Hashing
+
+Use `Hasher` for secure password storage:
+
+```php
+use Azera\Security\Hasher;
+
+$hasher = new Hasher();
+
+// On registration
+$user->password_hash = $hasher->make($plainPassword);
+$user->save();
+
+// On login
+if ($hasher->verify($inputPassword, $user->password_hash)) {
+    // Check if hash needs upgrading
+    if ($hasher->needsRehash($user->password_hash)) {
+        $user->password_hash = $hasher->make($inputPassword);
+        $user->save();
+    }
+    // Login successful
+}
+```
+
+See [Security](18-SECURITY-ENTERPRISE.md).
