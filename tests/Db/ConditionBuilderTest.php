@@ -62,7 +62,7 @@ class ConditionBuilderTest extends TestCase
                 ->orWhere('e', 5);
         });
 
-        $this->assertEquals('("a" = 1) AND (("b" = 2) OR ("c" = 3))', $cb->toSql());
+        $this->assertEquals('("a" = 1) AND (("b" = 2) OR ("c" = 3)) AND (("d" = 4) OR ("e" = 5))', $cb->toSql());
     }
 
     public function testOrGroup(): void

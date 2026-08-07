@@ -21,8 +21,7 @@ class Response
         protected int $status = 200,
         protected array $headers = [],
         protected string $body = ''
-    ) {
-    }
+    ) {}
 
     /**
      * Set the HTTP status code.
@@ -34,6 +33,46 @@ class Response
     {
         $this->status = $code;
         return $this;
+    }
+
+    /**
+     * Get the HTTP status code.
+     *
+     * @return int
+     */
+    public function getStatus(): int
+    {
+        return $this->status;
+    }
+
+    /**
+     * Get a response header value, or a default when not set.
+     *
+     * @param string $name    Header name.
+     * @param mixed  $default Default when the header is absent.
+     * @return mixed
+     */
+    public function getHeader(string $name, mixed $default = null): mixed
+    {
+        return $this->headers[$name] ?? $default;
+    }
+
+    /**
+     * Get all response headers.
+     *
+     * @return array<string,string>
+     */
+    public function getHeaders(): array
+    {
+        return $this->headers;
+    }
+
+    /**
+     * Get the response body.
+     */
+    public function getBody(): string
+    {
+        return $this->body;
     }
 
     /**

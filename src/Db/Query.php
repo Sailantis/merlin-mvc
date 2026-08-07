@@ -10,29 +10,29 @@ use PDOStatement;
 
 /**
  * Unified query builder for SELECT, INSERT, UPDATE, DELETE operations
- * 
+ *
  * @template T of Model
  * @method static Query<T> new(?Database $db = null)
  * @method ResultSet<T> select(array|string|null $columns = null)
  * @method T|null first()
- * 
+ *
  * @example
  * // SELECT
  * $users = Query::new()->table('users')->where('active', 1)->select();
  * $user = Query::new()->table('users')->where('id', 5)->first();
- * 
+ *
  * // INSERT
  * Query::new()->table('users')->insert(['name' => 'John', 'email' => 'john@example.com']);
- * 
+ *
  * // UPSERT with ON CONFLICT/ON DUPLICATE KEY UPDATE
  * Query::new()->table('users')->upsert(['id' => 1, 'name' => 'John', 'email' => 'john@example.com']);
- * 
+ *
  * // UPDATE
  * Query::new()->table('users')->where('id', 5)->update(['name' => 'Jane']);
- * 
+ *
  * // DELETE
  * Query::new()->table('users')->where('id', 5)->delete();
- * 
+ *
  * // EXISTS / COUNT
  * $exists = Query::new()->table('users')->where('email', 'test@example.com')->exists();
  * $count = Query::new()->table('users')->where('active', 1)->count();
@@ -214,11 +214,11 @@ class Query extends Condition
     public function table(string $name, ?string $alias = null): Query
     {
         if (self::$useModels && !isset(self::$modelMapping)) {
-			$this->model = self::getModel($name);
+            $this->model = self::getModel($name);
         } else {
-    		$this->model = null;
+            $this->model = null;
         }
-        $this->table = $this->protectIdentifier($name, self::PI_TABLE, $alias);
+        $this->table       = $this->protectIdentifier($name, self::PI_TABLE, $alias);
         $this->forceSelect = false;
         return $this;
     }
@@ -240,7 +240,7 @@ class Query extends Condition
                 $sql .= ' AS ' . $this->quoteIdentifier($alias);
             }
             $this->subQueryBindings = $source->getBindings() + $this->subQueryBindings;
-            $this->forceSelect = true; // Force SELECT mode for subqueries
+            $this->forceSelect      = true; // Force SELECT mode for subqueries
         } else {
             if (self::$useModels && !isset(self::$modelMapping)) {
                 $this->model = self::getModel($source);
@@ -311,7 +311,8 @@ class Query extends Condition
     public function values(array|object $values, bool $escape = true): static
     {
         $values = \is_object($values)
-            ? \get_object_vars($values) : $values;
+            ? \get_object_vars($values)
+            : $values;
 
         if ($escape) {
             foreach ($values as $index => $value) {
@@ -454,7 +455,7 @@ class Query extends Condition
         if ($model instanceof Query) {
             $this->subQueryBindings = $model->getBindings() + $this->subQueryBindings;
             $model = '(' . $model->toSql() . ')';
-            $pos = false;
+            $pos   = false;
         } else {
             $pos = strrpos($model, ' ');
         }
@@ -463,7 +464,7 @@ class Query extends Condition
             // part as alias
             if ($conditions === null && $alias !== null) {
                 $conditions = $alias;
-                $alias = null;
+                $alias      = null;
             }
 
             if ($alias === null) {
@@ -473,14 +474,14 @@ class Query extends Condition
 
         } elseif ($alias instanceof Condition) {
             $conditions = $alias;
-            $alias = null;
+            $alias      = null;
 
         } elseif (
             \is_string($alias) &&
             preg_match('/[=<>!]| LIKE | IN | IS | BETWEEN /i', $alias)
         ) {
             $conditions = $alias;
-            $alias = null;
+            $alias      = null;
 
         } else {
             if ($conditions === null) {
@@ -488,7 +489,7 @@ class Query extends Condition
             }
         }
 
-        // Register table in cache before compiling join conditions to allow 
+        // Register table in cache before compiling join conditions to allow
         // referencing the alias in conditions
         $table = $this->getFullTableName($model, is_string($alias) ? $alias : null);
 
@@ -497,9 +498,9 @@ class Query extends Condition
         }
 
         $this->joins[] = [
-            'table' => $table,
+            'table'      => $table,
             'conditions' => $conditions,
-            'type' => $type,
+            'type'       => $type,
         ];
 
         return $this;
@@ -643,7 +644,7 @@ class Query extends Condition
         // List array -> EXCLUDED/VALUES mode
         if (isset($updateValues[0])) {
             // Assume values are column names, convert to column => EXCLUDED/VALUES(column) pairs
-            $this->updateValues = $updateValues;
+            $this->updateValues       = $updateValues;
             $this->updateValuesIsList = true;
             return $this;
         }
@@ -657,7 +658,7 @@ class Query extends Condition
             }
         }
 
-        $this->updateValues = $updateValues;
+        $this->updateValues       = $updateValues;
         $this->updateValuesIsList = false;
         return $this;
     }
@@ -705,7 +706,7 @@ class Query extends Condition
     public function toSql(): string
     {
         $this->isReadQuery = true;
-        $db = $this->getDb();
+        $db    = $this->getDb();
         $query = $this->compileSelect($db);
         return $this->prepareQueryForReturn($query);
     }
@@ -1073,7 +1074,7 @@ class Query extends Condition
                     $statement = 'INSERT OR IGNORE INTO ';
                     break;
                 case 'pgsql':
-                    $statement = 'INSERT INTO ';
+                    $statement      = 'INSERT INTO ';
                     $conflictClause = ' ON CONFLICT DO NOTHING ';
                     break;
                 default:
@@ -1269,7 +1270,7 @@ class Query extends Condition
             foreach ($this->columns as $column) {
                 $pos = strpos($column, '=');
                 if ($pos > 0) {
-                    $value = ltrim(substr($column, $pos + 1));
+                    $value  = ltrim(substr($column, $pos + 1));
                     $column = rtrim(substr($column, 0, $pos));
                 } else {
                     $value = ":$column";
@@ -1484,9 +1485,7 @@ class Query extends Condition
                 // Will also populate $this->tableCache.
                 return $this->getFullTableName($model, null);
             }
-        } catch (\Throwable $e) {
-            // Fall back to escaping below.
-        }
+        } catch (\Throwable $e) {}
         // Plain table name or alias.
         return $this->quoteIdentifier($model);
     }
@@ -1509,18 +1508,18 @@ class Query extends Condition
             if (empty($cacheItem['source'])) {
                 throw new Exception("Model '$modelName' does not have a source defined in model mapping");
             }
-            $table = $this->quoteIdentifier($cacheItem['source']);
+            $table  = $this->quoteIdentifier($cacheItem['source']);
             $schema = $cacheItem['schema'] ?? null;
         } elseif (self::$useModels) {
             // Get table from model instance
-            $model = self::getModel($modelName);
-            $table = $this->quoteIdentifier($model->source());
+            $model  = self::getModel($modelName);
+            $table  = $this->quoteIdentifier($model->source());
             $schema = $model->schema();
         } else {
             // Use model name as table name
             $items = explode('.', $modelName);
             $table = '';
-            $sep = '';
+            $sep   = '';
             foreach ($items as $item) {
                 $table .= $sep;
                 $table .= $this->quoteIdentifier($item);
@@ -1572,7 +1571,7 @@ class Query extends Condition
      * @return array
      * @throws Exception
      */
-    protected function protectColumns(Database $db, array $columns = null): array
+    protected function protectColumns(Database $db, ?array $columns = null): array
     {
         $columnsToProtect = $columns;
 
@@ -1629,7 +1628,7 @@ class Query extends Condition
      * @param int $page Page number (1-based)
      * @param int $pageSize Number of items per page
      * @param bool $reverse Whether to reverse the order of results (for efficient deep pagination)
-     * @return Paginator
+     * @return Paginator<T>
      */
     public function paginate(
         int $page = 1,

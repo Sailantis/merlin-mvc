@@ -3,7 +3,20 @@
 namespace Azera\Db;
 
 use Azera\Db\Exceptions\TransactionLostException;
+use Azera\Db\Event\DatabaseExceptionOccurred;
+use Azera\Db\Event\QueryExecuted;
+use Azera\Db\Event\ReconnectAborted;
+use Azera\Db\Event\ReconnectAttempt;
+use Azera\Db\Event\ReconnectFailed;
+use Azera\Db\Event\Reconnected;
+use Azera\Db\Event\StatementExecuted;
+use Azera\Db\Event\StatementPrepared;
+use Azera\Db\Event\TransactionCommitted;
+use Azera\Db\Event\TransactionRolledBack;
+use Azera\Db\Event\TransactionStarted;
 use Azera\Core\Model;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Azera\AppContext;
 
 use PDO;
 use PDOException;
@@ -35,8 +48,8 @@ class Database
 
 	protected bool|array $autoReconnect = false;
 
-	/** Event listeners for database events */
-	protected array $listeners = [];
+	/** @var EventDispatcherInterface|null Cached event dispatcher (resolved lazily). */
+	protected ?EventDispatcherInterface $eventDispatcher = null;
 
 	/**
 	 * Create a new database connection using the provided DSN, credentials and options.
@@ -51,8 +64,7 @@ class Database
 		string $user = "",
 		string $pass = "",
 		array $options = []
-	)
-	{
+	) {
 		$this->connectString = $dsn;
 		$this->user          = $user;
 		$this->pass          = $pass;
@@ -93,21 +105,14 @@ class Database
 	}
 
 	/**
-	 * Add an event listener for database events
-	 * @param callable $listener A callable that receives the event name and relevant data
-	 * @return static
+	 * Resolve the event dispatcher from AppContext, cached on first call.
+	 *
+	 * Returns a NullEventDispatcher when no real dispatcher is registered,
+	 * so dispatch() is always safe and cheap (single no-op method call).
 	 */
-	public function addListener(callable $listener): static
+	protected function events(): EventDispatcherInterface
 	{
-		$this->listeners[] = $listener;
-		return $this;
-	}
-
-	protected function fire(string $event, ...$args): void
-	{
-		foreach ($this->listeners as $listener) {
-			$listener($event, ...$args);
-		}
+		return $this->eventDispatcher ??= AppContext::instance()->events();
 	}
 
 	/**
@@ -129,8 +134,7 @@ class Database
 		float $maxRetryDelay = 30.0,
 		bool $jitter = true,
 		?callable $onReconnect = null
-	): static
-	{
+	): static {
 		$this->autoReconnect = [
 			'enabled'           => $enabled,
 			'maxAttempts'       => $maxAttempts > 0 ? $maxAttempts : null,
@@ -161,9 +165,9 @@ class Database
 	 */
 	public function query(string $statement, ?array $params = null): bool|PDOStatement
 	{
+		$start = microtime(true);
 		retry:
 		try {
-			$this->fire('db.beforeQuery', $statement, $params);
 			if (!empty($params)) {
 				$stmt = $this->pdo->prepare($statement);
 				$stmt->execute($params);
@@ -171,18 +175,21 @@ class Database
 				$stmt = $this->pdo->query($statement);
 			}
 			if ($stmt === false) {
-				if ($stmt === false) {
-					$info          = $this->pdo->errorInfo();
-					$ex            = new PDOException($info[2] ?? 'Unknown error');
-					$ex->errorInfo = $info;
-					throw $ex;
-				}
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
+				$ex->errorInfo = $info;
+				throw $ex;
 			}
 		} catch (PDOException $exception) {
 			$this->processPdoException($exception);
 			goto retry;
 		} finally {
-			$this->fire('db.afterQuery', $statement, $params);
+			$this->events()->dispatch(new QueryExecuted(
+				$this,
+				$statement,
+				$params,
+				(microtime(true) - $start) * 1000.0
+			));
 		}
 		$this->statement = $stmt;
 		return ($stmt->columnCount() > 0) ? $stmt : true;
@@ -198,11 +205,10 @@ class Database
 	{
 		retry:
 		try {
-			$this->fire('db.beforePrepare', $statement);
 			$stmt = $this->pdo->prepare($statement);
 			if ($stmt === false) {
-				$info          = $this->pdo->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -210,7 +216,7 @@ class Database
 			$this->processPdoException($exception);
 			goto retry;
 		} finally {
-			$this->fire('db.afterPrepare', $statement);
+			$this->events()->dispatch(new StatementPrepared($this, $statement));
 		}
 		$this->statement = $stmt;
 		return $stmt;
@@ -230,14 +236,13 @@ class Database
 				"No prepared statement to execute"
 			);
 		}
+		$start = microtime(true);
 		try {
-			$this->fire('db.beforeExecute', $this->statement, $params);
-
 			$ok = $this->statement->execute($params);
 
 			if ($ok === false) {
-				$info          = $this->statement->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->statement->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -246,7 +251,11 @@ class Database
 			$this->processPdoException($exception);
 			throw $exception;
 		} finally {
-			$this->fire('db.afterExecute', $this->statement, $params);
+			$this->events()->dispatch(new StatementExecuted(
+				$this,
+				$params,
+				(microtime(true) - $start) * 1000.0
+			));
 		}
 
 		return ($this->statement->columnCount() > 0) ? $this->statement : true;
@@ -258,7 +267,7 @@ class Database
 	 */
 	protected function processPdoException(PDOException $exception)
 	{
-		$this->fire('db.exception', $exception);
+		$this->events()->dispatch(new DatabaseExceptionOccurred($this, $exception));
 		$inTransaction = !empty($this->transactionLevel);
 		switch ($exception->errorInfo[1]) {
 			case 1213:
@@ -317,11 +326,8 @@ class Database
 		$currentDelay = $retryDelay;
 
 		while ($maxAttempts === null || $attempt <= $maxAttempts) {
-			$this->fire(
-				'db.reconnectAttempt',
-				$attempt,
-				$currentDelay,
-				$exception
+			$this->events()->dispatch(
+				new ReconnectAttempt($this, $attempt, $currentDelay, $exception)
 			);
 
 			// Sleep with optional jitter
@@ -353,29 +359,23 @@ class Database
 					try {
 						($reconnectCallback)($attempt, $this);
 					} catch (\Exception $callbackEx) {
-						$this->fire(
-							'db.reconnectCallbackFailed',
-							$callbackEx,
-							$attempt
+						$this->events()->dispatch(
+							new ReconnectFailed($this, $callbackEx, $attempt)
 						);
 					}
 				}
 
-				$this->fire('db.reconnected', $attempt);
-
-				if ($inTransaction) {
-					throw new TransactionLostException(
-						"Lost transaction during reconnect",
-						8001,
-						$exception
-					);
-				}
+				$this->events()->dispatch(
+					new Reconnected($this, $attempt)
+				);
 
 				// Re-run last command
 				return;
 
 			} catch (\Exception $reconnectEx) {
-				$this->fire('db.reconnectFailed', $reconnectEx, $attempt);
+				$this->events()->dispatch(
+					new ReconnectFailed($this, $reconnectEx, $attempt)
+				);
 
 				// Calculate next delay with exponential backoff
 				$currentDelay = min($currentDelay * $backoffMultiplier, $maxRetryDelay);
@@ -384,7 +384,9 @@ class Database
 		}
 
 		// All retry attempts exhausted
-		$this->fire('db.reconnectAborted', $attempt);
+		$this->events()->dispatch(
+			new ReconnectAborted($this, $attempt)
+		);
 	}
 
 	/**
@@ -447,8 +449,8 @@ class Database
 				"SELECT currval(pg_catalog.pg_get_serial_sequence(:table, :field))"
 			);
 			if ($stmt === false) {
-				$info          = $this->pdo->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -473,7 +475,6 @@ class Database
 	{
 		try {
 			$this->transactionLevel++;
-			$this->fire('db.beforeBegin', $nesting, $this->transactionLevel);
 			if ($this->transactionLevel === 1) {
 				$result = $this->pdo->beginTransaction();
 			} elseif ($nesting) {
@@ -492,8 +493,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info          = $this->pdo->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -502,7 +503,9 @@ class Database
 			$this->processPdoException($exception);
 			throw $exception;
 		} finally {
-			$this->fire('db.afterBegin', $nesting, $this->transactionLevel);
+			$this->events()->dispatch(
+				new TransactionStarted($this, $nesting, $this->transactionLevel)
+			);
 		}
 	}
 
@@ -520,7 +523,6 @@ class Database
 			);
 		}
 		try {
-			$this->fire('db.beforeCommit', $nesting, $this->transactionLevel);
 			$level = $this->transactionLevel--;
 			if ($level === 1) {
 				$result = $this->pdo->commit();
@@ -538,8 +540,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info          = $this->pdo->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -548,7 +550,9 @@ class Database
 			$this->processPdoException($exception);
 			throw $exception;
 		} finally {
-			$this->fire('db.afterCommit', $nesting, $this->transactionLevel);
+			$this->events()->dispatch(
+				new TransactionCommitted($this, $nesting, $this->transactionLevel)
+			);
 		}
 	}
 
@@ -566,7 +570,6 @@ class Database
 			);
 		}
 		try {
-			$this->fire('db.beforeRollback', $nesting, $this->transactionLevel);
 			$level = $this->transactionLevel--;
 			if ($level === 1) {
 				$result = $this->pdo->rollBack();
@@ -584,8 +587,8 @@ class Database
 				return false;
 			}
 			if ($result === false) {
-				$info          = $this->pdo->errorInfo();
-				$ex            = new PDOException($info[2] ?? 'Unknown error');
+				$info = $this->pdo->errorInfo();
+				$ex   = new PDOException($info[2] ?? 'Unknown error');
 				$ex->errorInfo = $info;
 				throw $ex;
 			}
@@ -594,7 +597,9 @@ class Database
 			$this->processPdoException($exception);
 			throw $exception;
 		} finally {
-			$this->fire('db.afterRollback', $nesting, $this->transactionLevel);
+			$this->events()->dispatch(
+				new TransactionRolledBack($this, $nesting, $this->transactionLevel)
+			);
 		}
 	}
 

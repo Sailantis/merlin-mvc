@@ -1,14 +1,26 @@
 <?php
 namespace Azera;
 
+use Azera\Cache\NullCache;
+use Azera\Config\Config;
 use Azera\Core\Dispatcher;
 use Azera\Core\Engines\ClarityEngine;
 use Azera\Core\Router;
 use Azera\Core\ViewEngine;
 use Azera\Db\DatabaseManager;
+use Azera\Event\NullEventDispatcher;
 use Azera\Http\Cookies;
 use Azera\Http\Request as HttpRequest;
 use Azera\Http\Session;
+use Azera\Log\NullLogger;
+use Azera\Queue\QueueInterface;
+use Azera\Aop\Advice;
+use Azera\Aop\Advised;
+use Azera\Aop\InterceptorInterface;
+use Azera\Aop\ProxyFactory;
+use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
+use Psr\SimpleCache\CacheInterface;
 use RuntimeException;
 
 class AppContext
@@ -53,6 +65,24 @@ class AppContext
     protected ?ResolvedRoute $route = null;
 
     protected DatabaseManager $dbManager;
+
+    protected ?LoggerInterface $logger = null;
+
+    protected ?EventDispatcherInterface $events = null;
+
+    protected ?CacheInterface $cache = null;
+
+    protected ?QueueInterface $queue = null;
+
+    protected ?Config $config = null;
+
+    /** @var array<class-string<Advice>, InterceptorInterface> Map of advice class => interceptor */
+    protected array $interceptors = [];
+
+    protected ?ProxyFactory $proxyFactory = null;
+
+    /** @var array<string, bool> Cache of whether a class has #[Advised] */
+    private array $advisedCache = [];
 
     // --- Singleton ---
 
@@ -106,7 +136,7 @@ class AppContext
      */
     public function setView(ViewEngine $engine): static
     {
-        $this->view                                  = $engine;
+        $this->view = $engine;
         $this->serviceDefinitions[ViewEngine::class] = $engine;
         $this->serviceInstances[ViewEngine::class]   = $engine;
         return $this;
@@ -145,6 +175,207 @@ class AppContext
     public function dispatcher(): Dispatcher
     {
         return $this->dispatcher ??= new Dispatcher();
+    }
+
+    // --- Enterprise Subsystems (lazy, opt-in) ---
+
+    /**
+     * Get the logger instance. Returns a {@see NullLogger} if no logger
+     * has been registered, so calling code can safely log without
+     * null-checks. Register a real logger via `set(LoggerInterface::class, ...)`.
+     *
+     * @return LoggerInterface
+     */
+    public function logger(): LoggerInterface
+    {
+        return $this->logger ??= $this->getOrNull(LoggerInterface::class) ?? new NullLogger();
+    }
+
+    /**
+     * Get the event dispatcher. Returns a {@see NullEventDispatcher} if
+     * none has been registered, so `dispatch()` is always safe. Register
+     * a real dispatcher via `set(EventDispatcherInterface::class, ...)`.
+     *
+     * @return EventDispatcherInterface
+     */
+    public function events(): EventDispatcherInterface
+    {
+        return $this->events ??= $this->getOrNull(EventDispatcherInterface::class) ?? new NullEventDispatcher();
+    }
+
+    /**
+     * Get the cache instance. Returns a {@see NullCache} if none has been
+     * registered (always reports a miss). Register a real cache via
+     * `set(CacheInterface::class, ...)`.
+     *
+     * @return CacheInterface
+     */
+    public function cache(): CacheInterface
+    {
+        return $this->cache ??= $this->getOrNull(CacheInterface::class) ?? new NullCache();
+    }
+
+    /**
+     * Get the queue instance.
+     *
+     * Unlike the other subsystems, the queue has no null implementation
+     * because silently dropping jobs would be dangerous. If no queue is
+     * registered, this throws a LogicException with an install hint.
+     * Register a queue via `set(QueueInterface::class, ...)`.
+     *
+     * @return QueueInterface
+     * @throws \LogicException If no queue is registered.
+     */
+    public function queue(): QueueInterface
+    {
+        if ($this->queue !== null) {
+            return $this->queue;
+        }
+
+        $q = $this->getOrNull(QueueInterface::class);
+        if ($q === null) {
+            throw new \LogicException(
+                'No queue registered. Set one via '
+                . 'AppContext::set(QueueInterface::class, $queue). '
+                . 'For synchronous processing, use Azera\\Queue\\SyncQueue.'
+            );
+        }
+        return $this->queue = $q;
+    }
+
+    /**
+     * Get the configuration service. Lazily creates a {@see Config}
+     * if none has been registered.
+     *
+     * @return Config
+     */
+    public function config(): Config
+    {
+        return $this->config ??= $this->getOrNull(Config::class) ?? new Config();
+    }
+
+    /**
+     * Create a pipeline for explicit interceptor composition.
+     *
+     * This is the no-proxy alternative to AOP attributes. It lets you
+     * wrap any callable with interceptors without generating proxy
+     * classes. The same interceptors that work with the proxy AOP
+     * also work here.
+     *
+     * Example:
+     * <code>
+     * $result = $ctx->pipeline()
+     *     ->through([new RetryInterceptor(3), new LogInterceptor($logger)])
+     *     ->call(fn() => $service->chargeCard(100));
+     * </code>
+     *
+     * @param InterceptorInterface[] $interceptors
+     * @return \Azera\Aop\Pipeline
+     */
+    public function pipeline(array $interceptors = []): \Azera\Aop\Pipeline
+    {
+        return new \Azera\Aop\Pipeline($interceptors);
+    }
+
+    /**
+     * Register an interceptor for a specific advice type.
+     *
+     * Once at least one interceptor is registered, the DI container
+     * will proxy classes marked with {@see Advised} that have methods
+     * carrying the corresponding advice attribute.
+     *
+     * @param class-string<Advice>   $adviceClass The advice attribute class.
+     * @param InterceptorInterface    $interceptor The interceptor to handle it.
+     * @return void
+     */
+    public function registerInterceptor(string $adviceClass, InterceptorInterface $interceptor): void
+    {
+        $this->interceptors[$adviceClass] = $interceptor;
+    }
+
+    /**
+     * Get the ProxyFactory, lazily created and configured with
+     * all registered interceptors.
+     */
+    protected function proxyFactory(): ProxyFactory
+    {
+        if ($this->proxyFactory === null) {
+            $this->proxyFactory = new ProxyFactory();
+            // Default cache dir: sys_get_temp_dir()/azera_aop (OPcache-friendly).
+            // Set to null via setAopCacheDir(null) to use eval (development).
+            $this->proxyFactory->setCacheDir(
+                $this->aopCacheDir
+                ?? sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'azera_aop'
+            );
+            foreach ($this->interceptors as $adviceClass => $interceptor) {
+                $this->proxyFactory->register($adviceClass, $interceptor);
+            }
+            ProxyFactory::setCurrent($this->proxyFactory);
+        }
+        return $this->proxyFactory;
+    }
+
+    /**
+     * Set the AOP proxy cache directory.
+     *
+     * Pass a path for file-based proxy generation (OPcache-cached, production).
+     * Pass null to use eval() (development, no cache files).
+     *
+     * @param string|null $dir
+     * @return void
+     */
+    public function setAopCacheDir(?string $dir): void
+    {
+        if ($this->proxyFactory !== null) {
+            $this->proxyFactory->setCacheDir($dir);
+        }
+        $this->aopCacheDir = $dir;
+    }
+
+    /** @var string|null AOP cache directory (stored before proxyFactory is created). */
+    private ?string $aopCacheDir = null;
+
+    /**
+     * Check if a class is marked with #[Advised] and has at least one
+     * method with a registered advice attribute. Cached per class.
+     */
+    private function hasAdvisedMethods(\ReflectionClass $ref): bool
+    {
+        $className = $ref->getName();
+
+        if (isset($this->advisedCache[$className])) {
+            return $this->advisedCache[$className];
+        }
+
+        // Fast check: class (or any parent) must have #[Advised] attribute.
+        // Class-level attributes are NOT inherited by PHP, so we walk
+        // up the parent chain ourselves.
+        $hasAdvised = false;
+        $class      = $ref;
+        do {
+            if ($class->getAttributes(Advised::class) !== []) {
+                $hasAdvised = true;
+                break;
+            }
+        } while ($class = $class->getParentClass());
+
+        if (!$hasAdvised) {
+            return $this->advisedCache[$className] = false;
+        }
+
+        // Check if any method has a registered advice attribute.
+        // Method-level attributes ARE inherited in PHP — getAttributes()
+        // on an inherited method returns the declaring class's attributes.
+        foreach ($ref->getMethods() as $method) {
+            foreach ($method->getAttributes() as $attr) {
+                $attrClass = $attr->getName();
+                if (isset($this->interceptors[$attrClass])) {
+                    return $this->advisedCache[$className] = true;
+                }
+            }
+        }
+
+        return $this->advisedCache[$className] = false;
     }
 
     // --- Critical Services ---
@@ -241,7 +472,7 @@ class AppContext
         }
 
         if (class_exists($id)) {
-            $service                       = $this->build($id);
+            $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
             $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
@@ -271,7 +502,7 @@ class AppContext
         }
 
         if (class_exists($id)) {
-            $service                       = $this->build($id);
+            $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
             $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
@@ -309,7 +540,7 @@ class AppContext
         }
 
         if (is_string($definition) && class_exists($definition)) {
-            $service                       = $this->build($definition);
+            $service = $this->build($definition);
             $this->serviceDefinitions[$id] = $service;
             $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
@@ -367,6 +598,21 @@ class AppContext
             case DatabaseManager::class:
                 $this->dbManager = $service;
                 break;
+            case LoggerInterface::class:
+                $this->logger = $service;
+                break;
+            case EventDispatcherInterface::class:
+                $this->events = $service;
+                break;
+            case CacheInterface::class:
+                $this->cache = $service;
+                break;
+            case QueueInterface::class:
+                $this->queue = $service;
+                break;
+            case Config::class:
+                $this->config = $service;
+                break;
         }
     }
 
@@ -374,10 +620,45 @@ class AppContext
     {
         $ref = new \ReflectionClass($class);
 
-        // No constructor -> simple instantiation
+        // AOP fast path: if no interceptors registered, instantiate directly.
+        if ($this->interceptors === []) {
+            return $this->instantiate($ref, $class);
+        }
+
+        // AOP fast path: if class is not #[Advised] with matching methods,
+        // instantiate directly — zero proxy overhead.
+        if (!$this->hasAdvisedMethods($ref)) {
+            return $this->instantiate($ref, $class);
+        }
+
+        // Build the proxy class and instantiate it directly.
+        // The proxy extends the target class, so constructor DI works
+        // the same way — the proxy IS the instance.
+        $proxyClass = $this->proxyFactory()->buildProxyClass($ref);
+
+        if ($proxyClass === null) {
+            return $this->instantiate($ref, $class);
+        }
+
+        return $this->instantiate(new \ReflectionClass($proxyClass), $proxyClass);
+    }
+
+    /**
+     * Instantiate a class, resolving constructor dependencies via DI.
+     */
+    private function instantiate(\ReflectionClass $ref, string $class): object
+    {
         if (!$ref->getConstructor()) {
             return new $class();
         }
+        return $this->instantiateWithDeps($ref, $class);
+    }
+
+    /**
+     * Instantiate a class with constructor dependencies resolved via DI.
+     */
+    private function instantiateWithDeps(\ReflectionClass $ref, string $class): object
+    {
 
         $args = [];
 

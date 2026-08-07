@@ -16,12 +16,6 @@ class DatabaseManager
 
     protected ?string $defaultRole = null;
 
-    /** @var callable[] Listeners applied to every database connection */
-    protected array $globalListeners = [];
-
-    /** @var array<string, callable[]> Listeners applied to a specific role */
-    protected array $roleListeners = [];
-
     /**
      * Define a database connection for a specific role.
      *
@@ -37,41 +31,6 @@ class DatabaseManager
         }
         if ($this->defaultRole === null) {
             $this->defaultRole = $role;
-        }
-        return $this;
-    }
-
-    /**
-     * Add an event listener that will be attached to every database connection managed by this instance.
-     * Listeners registered before a factory is resolved will be applied on first access.
-     * Listeners registered after a connection is already resolved will be applied immediately.
-     *
-     * @param callable $listener A callable that receives (string $event, mixed ...$args)
-     * @return $this
-     */
-    public function addGlobalListener(callable $listener): static
-    {
-        $this->globalListeners[] = $listener;
-        foreach ($this->instances as $db) {
-            $db->addListener($listener);
-        }
-        return $this;
-    }
-
-    /**
-     * Add an event listener for a specific database role.
-     * If the role's connection is already resolved, the listener is applied immediately.
-     * If the role uses a factory that has not been called yet, the listener will be applied on first access.
-     *
-     * @param string $role The name of the role to listen on
-     * @param callable $listener A callable that receives (string $event, mixed ...$args)
-     * @return $this
-     */
-    public function addListener(string $role, callable $listener): static
-    {
-        $this->roleListeners[$role][] = $listener;
-        if (isset($this->instances[$role])) {
-            $this->instances[$role]->addListener($listener);
         }
         return $this;
     }
@@ -132,13 +91,6 @@ class DatabaseManager
         }
 
         $this->instances[$role] = $db;
-
-        foreach ($this->globalListeners as $listener) {
-            $db->addListener($listener);
-        }
-        foreach ($this->roleListeners[$role] ?? [] as $listener) {
-            $db->addListener($listener);
-        }
 
         return $db;
     }

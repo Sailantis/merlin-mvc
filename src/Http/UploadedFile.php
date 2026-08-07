@@ -26,8 +26,7 @@ class UploadedFile
         protected string $tmpName,
         protected int $error,
         protected int $size
-    ) {
-    }
+    ) {}
 
     /**
      * Return the original file name as provided by the client.
@@ -36,7 +35,7 @@ class UploadedFile
      *
      * @return string Client-supplied file name.
      */
-    public function getClientFilename(): string
+    public function clientFilename(): string
     {
         return $this->name;
     }
@@ -46,7 +45,7 @@ class UploadedFile
      *
      * @return string Client-supplied media type (e.g. "image/jpeg").
      */
-    public function getClientMediaType(): string
+    public function clientMediaType(): string
     {
         return $this->type;
     }
@@ -56,7 +55,7 @@ class UploadedFile
      *
      * @return int File size in bytes.
      */
-    public function getSize(): int
+    public function size(): int
     {
         return $this->size;
     }

@@ -49,9 +49,9 @@ $request->hasServer('HTTPS');  // isset in $_SERVER
 ## Method and URL
 
 ```php
-$method = $request->getMethod();   // 'GET', 'POST', 'PUT', …
-$uri    = $request->getUri();      // '/users/5?tab=profile'
-$path   = $request->getPath();     // '/users/5'
+$method = $request->method();   // 'GET', 'POST', 'PUT', …
+$uri    = $request->uri();      // '/users/5?tab=profile'
+$path   = $request->path();     // '/users/5'
 
 $request->isPost();    // true when method is POST
 $request->isSecure();  // true when HTTPS
@@ -59,7 +59,7 @@ $request->isJson();    // true for Content-Type: application/json or Accept: app
 $request->isAjax();    // true for fetch/axios/jQuery XHR (see note below)
 ```
 
-> **Method override** – `getMethod()` recognises an `X-HTTP-Method-Override` header sent with a POST request and returns the overridden method (e.g. `'PUT'`), which allows method tunnelling through form submissions.
+> **Method override** – `method()` recognises an `X-HTTP-Method-Override` header sent with a POST request and returns the overridden method (e.g. `'PUT'`), which allows method tunnelling through form submissions.
 
 > **AJAX detection** – `isAjax()` returns `true` when any of the following is present: `Content-Type: application/json`, `Accept: application/json`, or `X-Requested-With: XMLHttpRequest`.
 
@@ -68,14 +68,14 @@ $request->isAjax();    // true for fetch/axios/jQuery XHR (see note below)
 ## Server and Client Information
 
 ```php
-$host       = $request->getHost();          // 'example.com' or 'example.com:8080'
-$scheme     = $request->getScheme();            // 'http' or 'https'
-$port       = $request->getPort();              // 443
-$userAgent  = $request->getUserAgent();
-$clientIp   = $request->getClientIp();     // REMOTE_ADDR
-$clientIp   = $request->getClientIp(true); // trust X-Forwarded-For / HTTP_CLIENT_IP
+$host       = $request->host();          // 'example.com' or 'example.com:8080'
+$scheme     = $request->scheme();            // 'http' or 'https'
+$port       = $request->port();              // 443
+$userAgent  = $request->userAgent();
+$clientIp   = $request->clientIp();     // REMOTE_ADDR
+$clientIp   = $request->clientIp(true); // trust X-Forwarded-For / HTTP_CLIENT_IP
 
-$contentType = $request->getContentType();
+$contentType = $request->contentType();
 ```
 
 ---
@@ -86,17 +86,17 @@ Parse `Accept`, `Accept-Language`, and `Accept-Charset` headers into quality-sor
 
 ```php
 // Accept
-$types       = $request->getAcceptableContent();       // unsorted
-$types       = $request->getAcceptableContent(true);   // sorted by quality
-$bestType    = $request->getBestAccept();               // e.g. 'text/html'
+$types       = $request->acceptableContent();       // unsorted
+$types       = $request->acceptableContent(true);   // sorted by quality
+$bestType    = $request->bestAccept();               // e.g. 'text/html'
 
 // Accept-Language
-$languages   = $request->getLanguages();
-$bestLang    = $request->getBestLanguage();             // e.g. 'en'
+$languages   = $request->languages();
+$bestLang    = $request->bestLanguage();             // e.g. 'en'
 
 // Accept-Charset
-$charsets    = $request->getClientCharsets();
-$bestCharset = $request->getBestCharset();              // e.g. 'utf-8'
+$charsets    = $request->clientCharsets();
+$bestCharset = $request->bestCharset();              // e.g. 'utf-8'
 ```
 
 Each entry in the returned arrays contains the value and its `quality` key (0–1).
@@ -106,12 +106,12 @@ Each entry in the returned arrays contains the value and its `quality` key (0–
 ## JSON Body
 
 ```php
-$raw  = $request->getBody();             // raw php://input string (cached)
-$data = $request->getJsonBody();         // decoded as associative array (default)
-$obj  = $request->getJsonBody(false);    // decoded as stdClass objects
+$raw  = $request->body();             // raw php://input string (cached)
+$data = $request->jsonBody();         // decoded as associative array (default)
+$obj  = $request->jsonBody(false);    // decoded as stdClass objects
 ```
 
-`getJsonBody()` throws `\RuntimeException` if the body is not valid JSON.
+`jsonBody()` throws `\RuntimeException` if the body is not valid JSON.
 
 ---
 
@@ -119,11 +119,11 @@ $obj  = $request->getJsonBody(false);    // decoded as stdClass objects
 
 ```php
 // HTTP Basic Auth
-$auth = $request->getBasicAuth();
+$auth = $request->basicAuth();
 // ['username' => '...', 'password' => '...'] or null
 
 // Any HTTP auth scheme (e.g. "Bearer", "Digest", "Custom")
-$auth = $request->getAuthorization();
+$auth = $request->authorization();
 // ['scheme' => '...', 'token' => '...'] or null
 ```
 
@@ -131,18 +131,18 @@ $auth = $request->getAuthorization();
 
 ## File Uploads
 
-`getFile()` returns a single `UploadedFile` (or `null`). `getFiles()` always returns an array, which is convenient for multi-file inputs.
+`file()` returns a single `UploadedFile` (or `null`). `files()` always returns an array, which is convenient for multi-file inputs.
 
 ```php
-$file = $request->getFile('avatar');
+$file = $request->file('avatar');
 if ($file && $file->isValid()) {
-    $file->moveTo(__DIR__ . '/uploads/' . $file->getClientFilename());
+    $file->moveTo(__DIR__ . '/uploads/' . $file->clientFilename());
 }
 
 // Multi-file input (<input type="file" name="docs[]" multiple>)
-foreach ($request->getFiles('docs') as $doc) {
+foreach ($request->files('docs') as $doc) {
     if ($doc->isValid()) {
-        $doc->moveTo('/storage/' . $doc->getClientFilename());
+        $doc->moveTo('/storage/' . $doc->clientFilename());
     }
 }
 ```
@@ -152,9 +152,9 @@ foreach ($request->getFiles('docs') as $doc) {
 | Method                 | Returns  | Description                                                 |
 | ---------------------- | -------- | ----------------------------------------------------------- |
 | `isValid()`            | `bool`   | `true` when `UPLOAD_ERR_OK`                                 |
-| `getClientFilename()`  | `string` | Original filename from the browser (sanitise before use)    |
-| `getClientMediaType()` | `string` | MIME type reported by the client (not verified server-side) |
-| `getSize()`            | `int`    | File size in bytes                                          |
+| `clientFilename()`  | `string` | Original filename from the browser (sanitise before use)    |
+| `clientMediaType()` | `string` | MIME type reported by the client (not verified server-side) |
+| `size()`            | `int`    | File size in bytes                                          |
 | `moveTo(string $path)` | `void`   | Move to destination; throws `\RuntimeException` on failure  |
 
 ---
@@ -180,7 +180,7 @@ class UserController extends \Azera\Core\Controller
 
     public function apiAction(): array
     {
-        $data = $this->request()->getJsonBody();
+        $data = $this->request()->jsonBody();
         // process $data ...
         return ['ok' => true];
     }

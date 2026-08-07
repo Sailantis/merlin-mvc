@@ -120,6 +120,32 @@ abstract class Model
 	}
 
 	/**
+	 * Create or update a model using database-level UPSERT semantics
+	 * (INSERT ... ON CONFLICT DO UPDATE).  Unlike {@see updateOrCreate()},
+	 * this performs a single query with no prior SELECT — the database
+	 * handles the conflict resolution atomically.
+	 *
+	 * All ID fields must be present in $values so the conflict target is
+	 * well-defined.  On conflict, all non-ID fields from $values are
+	 * updated.
+	 *
+	 * @param array $values Associative array of field values (must include all ID fields)
+	 * @return static The model instance with the given values
+	 */
+	public static function upsert(array $values): static
+	{
+		$instance = new static();
+
+		foreach ($values as $key => $value) {
+			$instance->$key = $value;
+		}
+
+		$instance->__performWrite($values, true);
+
+		return $instance;
+	}
+
+	/**
 	 * Find the first model matching the given conditions or create a new one with the combined conditions and values if none found. This is useful for ensuring a record exists without creating duplicates. Returns the found or created instance.
 	 * @param array $conditions Associative array of field conditions to find the model
 	 * @param array $values Additional values to set on the model if it needs to be created (merged with conditions)
@@ -372,6 +398,7 @@ abstract class Model
 
 	/**
 	 * Save the model to the database. If the model has all ID fields set, it performs an UPDATE, otherwise it performs an INSERT. Returns true if the save was successful, false if there were no changes to save.
+	 *
 	 * @return bool True if the model was saved (inserted or updated), false if there were no changes to save
 	 */
 	public function save(): bool
@@ -400,14 +427,16 @@ abstract class Model
 
 	/**
 	 * Insert the model as a new record in the database. This method performs an INSERT regardless of whether ID fields are set. Returns true if the insert was successful.
+	 *
+	 * @param bool $upsert When true, performs an INSERT ... ON CONFLICT DO UPDATE instead of a plain INSERT.  Requires all ID fields to be set (they serve as the conflict target).
 	 * @return bool True if the model was inserted successfully
 	 */
-	public function insert(): bool
+	public function insert(bool $upsert = false): bool
 	{
 		$excluded = self::__getExcludedProperties();
 		$values   = array_diff_key(get_object_vars($this), $excluded);
 
-		$this->__performWrite($values, false);
+		$this->__performWrite($values, $upsert);
 		$this->saveState();
 
 		return true;
@@ -450,7 +479,7 @@ abstract class Model
 		return true;
 	}
 
-	protected function __performWrite(array $values, bool $isUpsert): bool
+	protected function __performWrite(array $values, bool $upsert): bool
 	{
 		$excluded = self::__getExcludedProperties();
 
@@ -477,7 +506,7 @@ abstract class Model
 		$missingCount = \count($missingMap);
 
 		$builder = static::query();
-		if ($isUpsert) {
+		if ($upsert) {
 			$builder->updateValues($values);
 			$builder->conflict($idFields);
 		}
@@ -497,7 +526,7 @@ abstract class Model
 			$result = $builder->insert($values);
 			if ($missingCount === 1 && is_numeric($result)) {
 				reset($missingMap);
-				$field        = key($missingMap);
+				$field = key($missingMap);
 				$this->$field = $result;
 			}
 		}

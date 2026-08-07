@@ -3,6 +3,8 @@ namespace Azera\Db;
 
 /**
  * Paginator class for paginating database query results.
+ *
+ * @template T of Model
  */
 class Paginator
 {
@@ -17,12 +19,14 @@ class Paginator
     protected int $lastItem = 0;
     protected int $previousPage = 0;
     protected int $nextPage = 0;
+
+    /** @var list<T>|null */
     protected ?array $items = null;
 
-    /** 
+    /**
      * Create a new Paginator instance.
      *
-     * @param Query $builder The Query builder instance to paginate.
+     * @param Query<T> $builder The Query builder instance to paginate.
      * @param int $page The current page number.
      * @param int $pageSize The number of items per page.
      * @param bool $reverse Whether to reverse the order of items.
@@ -33,29 +37,87 @@ class Paginator
         int $pageSize = 30,
         bool $reverse = false
     ) {
-        $this->builder = $builder;
+        $this->builder  = $builder;
         $this->pageSize = max(1, $pageSize);
-        $this->page = max(1, $page);
-        $this->reverse = $reverse;
+        $this->page     = max(1, $page);
+        $this->reverse  = $reverse;
     }
 
     /**
-     * Execute the paginated query and return the items for the current page.
+     * Set whether to reverse the order of items.
      *
-     * @param int $fetchMode The \PDO fetch mode to use (default: \PDO::FETCH_DEFAULT).
-     * @return array The items for the current page.
+     * @param bool $reverse True to reverse the order, false otherwise.
+     * @return static<T>
      */
-    public function execute($fetchMode = \PDO::FETCH_DEFAULT): array
+    public function reverse(bool $reverse = true): static
     {
-        // Count query
+        $this->reverse = $reverse;
+        return $this;
+    }
+
+    /**
+     * Execute and return items as hydrated model instances.
+     *
+     * Requires the query to have a model bound (e.g. via Item::query()).
+     * Each row is fetched as a model instance with saveState() called.
+     *
+     * @return list<T>
+     */
+    public function models(): array
+    {
+        return $this->run(fn(ResultSet $rs) => $rs->allModels());
+    }
+
+    /**
+     * Execute and return items as plain stdClass objects.
+     *
+     * No model hydration — rows are fetched directly via PDO::FETCH_OBJ.
+     * Table resolution and relations still go through the model.
+     */
+    public function objects(): array
+    {
+        return $this->run(fn(ResultSet $rs) => $rs->fetchAll(\PDO::FETCH_OBJ));
+    }
+
+    /**
+     * Execute and return items as associative arrays.
+     *
+     * No model hydration — rows are fetched directly via PDO::FETCH_ASSOC.
+     */
+    public function assoc(): array
+    {
+        return $this->run(fn(ResultSet $rs) => $rs->fetchAll(\PDO::FETCH_ASSOC));
+    }
+
+    /**
+     * Execute and return items using the PDO default fetch mode.
+     *
+     * Backward-compatible with the original execute() API.
+     */
+    public function fetch($fetchMode = \PDO::FETCH_DEFAULT): array
+    {
+        return $this->run(fn(ResultSet $rs) => $rs->fetchAll($fetchMode));
+    }
+
+    /**
+     * Run the paginated query: COUNT + LIMIT/SELECT, then extract rows
+     * using the given callback.  Shared by models(), objects(), assoc(),
+     * and fetch().
+     *
+     * @return list<T>
+     */
+    protected function run(\Closure $fetch): array
+    {
         $this->totalItems = $this->builder->count();
-        $this->lastPage = $this->pageSize ? (int) ceil($this->totalItems / $this->pageSize) : 1;
+        $this->lastPage   = $this->pageSize
+            ? (int) \ceil($this->totalItems / $this->pageSize)
+            : 1;
 
-        $this->previousPage = max(1, $this->page - 1);
-        $this->nextPage = min($this->lastPage, $this->page + 1);
+        $this->previousPage = \max(1, $this->page - 1);
+        $this->nextPage     = \min($this->lastPage, $this->page + 1);
 
-        $offset = ($this->page - 1) * $this->pageSize;
-        $queryLimit = $this->pageSize;
+        $offset      = ($this->page - 1) * $this->pageSize;
+        $queryLimit  = $this->pageSize;
         $queryOffset = $offset;
 
         if ($this->reverse) {
@@ -69,18 +131,19 @@ class Paginator
         $this->items = [];
 
         if ($this->page <= $this->lastPage) {
-            $this->items = $this->builder
+            $result = $this->builder
                 ->limit($queryLimit, $queryOffset)
-                ->select()
-                ->fetchAll($fetchMode);
+                ->select();
+
+            $this->items = $fetch($result);
 
             if ($this->reverse) {
-                $this->items = array_reverse($this->items);
+                $this->items = \array_reverse($this->items);
             }
         }
 
         $this->firstItem = $offset + 1;
-        $this->lastItem = $offset + \count($this->items);
+        $this->lastItem  = $offset + \count($this->items);
 
         return $this->items;
     }
@@ -88,9 +151,9 @@ class Paginator
     /**
      * Get the items for the current page. Return null if the query has not been executed yet.
      *
-     * @return ?array The items for the current page, or null if the query has not been executed yet.
+     * @return list<T>|array|null The items for the current page, or null if the query has not been executed yet.
      */
-    public function get(): ?array
+    public function items(): ?array
     {
         return $this->items;
     }
@@ -184,7 +247,6 @@ class Paginator
     {
         return $this->nextPage <= $this->lastPage;
     }
-
 
     /**
      * Get the last page number.

@@ -41,8 +41,9 @@ abstract class Controller
 	 * @param string $action The name of the action being executed (e.g. "editAction")
 	 * @param array $params The parameters passed to the action (e.g. route variables or DI-resolved dependencies)
 	 * @return Response|null If a Response is returned, it will be sent immediately and the action will be skipped. If null is returned, the action will execute as normal.
+	 * @psalm-suppress UnusedParameter
 	 */
-	public function beforeAction(string $action = null, array $params = []): ?Response
+	public function beforeAction(?string $action = null, array $params = []): ?Response
 	{
 		return null;
 	}
@@ -52,8 +53,9 @@ abstract class Controller
 	 * @param string $action The name of the action that was executed (e.g. "editAction")
 	 * @param array $params The parameters passed to the action (e.g. route variables or DI-resolved dependencies)
 	 * @return Response|null If a Response is returned, it will replace the original response from the action. If null is returned, the original response will be sent.
+	 * @psalm-suppress UnusedParameter
 	 */
-	public function afterAction(string $action = null, array $params = []): ?Response
+	public function afterAction(?string $action = null, array $params = []): ?Response
 	{
 		return null;
 	}

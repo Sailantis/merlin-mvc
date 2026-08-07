@@ -41,13 +41,12 @@ class ResultSet implements \Iterator, \Countable
 		?string $sqlStatement = null,
 		?array $boundParams = null,
 		?Model $model = null
-	)
-	{
-		$this->db = $connection;
-		$this->statement = $statement;
+	) {
+		$this->db           = $connection;
+		$this->statement    = $statement;
 		$this->sqlStatement = $sqlStatement;
-		$this->boundParams = $boundParams;
-		$this->modelClass = $model ? \get_class($model) : null;
+		$this->boundParams  = $boundParams;
+		$this->modelClass   = $model ? \get_class($model) : null;
 
 		$this->fetchMode = $connection->getInternalConnection()
 			->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
@@ -249,6 +248,37 @@ class ResultSet implements \Iterator, \Countable
 	}
 
 	/**
+	 * Convert the result set to a plain array of rows.
+	 *
+	 * Each row is cast to an associative array (via castToArray on model
+	 * instances, or fetched as assoc from PDO for plain rows).  This makes
+	 * the result set compatible with template engines and serializers that
+	 * expect array-like data (e.g. Clarity's castToArray).
+	 *
+	 * @return array<int, array<string, mixed>> All remaining rows as arrays.
+	 */
+	public function toArray(): array
+	{
+		if ($this->modelClass) {
+			$rows = [];
+			while ($model = $this->nextModel()) {
+				$row = [];
+				foreach (\get_object_vars($model) as $key => $val) {
+					// Skip internal model properties (prefixed with __)
+					if (\str_starts_with($key, '__')) {
+						continue;
+					}
+					$row[$key] = $val;
+				}
+				$rows[] = $row;
+			}
+			return $rows;
+		}
+
+		return $this->fetchAllAssoc();
+	}
+
+	/**
 	 * Execute the query again to repopulate the result set.
 	 * @return void
 	 */
@@ -258,26 +288,36 @@ class ResultSet implements \Iterator, \Countable
 			$this->sqlStatement,
 			$this->boundParams
 		);
-		$this->statement = $stmt;
-		$this->currentRow = null;
-		$this->position = 0;
+		$this->statement   = $stmt;
+		$this->currentRow  = null;
+		$this->position    = 0;
 		$this->initialized = false;
-		$this->firstModel = null;
+		$this->firstModel  = null;
 	}
 
 	// Iterator methods
 
-	/** Rewind is a no-op: the result set cursor is forward-only. */
+	/**
+	 * Rewind the iterator to the first row.
+	 *
+	 * The underlying PDOStatement cursor is forward-only, so we cannot
+	 * actually rewind once iteration has started.  However, on the first
+	 * call (before any rows have been fetched) we lazily fetch the first
+	 * row so that valid() returns true and PHP's foreach can begin.
+	 */
 	public function rewind(): void
 	{
-		// The iterator is forwards-only, so we cannot rewind
+		if (!$this->initialized) {
+			$this->currentRow  = $this->fetch();
+			$this->initialized = true;
+		}
 	}
 
 	/** Return the current row (fetched lazily on first access). */
 	public function current(): mixed
 	{
 		if (!$this->initialized) {
-			$this->currentRow = $this->fetch();
+			$this->currentRow  = $this->fetch();
 			$this->initialized = true;
 		}
 		return $this->currentRow;
