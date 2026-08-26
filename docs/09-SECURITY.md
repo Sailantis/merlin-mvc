@@ -100,19 +100,20 @@ function csrf_verify(): void
 }
 ```
 
-Wire validation into a global middleware or your controller's `beforeAction()`:
+Wire validation into a global or controller-level middleware:
 
 ```php
-class FormController extends Controller
+class CsrfMiddleware implements MiddlewareInterface
 {
-    public function beforeAction(?string $action = null, array $params = []): ?Response
+    public function process(AppContext $context, callable $next): ?Response
     {
-        if ($this->request()->getMethod() === 'POST') {
+        if ($context->request()->getMethod() === 'POST') {
             csrf_verify();
         }
-        return null;
+        return $next($context);
     }
 }
+```
 ```
 
 Always use `hash_equals()` for token comparison to prevent timing attacks.

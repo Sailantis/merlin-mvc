@@ -2,10 +2,11 @@
 
 namespace Azera\Db;
 
-use LogicException;
 use Azera\AppContext;
 use Azera\Core\Model;
-use Azera\Core\ModelMapping;
+use Azera\Db\Resolver\LiteralResolver;
+use Azera\Db\Resolver\TableResolver;
+use LogicException;
 use PDOStatement;
 
 /**
@@ -17,87 +18,56 @@ use PDOStatement;
  * @method T|null first()
  *
  * @example
- * // SELECT
- * $users = Query::new()->table('users')->where('active', 1)->select();
- * $user = Query::new()->table('users')->where('id', 5)->first();
+ * // SELECT (raw/literal table)
+ * $users = Query::raw()->table('users')->where('active', 1)->select();
+ * $user = Query::raw()->table('users')->where('id', 5)->first();
+ *
+ * // SELECT (model — resolves table, connection, and enables hydration)
+ * $users = User::query()->where('status', 'active')->select();
  *
  * // INSERT
- * Query::new()->table('users')->insert(['name' => 'John', 'email' => 'john@example.com']);
+ * Query::raw()->table('users')->insert(['name' => 'John', 'email' => 'john@example.com']);
  *
  * // UPSERT with ON CONFLICT/ON DUPLICATE KEY UPDATE
- * Query::new()->table('users')->upsert(['id' => 1, 'name' => 'John', 'email' => 'john@example.com']);
+ * Query::raw()->table('users')->upsert(['id' => 1, 'name' => 'John', 'email' => 'john@example.com']);
  *
  * // UPDATE
- * Query::new()->table('users')->where('id', 5)->update(['name' => 'Jane']);
+ * Query::raw()->table('users')->where('id', 5)->update(['name' => 'Jane']);
  *
  * // DELETE
- * Query::new()->table('users')->where('id', 5)->delete();
+ * Query::raw()->table('users')->where('id', 5)->delete();
  *
  * // EXISTS / COUNT
- * $exists = Query::new()->table('users')->where('email', 'test@example.com')->exists();
- * $count = Query::new()->table('users')->where('active', 1)->count();
+ * $exists = Query::raw()->table('users')->where('email', 'test@example.com')->exists();
+ * $count = Query::raw()->table('users')->where('active', 1)->count();
  */
 class Query extends Condition
 {
     /* -------------------------------------------------------------
-     *  STATIC MODEL RESOLUTION
+     *  RESOLVER
      * ------------------------------------------------------------- */
 
     /**
-     * @var bool
+     * The table resolver for this query. When null, the AppContext default
+     * is used lazily (falling back to a strict ModelResolver).
      */
-    protected static bool $useModels = true;
+    protected ?TableResolver $resolver = null;
 
     /**
-     * @var Model[]
+     * Resolved source descriptor for the primary table, set by {@see table()}.
+     *
+     * @var array{source: string, schema: ?string, read: ?string, write: ?string, modelClass: ?class-string, idFields: ?array}|null
      */
-    protected static array $modelCache = [];
-
-    protected static ?ModelMapping $modelMapping = null;
-
-    /**
-     * Enable or disable automatic model resolution for queries. If enabled, the query will resolve table names and database connections from model classes. If disabled, the query will treat table names as literal and use database connections from AppContext. This can be useful for simple queries or when you want to avoid coupling to model classes.
-     * @param bool $useModels
-     */
-    public static function useModels(bool $useModels): void
-    {
-        self::$useModels = $useModels;
-    }
+    protected ?array $resolvedSource = null;
 
     /**
-     * Set the model mapping instance to use for resolving model class names to table names and database connections. This can be used instead of model classes for simple queries or when you want to avoid coupling to model classes.
-     * @param ModelMapping|null $modelMapping
+     * @var array<string, array> Resolved descriptors for joined tables, keyed by logical name.
      */
-    public static function setModelMapping(?ModelMapping $modelMapping): void
-    {
-        self::$modelMapping = $modelMapping;
-    }
-
-    /**
-     * Get model instance by name, using cache to avoid multiple instantiations. Throws exception if model class does not exist or is not a subclass of Model.
-     * @param string $modelName
-     * @return Model
-     * @throws LogicException
-     */
-    protected static function getModel(string $modelName): Model
-    {
-        if (!isset(self::$modelCache[$modelName])) {
-            if (!class_exists($modelName)) {
-                throw new LogicException('Undefined model "' . $modelName . '"');
-            }
-            if (!is_subclass_of($modelName, Model::class)) {
-                throw new LogicException('Class "' . $modelName . '" is not a valid model');
-            }
-            self::$modelCache[$modelName] = new $modelName();
-        }
-        return self::$modelCache[$modelName];
-    }
+    protected array $resolvedJoins = [];
 
     /* -------------------------------------------------------------
      *  INSTANCE PROPERTIES
      * ------------------------------------------------------------- */
-
-    protected ?Model $model;
 
     protected array $manualBindings = [];
 
@@ -158,18 +128,16 @@ class Query extends Condition
      * ------------------------------------------------------------- */
 
     /**
-     * Constructor. Can optionally pass a Database connection to use for this query, or a Model to automatically set the table and connection.
+     * Constructor. Can optionally pass a Database connection to use for this query.
      * @param Database|null $db
-     * @param Model|null $model
      */
-    public function __construct(?Database $db = null, ?Model $model = null)
+    public function __construct(?Database $db = null)
     {
         parent::__construct($db);
-        $this->model = $model;
     }
 
     /**
-     * Factory method to create a new Query instance. Can optionally pass a Database connection to use for this query.
+     * Factory method to create a new Query instance using the AppContext default resolver.
      * @param Database|null $db
      * @return static
      */
@@ -179,7 +147,48 @@ class Query extends Condition
     }
 
     /**
-     * Get the database connection to use for this query, either from the model or from the AppContext if no connection is set on the query or model
+     * Factory method to create a new Query instance that treats table names as literal
+     * (no model/mapping resolution). Useful for raw queries, small scripts, or when
+     * you want to avoid coupling to model classes.
+     * @param Database|null $db
+     * @return static
+     */
+    public static function raw(?Database $db = null): static
+    {
+        return (new static($db))
+            ->using(AppContext::instance()->get(LiteralResolver::class));
+    }
+
+    /**
+     * Set a custom table resolver for this query. This is the low-level
+     * escape hatch for custom resolver implementations.
+     * @param TableResolver $resolver
+     * @return static
+     */
+    public function using(TableResolver $resolver): static
+    {
+        $this->resolver = $resolver;
+        return $this;
+    }
+
+    /**
+     * Resolve a logical name to a source descriptor via the current resolver.
+     * @param string $name
+     * @return array{source: string, schema: ?string, read: ?string, write: ?string, modelClass: ?class-string, idFields: ?array}
+     */
+    protected function resolve(string $name): array
+    {
+        if ($this->resolver === null) {
+            $this->resolver = AppContext::instance()->get(TableResolver::class);
+        }
+
+        return $this->resolver->resolve($name);
+    }
+
+    /**
+     * Get the database connection to use for this query, either from an
+     * explicit connection, the resolved source's read/write role, or the
+     * AppContext default.
      * @return Database
      * @throws Exception
      */
@@ -189,10 +198,13 @@ class Query extends Condition
             return $this->db;
         }
 
-        if ($this->model !== null) {
-            return $this->isReadQuery
-                ? $this->model->readConnection()
-                : $this->model->writeConnection();
+        if ($this->resolvedSource !== null) {
+            $role = $this->isReadQuery
+                ? ($this->resolvedSource['read'] ?? null)
+                : ($this->resolvedSource['write'] ?? null);
+            if ($role !== null) {
+                return AppContext::instance()->dbManager()->getOrDefault($role);
+            }
         }
 
         $role = $this->isReadQuery ? 'read' : 'write';
@@ -204,22 +216,33 @@ class Query extends Condition
      * ------------------------------------------------------------- */
 
     /**
-     * Set the table for this query. Can be either a table name or a model class name. If a model class name is provided, the corresponding table will be used and the model's database connection will be used if no connection is set on the query.
-     * @template TModel of Model
-     * @param class-string<TModel>|string $name Table name or model class name
+     * Set the table for this query. The name is resolved via the current
+     * {@see TableResolver} to a concrete table source, schema, connection roles,
+     * and optional model class for hydration.
+     *
+     * The name may include an alias in `"table" AS "alias"` or `"table alias"` form.
+     * @param string $name Logical model/table name or model class name
      * @param string|null $alias Optional table alias
-     * @return Query<TModel>
+     * @return static
      * @throws Exception
      */
-    public function table(string $name, ?string $alias = null): Query
+    public function table(string $name, ?string $alias = null): static
     {
-        if (self::$useModels && !isset(self::$modelMapping)) {
-            $this->model = self::getModel($name);
-        } else {
-            $this->model = null;
+        // Extract alias from "name alias" or "name AS alias" if not explicitly provided
+        $name = preg_replace('/\s+/', ' ', trim($name));
+        if ($alias === null && strcspn($name, "()'") === strlen($name)) {
+            if ($offset = strripos($name, ' AS ')) {
+                $alias = substr($name, $offset + 4);
+                $name  = substr($name, 0, $offset);
+            } elseif ($offset = strrpos($name, ' ')) {
+                $alias = substr($name, $offset + 1);
+                $name  = substr($name, 0, $offset);
+            }
         }
-        $this->table       = $this->protectIdentifier($name, self::PI_TABLE, $alias);
-        $this->forceSelect = false;
+
+        $this->resolvedSource = $this->resolve($name);
+        $this->table          = $this->getFullTableName($name, $alias);
+        $this->forceSelect    = false;
         return $this;
     }
 
@@ -232,21 +255,18 @@ class Query extends Condition
      */
     public function from(string|Query $source, ?string $alias = null): static
     {
-        $this->model = null;
-
         if ($source instanceof Query) {
+            $this->resolvedSource   = null;
+            $this->subQueryBindings = $source->getBindings() + $this->subQueryBindings;
+            $this->forceSelect      = true; // Force SELECT mode for subqueries
             $sql = '(' . $source->toSql() . ')';
             if ($alias) {
                 $sql .= ' AS ' . $this->quoteIdentifier($alias);
             }
-            $this->subQueryBindings = $source->getBindings() + $this->subQueryBindings;
-            $this->forceSelect      = true; // Force SELECT mode for subqueries
         } else {
-            if (self::$useModels && !isset(self::$modelMapping)) {
-                $this->model = self::getModel($source);
-            }
-            $sql = $this->protectIdentifier($source, self::PI_TABLE, $alias);
-            $this->forceSelect = false;
+            $this->resolvedSource = $this->resolve($source);
+            $this->forceSelect    = false;
+            $sql = $this->getFullTableName($source, $alias);
         }
 
         $this->table = $sql;
@@ -266,7 +286,9 @@ class Query extends Condition
     public function columns(string|array $columns): static
     {
         if (!empty($columns)) {
-            $this->columns = \is_array($columns) ? $columns : explode(',', $columns);
+            $this->columns = \is_array($columns)
+                ? $columns
+                : explode(',', $columns);
         } else {
             $this->columns = null;
         }
@@ -1126,16 +1148,12 @@ class Query extends Condition
                     break;
                 case 'pgsql':
                     if (empty($this->conflictTarget)) {
-                        if (isset($this->model)) {
-                            $this->conflictTarget = $this->model->idFields();
-                            if (empty($this->conflictTarget)) {
-                                throw new LogicException(
-                                    "PostgreSQL requires a conflict target for UPSERT. No conflict target set and model does not define any ID fields."
-                                );
-                            }
+                        $idFields = $this->resolvedSource['idFields'] ?? null;
+                        if (!empty($idFields)) {
+                            $this->conflictTarget = $idFields;
                         } else {
                             throw new LogicException(
-                                "PostgreSQL requires a conflict target for UPSERT"
+                                "PostgreSQL requires a conflict target for UPSERT. No conflict target set and the resolved source does not define any ID fields."
                             );
                         }
                     }
@@ -1470,28 +1488,23 @@ class Query extends Condition
     }
 
     /**
-     * Hook: resolve table name immediately via model resolution
+     * Hook: resolve table name immediately via the current resolver.
      * @param string $model
      * @return string
      * @throws Exception
      */
     protected function resolveTableNameOrDefer(string $model): string
     {
-        // In Query we can resolve immediately using model cache/instantiation.
-        // But we must not break plain table/alias names when models are enabled.
         try {
-            $canResolve = (isset(self::$modelMapping) && self::$modelMapping->get($model) !== null) || (self::$useModels && class_exists($model));
-            if ($canResolve) {
-                // Will also populate $this->tableCache.
-                return $this->getFullTableName($model, null);
-            }
+            // Will also populate $this->tableCache.
+            return $this->getFullTableName($model, null);
         } catch (\Throwable $e) {}
         // Plain table name or alias.
         return $this->quoteIdentifier($model);
     }
 
     /**
-     * Get full table name with model resolution and schema handling
+     * Get full table name with resolver resolution and schema handling.
      * @param string $modelName
      * @param string|null $alias
      * @return string
@@ -1499,33 +1512,9 @@ class Query extends Condition
      */
     protected function getFullTableName(string $modelName, ?string $alias): string
     {
-        if (isset(self::$modelMapping)) {
-            // Get table from model mapping
-            $cacheItem = self::$modelMapping->get($modelName);
-            if (!isset($cacheItem)) {
-                throw new Exception("Model '$modelName' not found in model mapping");
-            }
-            if (empty($cacheItem['source'])) {
-                throw new Exception("Model '$modelName' does not have a source defined in model mapping");
-            }
-            $table  = $this->quoteIdentifier($cacheItem['source']);
-            $schema = $cacheItem['schema'] ?? null;
-        } elseif (self::$useModels) {
-            // Get table from model instance
-            $model  = self::getModel($modelName);
-            $table  = $this->quoteIdentifier($model->source());
-            $schema = $model->schema();
-        } else {
-            // Use model name as table name
-            $items = explode('.', $modelName);
-            $table = '';
-            $sep   = '';
-            foreach ($items as $item) {
-                $table .= $sep;
-                $table .= $this->quoteIdentifier($item);
-                $sep = '.';
-            }
-        }
+        $resolved = $this->resolve($modelName);
+        $table    = $this->quoteIdentifier($resolved['source']);
+        $schema   = $resolved['schema'];
 
         if (!empty($alias)) {
             $escapedAlias = $this->quoteIdentifier($alias);
@@ -1661,7 +1650,7 @@ class Query extends Condition
             $result,
             $query,
             $bindParams,
-            $this->model
+            $this->resolvedSource['modelClass'] ?? null
         );
     }
 

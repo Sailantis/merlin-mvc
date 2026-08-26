@@ -124,7 +124,7 @@ All events live in `Azera\Db\Event\*`:
 | `TransactionStarted` | After `begin()` |
 | `TransactionCommitted` | After `commit()` |
 | `TransactionRolledBack` | After `rollback()` |
-| `DatabaseExceptionOccurred` | When a `PDOException` is caught |
+| `DatabaseOperationFailed` | When a `PDOException` is caught |
 | `ReconnectAttempt` | Before a reconnect attempt |
 | `Reconnected` | After a successful reconnect |
 | `ReconnectFailed` | When a reconnect attempt fails |
@@ -192,7 +192,7 @@ See [Events](13-EVENTS.md) for full PSR-14 event documentation.
 
 ## Practical recommendations
 
-- Log all query lifecycle events in development; restrict to high-signal events (`DatabaseExceptionOccurred`, reconnect failures) in production.
+- Log all query lifecycle events in development; restrict to high-signal events (`DatabaseOperationFailed`, reconnect failures) in production.
 - Redact sensitive values and PII from logged parameters before writing to any sink.
 - Add a correlation/request ID at the middleware level and include it in every log message.
 - Use transaction events to trace transaction boundaries in audit logs.

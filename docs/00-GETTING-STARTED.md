@@ -198,7 +198,7 @@ $dispatcher->addMiddleware(new SessionMiddleware());  // built-in: starts PHP se
 $dispatcher->addMiddleware(new MyAuthMiddleware());   // custom
 ```
 
-You can also restrict middleware to specific controllers or actions using the `$middleware` and `$actionMiddleware` properties on a controller class. See [Controllers & Views](03-CONTROLLERS-VIEWS.md) for details.
+You can also restrict middleware to specific controllers or actions using the `$middlewares` and `$actionMiddlewares` properties on a controller class. See [Controllers & Views](03-CONTROLLERS-VIEWS.md) for details.
 
 ## CLI Bootstrap
 

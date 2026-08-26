@@ -99,7 +99,7 @@ Get the currently registered view namespaces.
 
 ---
 
-### setViewPath() · [source](../../src/Core/ViewEngine.php#L91)
+### setViewPath() · [source](../../src/Core/ViewEngine.php#L90)
 
 `public function setViewPath(string $path): static`
 
@@ -118,7 +118,7 @@ Set the base path for resolving relative view names.
 
 ---
 
-### getViewPath() · [source](../../src/Core/ViewEngine.php#L102)
+### getViewPath() · [source](../../src/Core/ViewEngine.php#L101)
 
 `public function getViewPath(): string`
 
@@ -132,7 +132,7 @@ Get the currently configured base path for view resolution.
 
 ---
 
-### setLayout() · [source](../../src/Core/ViewEngine.php#L116)
+### setLayout() · [source](../../src/Core/ViewEngine.php#L115)
 
 `public function setLayout(string|null $layout): static`
 
@@ -154,7 +154,7 @@ rendered view output.
 
 ---
 
-### getLayout() · [source](../../src/Core/ViewEngine.php#L127)
+### getLayout() · [source](../../src/Core/ViewEngine.php#L126)
 
 `public function getLayout(): string|null`
 
@@ -168,7 +168,7 @@ Get the currently configured layout view name.
 
 ---
 
-### setVar() · [source](../../src/Core/ViewEngine.php#L139)
+### setVar() · [source](../../src/Core/ViewEngine.php#L138)
 
 `public function setVar(string $name, mixed $value): static`
 
@@ -188,7 +188,7 @@ Set a single view variable.
 
 ---
 
-### setVars() · [source](../../src/Core/ViewEngine.php#L153)
+### setVars() · [source](../../src/Core/ViewEngine.php#L152)
 
 `public function setVars(array $vars): static`
 
@@ -209,7 +209,7 @@ Later values override earlier ones for the same keys.
 
 ---
 
-### render() · [source](../../src/Core/ViewEngine.php#L166)
+### render() · [source](../../src/Core/ViewEngine.php#L165)
 
 `public function render(string $view, array $vars = []): string`
 
@@ -230,7 +230,7 @@ Render a view (and optional layout) and return the result.
 
 ---
 
-### renderPartial() · [source](../../src/Core/ViewEngine.php#L175)
+### renderPartial() · [source](../../src/Core/ViewEngine.php#L174)
 
 `public function renderPartial(string $view, array $vars = []): string`
 
@@ -251,7 +251,7 @@ Render a partial view (without applying a layout) and return the output.
 
 ---
 
-### renderLayout() · [source](../../src/Core/ViewEngine.php#L187)
+### renderLayout() · [source](../../src/Core/ViewEngine.php#L186)
 
 `public function renderLayout(string $layout, string $content, array $vars = []): string`
 
@@ -275,7 +275,7 @@ The layout receives the rendered view in the `content` variable.
 
 ---
 
-### getRenderDepth() · [source](../../src/Core/ViewEngine.php#L195)
+### getRenderDepth() · [source](../../src/Core/ViewEngine.php#L194)
 
 `public function getRenderDepth(): int`
 
@@ -290,7 +290,7 @@ Get current render nesting depth. Useful to detect top-level renders
 
 ---
 
-### addFilter() · [source](../../src/Core/ViewEngine.php#L269)
+### addFilter() · [source](../../src/Core/ViewEngine.php#L267)
 
 `public function addFilter(string $name, callable $fn): static`
 
@@ -313,7 +313,7 @@ e.g. `{{ value|name }}` or `{{ value|name(arg) }}`.
 
 ---
 
-### addFunction() · [source](../../src/Core/ViewEngine.php#L284)
+### addFunction() · [source](../../src/Core/ViewEngine.php#L282)
 
 `public function addFunction(string $name, callable $fn): static`
 
@@ -336,7 +336,7 @@ This is distinct from filters, which transform a piped value.
 
 ---
 
-### getDriver() · [source](../../src/Core/ViewEngine.php#L299)
+### getDriver() · [source](../../src/Core/ViewEngine.php#L297)
 
 `public function getDriver(): mixed`
 
@@ -354,7 +354,7 @@ separate driver object (Clarity, Native).
 
 ---
 
-### setCachePath() · [source](../../src/Core/ViewEngine.php#L308)
+### setCachePath() · [source](../../src/Core/ViewEngine.php#L306)
 
 `public function setCachePath(string $path): static`
 
@@ -373,7 +373,7 @@ Set the directory where compiled templates should be cached.
 
 ---
 
-### getCachePath() · [source](../../src/Core/ViewEngine.php#L316)
+### getCachePath() · [source](../../src/Core/ViewEngine.php#L314)
 
 `public function getCachePath(): string`
 
@@ -386,7 +386,7 @@ Get the currently configured cache directory.
 
 ---
 
-### flushCache() · [source](../../src/Core/ViewEngine.php#L324)
+### flushCache() · [source](../../src/Core/ViewEngine.php#L322)
 
 `public function flushCache(): static`
 

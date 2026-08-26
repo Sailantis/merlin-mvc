@@ -4,7 +4,6 @@ namespace Azera\Cli;
 
 use Azera\AppContext;
 
-
 /**
  * Base class for all CLI task classes.
  *
@@ -116,7 +115,7 @@ abstract class Task
     //  Option and context helpers
     // -------------------------------------------------------------------------
 
-    /** 
+    /**
      * Retrieve a parsed option value by key, with an optional default.
      * @param string $key The option name (without leading dashes).
      * @param mixed $default The default value to return if the option is not set.
@@ -137,30 +136,76 @@ abstract class Task
     }
 
     // -------------------------------------------------------------------------
-    //  Lifecycle hooks
+    //  Middleware and AOP interceptors
     // -------------------------------------------------------------------------
 
     /**
-     * Called before the action method is executed.
-     * Override in a subclass to perform setup work (e.g. register event listeners based on options).
-     * The method has access to $this->options and $this->console at this point.
+     * Task-wide middleware, run for every action of this task.
+     * Mirrors {@see \Azera\Core\Controller::$middlewares}.
      *
-     * @param string $action The resolved PHP method name that will be invoked (e.g. "runAction").
-     * @param array  $params Positional parameters that will be passed to the action.
+     * Example:
+     * protected array $middlewares = [
+     *     AuthMiddleware::class,
+     *     [RoleMiddleware::class, ['admin']],
+     * ];
      */
-    public function beforeAction(string $action, array $params): void
+    protected array $middlewares = [];
+
+    /**
+     * Action-specific middleware.
+     * Example:
+     * protected array $actionMiddlewares = [
+     *     'runAction' => [
+     *         AuthMiddleware::class,
+     *         [RoleMiddleware::class, ['admin']],
+     *     ],
+     * ];
+     */
+    protected array $actionMiddlewares = [];
+
+    /**
+     * Optional AOP interceptors applied around the action method, composed
+     * as a plain closure chain (no proxy class generation). Each entry is
+     * either an {@see \Azera\Aop\InterceptorInterface} instance, a class
+     * string, or an array [class, args].
+     *
+     * Example:
+     * protected array $interceptors = [
+     *     \Azera\Aop\Interceptor\LogInterceptor::class,
+     *     [\Azera\Aop\Interceptor\RetryInterceptor::class, [3]],
+     * ];
+     */
+    protected array $interceptors = [];
+
+    /**
+     * Get the middleware for the task. Used by the Console to build the
+     * middleware pipeline when dispatching an action.
+     * @return array
+     */
+    public function getMiddlewares(): array
     {
+        return $this->middlewares;
     }
 
     /**
-     * Called after the action method has finished executing (including when an exception is thrown).
-     * Override in a subclass to perform teardown or post-processing work (e.g. flush collected SQL logs).
-     *
-     * @param string $action The resolved PHP method name that was invoked (e.g. "runAction").
-     * @param array  $params Positional parameters that were passed to the action.
+     * Get the middleware for a specific action. Used by the Console to build
+     * the middleware pipeline when dispatching an action.
+     * @param string $action The resolved PHP method name (e.g. "runAction").
+     * @return array
      */
-    public function afterAction(string $action, array $params): void
+    public function getActionMiddlewares(string $action): array
     {
+        return $this->actionMiddlewares[$action] ?? [];
+    }
+
+    /**
+     * Get the AOP interceptors for this task. Used by the Console to wrap the
+     * action method in an interceptor chain.
+     * @return array
+     */
+    public function getInterceptors(): array
+    {
+        return $this->interceptors;
     }
 
 }

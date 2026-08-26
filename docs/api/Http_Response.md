@@ -31,7 +31,7 @@ Create a new Response.
 
 ---
 
-### setStatus() · [source](../../src/Http/Response.php#L33)
+### setStatus() · [source](../../src/Http/Response.php#L32)
 
 `public function setStatus(int $code): static`
 
@@ -50,7 +50,66 @@ Set the HTTP status code.
 
 ---
 
-### setHeader() · [source](../../src/Http/Response.php#L46)
+### getStatus() · [source](../../src/Http/Response.php#L43)
+
+`public function getStatus(): int`
+
+Get the HTTP status code.
+
+**➡️ Return value**
+
+- Type: int
+
+
+---
+
+### getHeader() · [source](../../src/Http/Response.php#L55)
+
+`public function getHeader(string $name, mixed $default = null): mixed`
+
+Get a response header value, or a default when not set.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string | - | Header name. |
+| `$default` | mixed | `null` | Default when the header is absent. |
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+---
+
+### getHeaders() · [source](../../src/Http/Response.php#L65)
+
+`public function getHeaders(): array`
+
+Get all response headers.
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### getBody() · [source](../../src/Http/Response.php#L73)
+
+`public function getBody(): string`
+
+Get the response body.
+
+**➡️ Return value**
+
+- Type: string
+
+
+---
+
+### setHeader() · [source](../../src/Http/Response.php#L85)
 
 `public function setHeader(string $key, string $value): static`
 
@@ -70,7 +129,7 @@ Set a response header.
 
 ---
 
-### setHeaders() · [source](../../src/Http/Response.php#L58)
+### setHeaders() · [source](../../src/Http/Response.php#L97)
 
 `public function setHeaders(array $headers): static`
 
@@ -89,7 +148,7 @@ Set multiple response headers.
 
 ---
 
-### write() · [source](../../src/Http/Response.php#L70)
+### write() · [source](../../src/Http/Response.php#L109)
 
 `public function write(string $text): static`
 
@@ -108,7 +167,7 @@ Append text to the response body.
 
 ---
 
-### send() · [source](../../src/Http/Response.php#L79)
+### send() · [source](../../src/Http/Response.php#L118)
 
 `public function send(): void`
 
@@ -121,7 +180,7 @@ Send the response: emit the status code, headers, and body.
 
 ---
 
-### json() · [source](../../src/Http/Response.php#L97)
+### json() · [source](../../src/Http/Response.php#L136)
 
 `public static function json(mixed $data, int $status = 200): static`
 
@@ -141,7 +200,7 @@ Create a JSON response.
 
 ---
 
-### text() · [source](../../src/Http/Response.php#L113)
+### text() · [source](../../src/Http/Response.php#L152)
 
 `public static function text(string $text, int $status = 200): static`
 
@@ -161,7 +220,7 @@ Create a plain-text response.
 
 ---
 
-### html() · [source](../../src/Http/Response.php#L129)
+### html() · [source](../../src/Http/Response.php#L168)
 
 `public static function html(string $html, int $status = 200): static`
 
@@ -181,7 +240,7 @@ Create an HTML response.
 
 ---
 
-### redirect() · [source](../../src/Http/Response.php#L145)
+### redirect() · [source](../../src/Http/Response.php#L184)
 
 `public static function redirect(string $url, int $status = 302): static`
 
@@ -201,7 +260,7 @@ Create a redirect response.
 
 ---
 
-### status() · [source](../../src/Http/Response.php#L160)
+### status() · [source](../../src/Http/Response.php#L199)
 
 `public static function status(int $status): static`
 

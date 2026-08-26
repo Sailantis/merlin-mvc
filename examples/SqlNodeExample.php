@@ -17,15 +17,13 @@ use Azera\Db\Query;
 // ============================================================================
 
 // Traditional way (still works exactly as before)
-Query::new()
-    ->table('posts')
+Query::raw()->table('posts')
     ->values(['title' => 'Hello', 'status' => 1])
     ->insert();
 // SQL: INSERT INTO posts (title, status) VALUES ('Hello', 1)
 
 // With bind parameters (still works as before)
-Query::new()
-    ->table('posts')
+Query::raw()->table('posts')
     ->bind(['title' => 'Hello', 'id' => 123])
     ->insert();
 // SQL: INSERT INTO posts (title, id) VALUES (:title:, :id:)
@@ -35,8 +33,7 @@ Query::new()
 // Sql: Functions with literals (debug-friendly, no parameters)
 // ============================================================================
 
-Query::new()
-    ->table('articles')
+Query::raw()->table('articles')
     ->values([
         'title' => 'My Article',
         'search' => Sql::func('to_tsvector', ['simple', 'My Article'])
@@ -50,8 +47,7 @@ Query::new()
 // Sql: Column references in functions
 // ============================================================================
 
-Query::new()
-    ->table('articles')
+Query::raw()->table('articles')
     ->set('search', Sql::cast(
         Sql::func('to_tsvector', ['simple', Sql::column('title')]),
         'tsvector'
@@ -66,8 +62,7 @@ Query::new()
 // Sql: Explicit bind parameters with Sql::param()
 // ============================================================================
 
-Query::new()
-    ->table('articles')
+Query::raw()->table('articles')
     ->bind(['userId' => 42, 'timestamp' => time()])
     ->set([
         'updated_by' => Sql::param('userId'),
@@ -84,8 +79,7 @@ Query::new()
 // Sql: PostgreSQL arrays
 // ============================================================================
 
-Query::new()
-    ->table('posts')
+Query::raw()->table('posts')
     ->values([
         'title' => 'PHP Tutorial',
         'tags' => Sql::pgArray(['php', 'programming', 'web'])
@@ -99,8 +93,7 @@ Query::new()
 // Sql: Complex expressions
 // ============================================================================
 
-Query::new()
-    ->table('users')
+Query::raw()->table('users')
     ->set([
         'full_name' => Sql::func('CONCAT', [
             Sql::column('first_name'),
@@ -125,8 +118,7 @@ Query::new()
 // Sql: UPSERT with functions
 // ============================================================================
 
-Query::new()
-    ->table('posts')
+Query::raw()->table('posts')
     ->values([
         'slug' => 'my-article',
         'title' => 'My Article',
@@ -152,8 +144,7 @@ Query::new()
 // Sql: Raw SQL for edge cases
 // ============================================================================
 
-Query::new()
-    ->table('logs')
+Query::raw()->table('logs')
     ->values([
         'message' => 'User logged in',
         'timestamp' => Sql::raw('CURRENT_TIMESTAMP'),
@@ -166,8 +157,7 @@ Query::new()
 // Sql: WHERE clause with Sql
 // ============================================================================
 
-Query::new()
-    ->table('articles')
+Query::raw()->table('articles')
     ->where('tags && ?', Sql::pgArray(['php']))  // PostgreSQL array overlap
     ->select();
 // SQL: SELECT * FROM articles WHERE (tags && '{"php"}')
@@ -177,8 +167,7 @@ Query::new()
 // Sql: Mixing literals and parameters
 // ============================================================================
 
-Query::new()
-    ->table('events')
+Query::raw()->table('events')
     ->bind(['eventName' => 'user_login', 'userId' => 42])
     ->values([
         'event_type' => Sql::param('eventName'),
@@ -195,3 +184,4 @@ Query::new()
 // SQL: INSERT INTO events (event_type, user_id, created_at, metadata)
 //      VALUES (:eventName:, :userId:, NOW(), 
 //              JSON_OBJECT('ip', '192.168.1.1', 'user_agent', 'Mozilla/5.0'))
+

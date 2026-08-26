@@ -1,23 +1,27 @@
 <?php
 namespace Azera;
 
-use Azera\Cache\NullCache;
-use Azera\Config\Config;
-use Azera\Core\Dispatcher;
-use Azera\Core\Engines\ClarityEngine;
-use Azera\Core\Router;
-use Azera\Core\ViewEngine;
-use Azera\Db\DatabaseManager;
-use Azera\Event\NullEventDispatcher;
-use Azera\Http\Cookies;
-use Azera\Http\Request as HttpRequest;
-use Azera\Http\Session;
-use Azera\Log\NullLogger;
-use Azera\Queue\QueueInterface;
 use Azera\Aop\Advice;
 use Azera\Aop\Advised;
 use Azera\Aop\InterceptorInterface;
 use Azera\Aop\ProxyFactory;
+use Azera\Cache\NullCache;
+use Azera\Config\Config;
+use Azera\Core\Dispatcher;
+use Azera\Core\Engines\ClarityEngine;
+use Azera\Core\ResolvedRoute;
+use Azera\Core\Router;
+use Azera\Core\ViewEngine;
+use Azera\Db\DatabaseManager;
+use Azera\Db\Resolver\ModelResolver;
+use Azera\Db\Resolver\TableResolver;
+use Azera\Event\NullEventDispatcher;
+use Azera\Http\Cookies;
+use Azera\Http\Request as HttpRequest;
+use Azera\Http\Session;
+use Azera\Lifecycle\RequestScoped;
+use Azera\Log\NullLogger;
+use Azera\Queue\QueueInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\SimpleCache\CacheInterface;
@@ -40,10 +44,9 @@ class AppContext
             DatabaseManager::class => fn() => $this->dbManager(),
             Router::class          => fn() => $this->router(),
             Dispatcher::class      => fn() => $this->dispatcher(),
+            TableResolver::class   => fn() => $this->get(ModelResolver::class),
             AppContext::class      => fn() => $this,
         ];
-
-        $this->serviceInstances = [];
     }
 
     protected array $serviceDefinitions = [];
@@ -99,11 +102,24 @@ class AppContext
 
     /**
      * Set the shared singleton instance (e.g. for testing or multi-context scenarios).
-     * @param AppContext $instance
+     * @param self $instance
      */
-    public static function setInstance(AppContext $instance): void
+    public static function setInstance(self $instance): void
     {
         self::$instance = $instance;
+    }
+
+    /**
+     * Drop the shared singleton instance.
+     *
+     * Call in test setUp()/tearDown() (or between multi-context scenarios) to
+     * guarantee each test starts from a pristine context, instead of relying on
+     * a previous test having called {@see setInstance()}. After this, the next
+     * {@see instance()} call lazily builds a fresh context.
+     */
+    public static function reset(): void
+    {
+        self::$instance = null;
     }
 
     // --- Lazy Services ---
@@ -172,12 +188,15 @@ class AppContext
         return $this->router ??= new Router();
     }
 
+    /**
+     * Get the Dispatcher instance. If it doesn't exist, it will be created.
+     *
+     * @return Dispatcher The Dispatcher instance.
+     */
     public function dispatcher(): Dispatcher
     {
         return $this->dispatcher ??= new Dispatcher();
     }
-
-    // --- Enterprise Subsystems (lazy, opt-in) ---
 
     /**
      * Get the logger instance. Returns a {@see NullLogger} if no logger
@@ -418,6 +437,50 @@ class AppContext
         $this->route = $route;
     }
 
+    /**
+     * Clear all request-scoped state on this context.
+     *
+     * Under a persistent application server (RoadRunner, Swoole, FrankenPHP,
+     * Octane, …) the AppContext survives across many requests. This method
+     * resets the per-request services so the next request starts clean:
+     *
+     *  - the built-in request-scoped properties ({@see Request}, {@see ResolvedRoute},
+     *    {@see Session}, {@see Cookies}) are dropped and lazily rebuilt on demand;
+     *  - the corresponding DI container entries are removed so accessors do not
+     *    return a stale instance;
+     *  - every service registered on the container that implements
+     *    {@see RequestScoped} has its {@see RequestScoped::resetState()} hook called.
+     *
+     * Persistent infrastructure is deliberately left untouched — database
+     * manager, cache/Redis backends, queue, logger and event dispatcher keep
+     * their handles and connections alive across requests.
+     *
+     * Safe to call repeatedly; a no-op when no request has been processed yet.
+     */
+    public function clearRequestScope(): void
+    {
+        // Drop the built-in request-scoped properties and the corresponding
+        // container entries so lazy accessors rebuild fresh instances instead
+        // of returning a stale one.
+        unset($this->serviceInstances[HttpRequest::class]);
+        $this->request = null;
+        unset($this->serviceInstances[ResolvedRoute::class]);
+        $this->route = null;
+        unset($this->serviceInstances[Session::class]);
+        $this->session = null;
+        unset($this->serviceInstances[Cookies::class]);
+        $this->cookies = null;
+
+        // Drop any service that must be re-instantiated per request by calling
+        // its resetState() hook. Services that hold persistent handles keep
+        // them, but clear their per-request state.
+        foreach ($this->serviceInstances as $service) {
+            if ($service instanceof RequestScoped) {
+                $service->resetState();
+            }
+        }
+    }
+
     // --- Service Container ---
 
     /**
@@ -433,11 +496,12 @@ class AppContext
     {
         $service ??= $id;
         $this->serviceDefinitions[$id] = $service;
-        unset($this->serviceInstances[$id]);
 
         if (is_object($service) && !is_callable($service)) {
             $this->syncKnownServiceProperty($id, $service);
             $this->serviceInstances[$id] = $service;
+        } else {
+            unset($this->serviceInstances[$id]);
         }
     }
 
@@ -455,9 +519,10 @@ class AppContext
     /**
      * Get a service instance from the context.
      *
-     * If the service is registered as a callable, it will be invoked lazily once and the
-     * returned object will be cached. If the service is not registered but the identifier
-     * is a class name, it will attempt to auto-wire and instantiate it.
+     * If the service is registered as a callable, it will be invoked lazily
+     * once and the returned object will be cached. If the service is not
+     * registered but the identifier is a class name, it will attempt to
+     * auto-wire and instantiate it.
      *
      * @template T of object
      * @param class-string<T> $id The identifier of the service to retrieve.
@@ -485,10 +550,11 @@ class AppContext
     /**
      * Try to get a service instance from the context.
      *
-     * If the service is registered as a callable, it will be invoked lazily once and the
-     * returned object will be cached. If the service is not registered but the identifier
-     * is a class name, it will attempt to auto-wire and instantiate it. Returns null if
-     * the service is not found, or if a registered factory currently resolves to null.
+     * If the service is registered as a callable, it will be invoked lazily
+     * once and the returned object will be cached. If the service is not
+     * registered but the identifier is a class name, it will attempt to
+     * auto-wire and instantiate it. Returns null if the service is not found,
+     * or if a registered factory currently resolves to null.
      *
      * @template T of object
      * @param class-string<T> $id The identifier of the service to retrieve.
@@ -515,8 +581,9 @@ class AppContext
     /**
      * Get a registered service instance if it exists, or null if it does not.
      *
-     * Registered factories are resolved lazily. This method does not attempt to auto-wire
-     * or instantiate classes that have not been registered explicitly.
+     * Registered factories are resolved lazily. This method does not attempt
+     * to auto-wire or instantiate classes that have not been registered
+     * explicitly.
      *
      * @template T of object
      * @param class-string<T> $id The identifier of the service to retrieve.
@@ -527,6 +594,18 @@ class AppContext
         return $this->resolveRegisteredService($id, allowNull: true);
     }
 
+    /**
+     * Resolve a registered service by its identifier.
+     *
+     * If the service is registered as a callable, it will be invoked lazily once and the
+     * returned object will be cached. If the service is not registered, this method
+     * returns null or throws an exception based on the $allowNull parameter.
+     *
+     * @param string $id The identifier of the service to resolve.
+     * @param bool $allowNull Whether to allow null return if the service is not found.
+     * @return object|null The resolved service instance, or null if not found and $allowNull is true.
+     * @throws RuntimeException If the service is not found and $allowNull is false.
+     */
     protected function resolveRegisteredService(string $id, bool $allowNull): ?object
     {
         if (isset($this->serviceInstances[$id])) {
@@ -724,32 +803,4 @@ class AppContext
 
         return new $class(...$args);
     }
-}
-
-/**
- * ResolvedRoute represents the fully resolved route and execution context
- * used by the dispatcher to invoke the matched controller and action.
- */
-class ResolvedRoute
-{
-    /**
-     * Create a new ResolvedRoute instance with the given parameters.
-     *
-     * @param string|null $namespace Effective namespace for the controller, after applying route group namespaces. Null if no namespace is used.
-     * @param string      $controller Resolved controller class name.
-     * @param string      $action Resolved action method name.
-     * @param array       $params Resolved action method parameters.
-     * @param array       $vars Associative array of route variables extracted from the URL (e.g. ['id' => '123']).
-     * @param array       $groups List of middleware groups to apply for this route.
-     * @param array       $override Associative array of route overrides (e.g. ['controller' => 'OtherController', 'action' => 'otherAction']).
-     */
-    public function __construct(
-        public readonly ?string $namespace,
-        public readonly string $controller,
-        public readonly string $action,
-        public readonly array $params,
-        public readonly array $vars,
-        public readonly array $groups,
-        public readonly array $override
-    ) {}
 }

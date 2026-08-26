@@ -6,7 +6,7 @@
 
 ### __construct() · [source](../../src/Db/ResultSet.php#L38)
 
-`public function __construct(Azera\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, Azera\Core\Model|null $model = null): mixed`
+`public function __construct(Azera\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, string|null $modelClass = null): mixed`
 
 Create a new ResultSet wrapping a PDO statement result.
 
@@ -18,7 +18,7 @@ Create a new ResultSet wrapping a PDO statement result.
 | `$statement` | PDOStatement | - | The executed PDO statement. |
 | `$sqlStatement` | string\|null | `null` | The original SQL string (used by reexecute()). |
 | `$boundParams` | array\|null | `null` | Bound parameters (used by reexecute()). |
-| `$model` | [Model](Core_Model.md)\|null | `null` | Optional model instance used for hydration (sets the fetch class). |
+| `$modelClass` | string\|null | `null` | Optional model class name used for hydration (sets the fetch class). |
 
 **➡️ Return value**
 
@@ -27,7 +27,7 @@ Create a new ResultSet wrapping a PDO statement result.
 
 ---
 
-### fetch() · [source](../../src/Db/ResultSet.php#L60)
+### fetch() · [source](../../src/Db/ResultSet.php#L59)
 
 `public function fetch(): object|array|false`
 
@@ -41,7 +41,7 @@ Fetch next row as object or array depending on fetch mode.
 
 ---
 
-### fetchAssoc() · [source](../../src/Db/ResultSet.php#L70)
+### fetchAssoc() · [source](../../src/Db/ResultSet.php#L69)
 
 `public function fetchAssoc(): array|false`
 
@@ -55,7 +55,7 @@ Fetch next row as associative array.
 
 ---
 
-### fetchObject() · [source](../../src/Db/ResultSet.php#L80)
+### fetchObject() · [source](../../src/Db/ResultSet.php#L79)
 
 `public function fetchObject(): object|false`
 
@@ -69,7 +69,7 @@ Fetch next row as object.
 
 ---
 
-### fetchColumn() · [source](../../src/Db/ResultSet.php#L91)
+### fetchColumn() · [source](../../src/Db/ResultSet.php#L90)
 
 `public function fetchColumn(int $column = 0): mixed`
 
@@ -89,7 +89,7 @@ Fetch next row as a single column value.
 
 ---
 
-### fetchAllAssoc() · [source](../../src/Db/ResultSet.php#L101)
+### fetchAllAssoc() · [source](../../src/Db/ResultSet.php#L100)
 
 `public function fetchAllAssoc(): array`
 
@@ -103,7 +103,7 @@ Return all rows as associative array.
 
 ---
 
-### fetchAllObject() · [source](../../src/Db/ResultSet.php#L112)
+### fetchAllObject() · [source](../../src/Db/ResultSet.php#L111)
 
 `public function fetchAllObject(): array`
 
@@ -117,7 +117,7 @@ Return all rows as object.
 
 ---
 
-### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L124)
+### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L123)
 
 `public function fetchAllColumn(int $column = 0): array`
 
@@ -137,7 +137,7 @@ Fetch all values from a single column.
 
 ---
 
-### fetchAll() · [source](../../src/Db/ResultSet.php#L136)
+### fetchAll() · [source](../../src/Db/ResultSet.php#L135)
 
 `public function fetchAll(int $fetchMode = 0): array`
 
@@ -157,7 +157,7 @@ Fetch all rows as objects or arrays depending on fetch mode.
 
 ---
 
-### setFetchMode() · [source](../../src/Db/ResultSet.php#L147)
+### setFetchMode() · [source](../../src/Db/ResultSet.php#L146)
 
 `public function setFetchMode(int $fetchMode): void`
 
@@ -176,7 +176,7 @@ Set the default fetch mode for this result set.
 
 ---
 
-### nextModel() · [source](../../src/Db/ResultSet.php#L156)
+### nextModel() · [source](../../src/Db/ResultSet.php#L155)
 
 `public function nextModel(): Azera\Core\Model|null`
 
@@ -190,7 +190,7 @@ Get the next model from the result set, or false if there are no more models. Th
 
 ---
 
-### firstModel() · [source](../../src/Db/ResultSet.php#L193)
+### firstModel() · [source](../../src/Db/ResultSet.php#L192)
 
 `public function firstModel(): Azera\Core\Model|null`
 
@@ -204,7 +204,7 @@ Get first model or object from result set.
 
 ---
 
-### allModels() · [source](../../src/Db/ResultSet.php#L219)
+### allModels() · [source](../../src/Db/ResultSet.php#L218)
 
 `public function allModels(): array`
 
@@ -221,7 +221,7 @@ Returns an empty array when no model class was provided at construction.
 
 ---
 
-### getSql() · [source](../../src/Db/ResultSet.php#L237)
+### getSql() · [source](../../src/Db/ResultSet.php#L236)
 
 `public function getSql(): string|null`
 
@@ -235,7 +235,7 @@ Return the SQL statement that was executed to produce this result set, if availa
 
 ---
 
-### getBindings() · [source](../../src/Db/ResultSet.php#L246)
+### getBindings() · [source](../../src/Db/ResultSet.php#L245)
 
 `public function getBindings(): array|null`
 
@@ -249,7 +249,26 @@ Return the variables that were bound to the SQL statement, if available.
 
 ---
 
-### refresh() · [source](../../src/Db/ResultSet.php#L255)
+### toArray() · [source](../../src/Db/ResultSet.php#L260)
+
+`public function toArray(): array`
+
+Convert the result set to a plain array of rows.
+
+Each row is cast to an associative array (via castToArray on model
+instances, or fetched as assoc from PDO for plain rows).  This makes
+the result set compatible with template engines and serializers that
+expect array-like data (e.g. Clarity's castToArray).
+
+**➡️ Return value**
+
+- Type: array
+- Description: All remaining rows as arrays.
+
+
+---
+
+### refresh() · [source](../../src/Db/ResultSet.php#L285)
 
 `public function refresh(): void`
 
@@ -262,11 +281,16 @@ Execute the query again to repopulate the result set.
 
 ---
 
-### rewind() · [source](../../src/Db/ResultSet.php#L271)
+### rewind() · [source](../../src/Db/ResultSet.php#L308)
 
 `public function rewind(): void`
 
-Rewind is a no-op: the result set cursor is forward-only.
+Rewind the iterator to the first row.
+
+The underlying PDOStatement cursor is forward-only, so we cannot
+actually rewind once iteration has started.  However, on the first
+call (before any rows have been fetched) we lazily fetch the first
+row so that valid() returns true and PHP's foreach can begin.
 
 **➡️ Return value**
 
@@ -275,7 +299,7 @@ Rewind is a no-op: the result set cursor is forward-only.
 
 ---
 
-### current() · [source](../../src/Db/ResultSet.php#L277)
+### current() · [source](../../src/Db/ResultSet.php#L317)
 
 `public function current(): mixed`
 
@@ -288,7 +312,7 @@ Return the current row (fetched lazily on first access).
 
 ---
 
-### key() · [source](../../src/Db/ResultSet.php#L287)
+### key() · [source](../../src/Db/ResultSet.php#L327)
 
 `public function key(): int`
 
@@ -301,7 +325,7 @@ Return the zero-based position of the current row within this traversal.
 
 ---
 
-### next() · [source](../../src/Db/ResultSet.php#L293)
+### next() · [source](../../src/Db/ResultSet.php#L333)
 
 `public function next(): void`
 
@@ -314,7 +338,7 @@ Advance to the next row.
 
 ---
 
-### valid() · [source](../../src/Db/ResultSet.php#L300)
+### valid() · [source](../../src/Db/ResultSet.php#L340)
 
 `public function valid(): bool`
 
@@ -327,7 +351,7 @@ Return true while the current row is not false/null (i.e., while rows remain).
 
 ---
 
-### count() · [source](../../src/Db/ResultSet.php#L309)
+### count() · [source](../../src/Db/ResultSet.php#L349)
 
 `public function count(): int`
 

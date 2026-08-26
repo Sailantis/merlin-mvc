@@ -31,7 +31,7 @@ Built-in lazy service accessors:
 | `session()`   | `Azera\Http\Session\|null`                            |
 | `cookies()`   | `Azera\Http\Cookies`                                  |
 | `dbManager()` | `Azera\Db\DatabaseManager`                            |
-| `route()`     | `Azera\ResolvedRoute\|null` – populated by Dispatcher |
+| `route()`     | `Azera\Core\ResolvedRoute\|null` – populated by Dispatcher |
 | `logger()`    | `Psr\Log\LoggerInterface` – `NullLogger` by default  |
 | `events()`    | `Psr\EventDispatcher\EventDispatcherInterface` – `NullEventDispatcher` by default |
 | `cache()`     | `Psr\SimpleCache\CacheInterface` – `NullCache` by default |
@@ -44,7 +44,7 @@ Custom services can be registered with `$ctx->set($id, new MyService())` or `$ct
 
 - `Router` matches URI + method to route patterns, extracting typed parameters; supports named routes, inline or scoped groups (`prefix()`, `namespace()`, `controller()`, `middleware()`), and custom parameter validators
 - `Dispatcher` is instantiated without arguments; obtains `AppContext` internally. It resolves controllers via DI (`AppContext::get()`), runs the global and per-route middleware pipeline, injects action parameters (route vars or DI), and stores resolved route info via `AppContext::setRoute()`
-- `Controller` provides access to request/context plus `beforeAction`/`afterAction` lifecycle hooks and controller-level middleware declarations
+- `Controller` provides access to request/context plus controller- and action-level middleware declarations
 - `ViewEngine` renders templates, layouts, and namespaced views; supports global view variables and partial rendering
 - `ModelMapping` maps logical model names to PHP classes and table names – useful when decoupling route/query naming from class names
 - `MiddlewareInterface` defines the contract for all middleware; `SessionMiddleware` is the built-in implementation
@@ -97,7 +97,7 @@ $user = User::find(10);
 $rows = User::query()->where('status', 'active')->select();
 
 // Table-centric
-$rows = Azera\Db\Query::new()
+$rows = Azera\Db\Query::raw()
     ->table('users')
     ->where('status', 'active')
     ->select();

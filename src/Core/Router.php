@@ -96,7 +96,7 @@ class Router
      */
     public function getAllowedMethods(string $uri): array
     {
-        $methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+        $methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'];
         $allowed = [];
         foreach ($methods as $m) {
             if ($this->match($uri, $m) !== null) {
@@ -118,8 +118,7 @@ class Router
         string|array|null $method,
         string $pattern,
         string|array|null $handler = null
-    ): static
-    {
+    ): static {
 
         $routeName = null;
         if (\is_array($handler)) {
@@ -172,7 +171,7 @@ class Router
             }
         }
 
-        $tokens                = $this->parsePattern($pattern);
+        $tokens = $this->parsePattern($pattern);
         $this->lastAddedTokens = $tokens;
 
         if ($method === null || $method === '*') {
@@ -328,15 +327,15 @@ class Router
         // Build a reverse lookup: tokens → route name
         $nameLookup = [];
         foreach ($this->namedRoutes as $name => $data) {
-            $key              = serialize($data['tokens']);
+            $key = serialize($data['tokens']);
             $nameLookup[$key] = $name;
         }
 
         // Static routes: [method][path] => ['handler', 'tokens', 'groups']
         foreach ($this->static as $method => $byPath) {
             foreach ($byPath as $path => $entry) {
-                $tokens   = $entry['tokens'];
-                $key      = serialize($tokens);
+                $tokens = $entry['tokens'];
+                $key    = serialize($tokens);
                 $routes[] = [
                     'method'  => $method,
                     'pattern' => $path,
@@ -352,8 +351,8 @@ class Router
         foreach ($this->groups as $method => $byFirst) {
             foreach ($byFirst as $routesList) {
                 foreach ($routesList as $entry) {
-                    $tokens   = $entry['tokens'];
-                    $key      = serialize($tokens);
+                    $tokens = $entry['tokens'];
+                    $key    = serialize($tokens);
                     $routes[] = [
                         'method'  => $method,
                         'pattern' => $this->tokensToPattern($tokens),
@@ -471,7 +470,7 @@ class Router
             return $this;
         }
 
-        $snapshot                 = $this->snapshotGroupStacks();
+        $snapshot = $this->snapshotGroupStacks();
         $this->prefixGroupStack[] = trim($prefix, '/');
 
         try {
@@ -549,7 +548,7 @@ class Router
             return $this;
         }
 
-        $snapshot                    = $this->snapshotGroupStacks();
+        $snapshot = $this->snapshotGroupStacks();
         $this->namespaceGroupStack[] = $namespace;
 
         try {
@@ -589,7 +588,7 @@ class Router
             return $this;
         }
 
-        $snapshot                     = $this->snapshotGroupStacks();
+        $snapshot = $this->snapshotGroupStacks();
         $this->controllerGroupStack[] = $controller;
 
         try {
@@ -604,7 +603,7 @@ class Router
     protected function storeRoute(string $method, array $tokens, string|array|null $handler, array $groups): void
     {
         if ($this->isStaticTokens($tokens)) {
-            $path                         = '/' . implode('/', array_column($tokens, 1));
+            $path = '/' . implode('/', array_column($tokens, 1));
             $this->static[$method][$path] = [
                 'handler' => $handler,
                 'tokens'  => $tokens,
@@ -719,7 +718,7 @@ class Router
             }
 
             if (str_starts_with($type, 'regex(') && str_ends_with($type, ')')) {
-                $regex    = substr($type, 6, -1);
+                $regex = substr($type, 6, -1);
                 $result[] = [$optional ? self::KIND_REGEX_OPT : self::KIND_REGEX, $name, $regex];
             } else {
                 $result[] = [$optional ? self::KIND_PARAM_OPT : self::KIND_PARAM, $name, $type];
@@ -899,7 +898,7 @@ class Router
 
                 if ($kind === self::KIND_WILDCARD) {
                     $params[$name] = array_slice($parts, $partIndex);
-                    $partIndex     = $partCount;
+                    $partIndex = $partCount;
                     break;
                 }
 
@@ -1006,8 +1005,7 @@ class Router
         string|array|null $handler,
         array $params,
         array $groups,
-    ): array
-    {
+    ): array {
 
         if ($handler === null) {
             $override = [];

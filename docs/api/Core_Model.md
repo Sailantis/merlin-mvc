@@ -2,9 +2,11 @@
 
 **Full name:** [Azera\Core\Model](../../src/Core/Model.php)
 
+Base class for models in Azera.
+
 ## 🚀 Public methods
 
-### source() · [source](../../src/Core/Model.php#L28)
+### source() · [source](../../src/Core/Model.php#L30)
 
 `public function source(): string`
 
@@ -20,7 +22,7 @@ Override this method if you want to specify a custom source.
 
 ---
 
-### schema() · [source](../../src/Core/Model.php#L50)
+### schema() · [source](../../src/Core/Model.php#L52)
 
 `public function schema(): string|null`
 
@@ -35,7 +37,7 @@ Override this method if you want to specify a schema (e.g. for PostgreSQL).
 
 ---
 
-### idFields() · [source](../../src/Core/Model.php#L60)
+### idFields() · [source](../../src/Core/Model.php#L62)
 
 `public function idFields(): array`
 
@@ -51,7 +53,7 @@ Override this method if your model has a different primary key or composite keys
 
 ---
 
-### query() · [source](../../src/Core/Model.php#L75)
+### query() · [source](../../src/Core/Model.php#L77)
 
 `public static function query(string|null $alias = null): Azera\Db\Query`
 
@@ -72,7 +74,7 @@ You can also use selectBuilder(), insertBuilder(), updateBuilder(), and deleteBu
 
 ---
 
-### create() · [source](../../src/Core/Model.php#L91)
+### create() · [source](../../src/Core/Model.php#L93)
 
 `public static function create(array $values): static`
 
@@ -92,7 +94,7 @@ Create a new model instance with the given values and save it to the database. R
 
 ---
 
-### forceCreate() · [source](../../src/Core/Model.php#L108)
+### forceCreate() · [source](../../src/Core/Model.php#L110)
 
 `public static function forceCreate(array $values): static`
 
@@ -112,7 +114,34 @@ Force create a new model instance with the given values, bypassing any checks fo
 
 ---
 
-### firstOrCreate() · [source](../../src/Core/Model.php#L128)
+### upsert() · [source](../../src/Core/Model.php#L137)
+
+`public static function upsert(array $values): static`
+
+Create or update a model using database-level UPSERT semantics
+(INSERT ... ON CONFLICT DO UPDATE).  Unlike `updateOrCreate()`,
+this performs a single query with no prior SELECT — the database
+handles the conflict resolution atomically.
+
+All ID fields must be present in $values so the conflict target is
+well-defined.  On conflict, all non-ID fields from $values are
+updated.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$values` | array | - | Associative array of field values (must include all ID fields) |
+
+**➡️ Return value**
+
+- Type: static
+- Description: The model instance with the given values
+
+
+---
+
+### firstOrCreate() · [source](../../src/Core/Model.php#L156)
 
 `public static function firstOrCreate(array $conditions, array $values = []): static`
 
@@ -133,7 +162,7 @@ Find the first model matching the given conditions or create a new one with the 
 
 ---
 
-### updateOrCreate() · [source](../../src/Core/Model.php#L145)
+### updateOrCreate() · [source](../../src/Core/Model.php#L173)
 
 `public static function updateOrCreate(array $conditions, array $values = []): static`
 
@@ -154,7 +183,7 @@ Find the first model matching the given conditions or update it with the provide
 
 ---
 
-### find() · [source](../../src/Core/Model.php#L168)
+### find() · [source](../../src/Core/Model.php#L196)
 
 `public static function find(mixed $id): static|null`
 
@@ -173,7 +202,7 @@ Finds a model by its ID(s)
 
 ---
 
-### findOrFail() · [source](../../src/Core/Model.php#L208)
+### findOrFail() · [source](../../src/Core/Model.php#L236)
 
 `public static function findOrFail(mixed $id): static`
 
@@ -196,7 +225,7 @@ Finds a model by its ID(s) or throws an exception if not found
 
 ---
 
-### findOne() · [source](../../src/Core/Model.php#L222)
+### findOne() · [source](../../src/Core/Model.php#L250)
 
 `public static function findOne(array $conditions): static|null`
 
@@ -216,7 +245,7 @@ Finds the first model matching the given conditions or returns null if none foun
 
 ---
 
-### findAll() · [source](../../src/Core/Model.php#L236)
+### findAll() · [source](../../src/Core/Model.php#L264)
 
 `public static function findAll(array $conditions = []): Azera\Db\ResultSet`
 
@@ -236,7 +265,7 @@ Find all models matching the given conditions. If no conditions are provided, it
 
 ---
 
-### exists() · [source](../../src/Core/Model.php#L250)
+### exists() · [source](../../src/Core/Model.php#L278)
 
 `public static function exists(array $conditions): bool`
 
@@ -256,7 +285,7 @@ Check if any model exists matching the given conditions. Returns true if at leas
 
 ---
 
-### count() · [source](../../src/Core/Model.php#L264)
+### count() · [source](../../src/Core/Model.php#L292)
 
 `public static function count(array $conditions = []): int`
 
@@ -276,7 +305,7 @@ Count the number of models matching the given conditions. Returns the count as a
 
 ---
 
-### saveState() · [source](../../src/Core/Model.php#L283)
+### saveState() · [source](../../src/Core/Model.php#L311)
 
 `public function saveState(): static`
 
@@ -289,7 +318,7 @@ Save the current state of the model for change tracking. This method clones the 
 
 ---
 
-### loadState() · [source](../../src/Core/Model.php#L293)
+### loadState() · [source](../../src/Core/Model.php#L321)
 
 `public function loadState(): static`
 
@@ -302,7 +331,7 @@ Load the saved state of the model back into the current instance. This method co
 
 ---
 
-### getState() · [source](../../src/Core/Model.php#L311)
+### getState() · [source](../../src/Core/Model.php#L339)
 
 `public function getState(): static|null`
 
@@ -316,7 +345,7 @@ Get the saved state object for this model. This returns the clone of the model t
 
 ---
 
-### hasChanged() · [source](../../src/Core/Model.php#L364)
+### hasChanged() · [source](../../src/Core/Model.php#L392)
 
 `public function hasChanged(): bool`
 
@@ -330,7 +359,7 @@ Check if any fields have changed since the last saveState() call. This compares 
 
 ---
 
-### save() · [source](../../src/Core/Model.php#L377)
+### save() · [source](../../src/Core/Model.php#L406)
 
 `public function save(): bool`
 
@@ -344,11 +373,17 @@ Save the model to the database. If the model has all ID fields set, it performs 
 
 ---
 
-### insert() · [source](../../src/Core/Model.php#L405)
+### insert() · [source](../../src/Core/Model.php#L436)
 
-`public function insert(): bool`
+`public function insert(bool $upsert = false): bool`
 
 Insert the model as a new record in the database. This method performs an INSERT regardless of whether ID fields are set. Returns true if the insert was successful.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$upsert` | bool | `false` | When true, performs an INSERT ... ON CONFLICT DO UPDATE instead of a plain INSERT.  Requires all ID fields to be set (they serve as the conflict target). |
 
 **➡️ Return value**
 
@@ -358,7 +393,7 @@ Insert the model as a new record in the database. This method performs an INSERT
 
 ---
 
-### update() · [source](../../src/Core/Model.php#L420)
+### update() · [source](../../src/Core/Model.php#L451)
 
 `public function update(): bool`
 
@@ -372,7 +407,7 @@ Update the existing record in the database with any changed fields. This method 
 
 ---
 
-### delete() · [source](../../src/Core/Model.php#L517)
+### delete() · [source](../../src/Core/Model.php#L548)
 
 `public function delete(): bool`
 
@@ -386,7 +421,7 @@ Delete the model from the database. This method requires that all ID fields are 
 
 ---
 
-### setDefaultRole() · [source](../../src/Core/Model.php#L542)
+### setDefaultRole() · [source](../../src/Core/Model.php#L573)
 
 `public static function setDefaultRole(string $role): void`
 
@@ -405,7 +440,7 @@ Set both the read and write database role for this model class.
 
 ---
 
-### setDefaultReadRole() · [source](../../src/Core/Model.php#L553)
+### setDefaultReadRole() · [source](../../src/Core/Model.php#L584)
 
 `public static function setDefaultReadRole(string $role): void`
 
@@ -424,7 +459,7 @@ Set the database role used for SELECT queries on this model class.
 
 ---
 
-### setDefaultWriteRole() · [source](../../src/Core/Model.php#L563)
+### setDefaultWriteRole() · [source](../../src/Core/Model.php#L594)
 
 `public static function setDefaultWriteRole(string $role): void`
 
@@ -443,7 +478,35 @@ Set the database role used for INSERT/UPDATE/DELETE queries on this model class.
 
 ---
 
-### readConnection() · [source](../../src/Core/Model.php#L595)
+### readRole() · [source](../../src/Core/Model.php#L624)
+
+`public function readRole(): string`
+
+Return the database connection role used for read (SELECT) queries.
+
+**➡️ Return value**
+
+- Type: string
+- Description: The role name (e.g. 'read', 'replica').
+
+
+---
+
+### writeRole() · [source](../../src/Core/Model.php#L634)
+
+`public function writeRole(): string`
+
+Return the database connection role used for write (INSERT/UPDATE/DELETE) queries.
+
+**➡️ Return value**
+
+- Type: string
+- Description: The role name (e.g. 'write', 'primary').
+
+
+---
+
+### readConnection() · [source](../../src/Core/Model.php#L646)
 
 `public function readConnection(): Azera\Db\Database`
 
@@ -458,7 +521,7 @@ Resolves the configured read role via [`DatabaseManager::getOrDefault()`](Db_Dat
 
 ---
 
-### writeConnection() · [source](../../src/Core/Model.php#L608)
+### writeConnection() · [source](../../src/Core/Model.php#L659)
 
 `public function writeConnection(): Azera\Db\Database`
 

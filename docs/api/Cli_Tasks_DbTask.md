@@ -17,11 +17,11 @@ Options:
   --file=<path>       (query) Read SQL from a file instead of an argument
 
 Examples:
-  azera db:tables
-  azera db:tables --with-counts
-  azera db:table users
-  azera db:query "SELECT * FROM users LIMIT 5"
-  azera db:query --file=migration.sql --force
+  db:tables
+  db:tables --with-counts
+  db:table users
+  db:query "SELECT * FROM users LIMIT 5"
+  db:query --file=migration.sql --force
 
 ## 🌍 Public Properties
 

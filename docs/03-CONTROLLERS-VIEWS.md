@@ -104,69 +104,42 @@ class HealthController extends Controller
 
 ---
 
-## Lifecycle Hooks
+## Cross-cutting concerns: use Middleware
 
-The `Controller` base class provides two optional hooks that are called by the `Dispatcher` around every action invocation. Override them to add cross-cutting behavior such as access checks, logging, or response modification — without touching individual action methods.
+The `Controller` base class does **not** provide `beforeAction()`/`afterAction()` hooks. All cross-cutting behavior — authentication, logging, CORS, response modification, teardown — is expressed as **middleware**. A middleware can run code both *before* and *after* the action by invoking `$next()` and then inspecting or mutating its result.
 
-### `beforeAction()`
-
-Called **before** the action method. If it returns a `Response`, the action is skipped entirely and that response is sent instead. Returning `null` lets the action run normally.
+For example, "require login before every action" is an auth middleware:
 
 ```php
-public function beforeAction(string $action = null, array $params = []): ?Response
+class AuthMiddleware implements MiddlewareInterface
 {
-    return null; // continue
-}
-```
-
-### `afterAction()`
-
-Called **after** the action method, inside a `finally` block — so it always fires even if the action throws an exception. If it returns a `Response`, that response replaces the one produced by the action.
-
-```php
-public function afterAction(string $action = null, array $params = []): ?Response
-{
-    return null; // keep the original response
-}
-```
-
-- `$action` is the resolved PHP method name (e.g. `"editAction"`).
-- `$params` contains the resolved arguments that were (or would have been) passed to the action.
-
-### Example: require login before every action
-
-```php
-class AccountController extends Controller
-{
-    public function beforeAction(string $action = null, array $params = []): ?Response
+    public function process(AppContext $context, callable $next): ?Response
     {
-        if (!$this->session()?->get('user_id')) {
+        if (!$context->session()?->get('user_id')) {
             return Response::redirect('/login');
         }
-        return null;
-    }
-
-    public function dashboardAction(): string
-    {
-        return $this->view()->render('account/dashboard');
+        return $next($context); // runs the action
     }
 }
 ```
 
-### Example: add a response header after every action
+And "add a response header after every action" is a middleware that wraps the action:
 
 ```php
-class ApiController extends Controller
+class SecurityHeadersMiddleware implements MiddlewareInterface
 {
-    public function afterAction(string $action = null, array $params = []): ?Response
+    public function process(AppContext $context, callable $next): ?Response
     {
-        // returning null keeps the original response unchanged
-        return null;
+        $response = $next($context); // run the action (and earlier middleware)
+        if ($response instanceof Response) {
+            $response->header('X-Frame-Options', 'DENY');
+        }
+        return $response;
     }
 }
 ```
 
-> **Tip:** For concerns that should span many controllers (authentication, CORS, rate-limiting), prefer **middleware** over hooks. Hooks are best for per-controller teardown or lightweight checks that need controller context.
+Attach these to a controller (or a specific action) via the `$middlewares` / `$actionMiddlewares` properties below. This is strictly more flexible than dedicated hooks — middleware is reusable across controllers, orderable, configurable, and unit-testable in isolation.
 
 ---
 
@@ -175,7 +148,7 @@ class ApiController extends Controller
 Middleware wraps the entire request pipeline around controller actions. The execution order is:
 
 ```
-Global middleware → Route-group middleware → Controller middleware → Action middleware → beforeAction → action → afterAction
+Global middleware → Route-group middleware → Controller middleware → Action middleware → action
 ```
 
 Each middleware implements `Azera\Core\MiddlewareInterface`:
@@ -246,7 +219,7 @@ Declared as a protected property — runs for every action in the controller:
 ```php
 class AdminController extends Controller
 {
-    protected array $middleware = [
+    protected array $middlewares = [
         AuthMiddleware::class,                       // instantiated with no args
         [RoleMiddleware::class, ['admin']],           // instantiated with constructor args
     ];
@@ -260,9 +233,9 @@ Declared per action name — runs only for that specific action, after controlle
 ```php
 class UserController extends Controller
 {
-    protected array $middleware = [AuthMiddleware::class];
+    protected array $middlewares = [AuthMiddleware::class];
 
-    protected array $actionMiddleware = [
+    protected array $actionMiddlewares = [
         'deleteAction' => [
             [RoleMiddleware::class, ['admin']],
         ],
@@ -281,7 +254,7 @@ class UserController extends Controller
 
 ### Middleware Definitions
 
-All three places (`$middleware`, `$actionMiddleware`, group arrays) accept the same definition formats:
+All three places (`$middlewares`, `$actionMiddlewares`, group arrays) accept the same definition formats:
 
 | Format                                  | Behavior                                           |
 | --------------------------------------- | -------------------------------------------------- |

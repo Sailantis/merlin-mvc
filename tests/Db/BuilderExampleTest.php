@@ -16,23 +16,19 @@ class BuilderExampleTest extends TestCase
 {
     protected function setUp(): void
     {
-        // Disable model resolution for simple table testing
-        Query::useModels(false);
-        Query::setModelMapping(null);
+        // No global state to reset — each query uses its own resolver
     }
 
     protected function tearDown(): void
     {
-        // Re-enable models after tests
-        Query::useModels(true);
-        Query::setModelMapping(null);
+        // No global state to restore
     }
 
     public function testSelectBuilderGeneratesCorrectSql(): void
     {
         $db = new TestPgDatabase();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->where('status', 'active')
@@ -53,7 +49,7 @@ class BuilderExampleTest extends TestCase
     {
         $db = new TestPgDatabase();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->where('status', 'active');
@@ -67,12 +63,12 @@ class BuilderExampleTest extends TestCase
         $db = new TestPgDatabase();
         $db->setLastInsertId(42);
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->values([
-                'name' => 'Test User',
-                'email' => 'test@example.com',
+                'name'   => 'Test User',
+                'email'  => 'test@example.com',
                 'status' => 'active'
             ]);
 
@@ -88,7 +84,7 @@ class BuilderExampleTest extends TestCase
     {
         $db = new TestPgDatabase();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->values(['status' => 'inactive', 'updated_at' => Sql::raw('NOW()')])
@@ -107,7 +103,7 @@ class BuilderExampleTest extends TestCase
     {
         $db = new TestPgDatabase();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->where('status', 'deleted')
@@ -125,11 +121,11 @@ class BuilderExampleTest extends TestCase
         $db = new TestPgDatabase();
         $db->clearQueries(); // Start fresh
 
-        $builder1 = $db->builder()->returnSql()->table('users')->where('id', 1);
-        $sql1 = $builder1->select();
+        $builder1 = Query::raw($db)->returnSql()->table('users')->where('id', 1);
+        $sql1     = $builder1->select();
 
-        $builder2 = $db->builder()->returnSql()->table('orders')->where('user_id', 1);
-        $sql2 = $builder2->select();
+        $builder2 = Query::raw($db)->returnSql()->table('orders')->where('user_id', 1);
+        $sql2     = $builder2->select();
 
         // Verify queries were generated correctly
         $this->assertStringContainsString('users', $sql1);
@@ -137,7 +133,7 @@ class BuilderExampleTest extends TestCase
 
         $db->begin();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->table('users')
             ->values(['name' => 'Test']);
         $builder->insert();
@@ -154,7 +150,7 @@ class BuilderExampleTest extends TestCase
     {
         $db = new TestMysqlDatabase();
 
-        $builder = $db->builder()
+        $builder = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->where('id', 1);
@@ -169,13 +165,13 @@ class BuilderExampleTest extends TestCase
     {
         $db = new TestPgDatabase();
 
-        $sql = $db->builder()
+        $sql = Query::raw($db)
             ->returnSql()
             ->table('users')
             ->values([
-                'name' => 'Alice',
+                'name'  => 'Alice',
                 'email' => 'alice@example.com',
-                'age' => null,
+                'age'   => null,
             ])
             ->insert();
 

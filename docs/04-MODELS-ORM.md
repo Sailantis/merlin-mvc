@@ -100,6 +100,12 @@ $item = UserProduct::find([10, 25]);
 $item = UserProduct::find(['user_id' => 10, 'product_id' => 25]);
 ```
 
+When inserting a model with composite keys, any ID fields that are left unset are
+backfilled automatically from the database where the server supports `RETURNING`
+(PostgreSQL, MySQL 8.0.27+, MariaDB 10.5.0+, SQLite 3.35+). On older MySQL/MariaDB/SQLite
+servers, only a single auto-increment ID field can be backfilled via `lastInsertId()`;
+the remaining composite key fields must be set manually before saving.
+
 ---
 
 ## Creating Records
@@ -282,11 +288,17 @@ $db = $user->writeConnection();  // Database (write role)
 
 `ModelMapping` lets you query the database using logical model names without defining PHP model classes. This is useful for rapid prototyping, dynamic table mappings, or when you need query-builder convenience for tables that don't warrant a full Active Record class.
 
+In the new resolver system, a `MappingResolver` wraps the mapping and is registered in `AppContext` (typically as part of a `ChainResolver` alongside a `ModelResolver`).
+
 ### Register a mapping
 
 ```php
-use Azera\Db\Query;
+use Azera\AppContext;
 use Azera\Core\ModelMapping;
+use Azera\Db\Resolver\ChainResolver;
+use Azera\Db\Resolver\MappingResolver;
+use Azera\Db\Resolver\ModelResolver;
+use Azera\Db\Resolver\TableResolver;
 
 $mapping = ModelMapping::fromArray([
     // simple: name => table
@@ -295,15 +307,23 @@ $mapping = ModelMapping::fromArray([
     'Product' => ['source' => 'products'],
     // explicit with schema:
     'Order'   => ['source' => 'orders', 'schema' => 'public'],
+    // with a connection role (read + write):
+    'Log'     => ['source' => 'logs', 'connection' => 'logging'],
+    // with separate read/write connections:
+    'Stat'    => ['source' => 'stats', 'read' => 'replica', 'write' => 'primary'],
 ]);
 
-Query::setModelMapping($mapping);
-Query::useModels(true);
+// Register as the AppContext default so Query::new() picks it up
+AppContext::instance()->set(TableResolver::class, new ChainResolver(
+    new ModelResolver(),
+    new MappingResolver($mapping),
+));
 ```
 
 Once registered, use the logical name wherever `Query` accepts a table or model reference:
 
 ```php
+// Query::new() uses the AppContext default resolver (the chain above)
 $results = Query::new()
     ->table('User')
     ->where('status', 'active')
@@ -314,6 +334,17 @@ $results = Query::new()
     ->table('User')
     ->join('Order', Condition::new()->where('User.id = Order.user_id'))
     ->columns(['User.id', 'User.email', 'Order.total'])
+    ->select();
+```
+
+For a one-off mapping without registering globally, use `Query::using()`:
+
+```php
+use Azera\Db\Resolver\MappingResolver;
+
+$results = Query::new()
+    ->using(new MappingResolver($mapping))
+    ->table('User')
     ->select();
 ```
 
@@ -328,9 +359,6 @@ $mapping = ModelMapping::fromArray([
     'User'    => true,  // auto: "users"
     'Product' => true,  // auto: "products"
 ]);
-
-Query::setModelMapping($mapping);
-Query::useModels(true);
 ```
 
 ### Fluent builder
@@ -340,21 +368,20 @@ Use the `add()` method to build mappings programmatically:
 ```php
 $mapping = (new ModelMapping())
     ->add('User', 'users')
-    ->add('Order', 'orders', 'public'); // third arg is the schema
-
-Query::setModelMapping($mapping);
+    ->add('Order', 'orders', 'public')           // third arg is the schema
+    ->add('Log', 'logs', null, 'logging')         // fourth arg is connection (read+write)
+    ->add('Stat', 'stats', null, null, 'replica', 'primary'); // read, write overrides
 ```
 
-### Resetting
+### Connection roles
 
-Pass `null` to remove the mapping and revert to normal model-class resolution:
+Each mapping entry can specify connection roles:
 
-```php
-Query::setModelMapping(null);
+- `connection` — sets both read and write to the same role
+- `read` — overrides the read connection role
+- `write` — overrides the write connection role
 
-// Or disable model mode entirely for literal table-name queries
-Query::useModels(false);
-```
+When `read`/`write` are set, they take precedence over `connection`.
 
 > **Note:** `ModelMapping` only affects `Query`-level operations. The Active Record helpers (`User::find()`, `User::create()`, etc.) still require a PHP class that extends `Model`.
 

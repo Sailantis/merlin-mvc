@@ -14,7 +14,7 @@ are automatically discoverable by [`Console`](Cli_Console.md).
 
 ## 🚀 Public methods
 
-### write() · [source](../../src/Cli/Task.php#L33)
+### write() · [source](../../src/Cli/Task.php#L32)
 
 `public function write(string $text = ''): void`
 
@@ -33,7 +33,7 @@ Write text without a newline.
 
 ---
 
-### writeln() · [source](../../src/Cli/Task.php#L39)
+### writeln() · [source](../../src/Cli/Task.php#L38)
 
 `public function writeln(string $text = ''): void`
 
@@ -52,7 +52,7 @@ Write a line of text with a newline.
 
 ---
 
-### stderr() · [source](../../src/Cli/Task.php#L45)
+### stderr() · [source](../../src/Cli/Task.php#L44)
 
 `public function stderr(string $text = ''): void`
 
@@ -71,7 +71,7 @@ Write to STDERR without a newline.
 
 ---
 
-### stderrln() · [source](../../src/Cli/Task.php#L51)
+### stderrln() · [source](../../src/Cli/Task.php#L50)
 
 `public function stderrln(string $text = ''): void`
 
@@ -90,7 +90,7 @@ Write to STDERR with a newline.
 
 ---
 
-### stdout() · [source](../../src/Cli/Task.php#L57)
+### stdout() · [source](../../src/Cli/Task.php#L56)
 
 `public function stdout(string $text = ''): void`
 
@@ -109,7 +109,7 @@ Write to STDOUT without a newline.
 
 ---
 
-### stdoutln() · [source](../../src/Cli/Task.php#L63)
+### stdoutln() · [source](../../src/Cli/Task.php#L62)
 
 `public function stdoutln(string $text = ''): void`
 
@@ -128,7 +128,7 @@ Write to STDOUT with a newline.
 
 ---
 
-### line() · [source](../../src/Cli/Task.php#L69)
+### line() · [source](../../src/Cli/Task.php#L68)
 
 `public function line(string $text): void`
 
@@ -147,7 +147,7 @@ Plain message with no styling. Newline is appended.
 
 ---
 
-### info() · [source](../../src/Cli/Task.php#L75)
+### info() · [source](../../src/Cli/Task.php#L74)
 
 `public function info(string $text): void`
 
@@ -166,7 +166,7 @@ Informational message (cyan). Newline is appended.
 
 ---
 
-### success() · [source](../../src/Cli/Task.php#L81)
+### success() · [source](../../src/Cli/Task.php#L80)
 
 `public function success(string $text): void`
 
@@ -185,7 +185,7 @@ Success message (green). Newline is appended.
 
 ---
 
-### warn() · [source](../../src/Cli/Task.php#L87)
+### warn() · [source](../../src/Cli/Task.php#L86)
 
 `public function warn(string $text): void`
 
@@ -204,7 +204,7 @@ Warning message (yellow). Newline is appended.
 
 ---
 
-### error() · [source](../../src/Cli/Task.php#L93)
+### error() · [source](../../src/Cli/Task.php#L92)
 
 `public function error(string $text): void`
 
@@ -223,7 +223,7 @@ Error message (white on red) to STDERR. Newline is appended.
 
 ---
 
-### muted() · [source](../../src/Cli/Task.php#L99)
+### muted() · [source](../../src/Cli/Task.php#L98)
 
 `public function muted(string $text): void`
 
@@ -242,7 +242,7 @@ Muted / dimmed text (gray). Newline is appended.
 
 ---
 
-### option() · [source](../../src/Cli/Task.php#L125)
+### option() · [source](../../src/Cli/Task.php#L124)
 
 `public function option(string $key, mixed $default = null): mixed`
 
@@ -263,7 +263,7 @@ Retrieve a parsed option value by key, with an optional default.
 
 ---
 
-### context() · [source](../../src/Cli/Task.php#L134)
+### context() · [source](../../src/Cli/Task.php#L133)
 
 `public function context(): Azera\AppContext`
 
@@ -276,47 +276,50 @@ Get the current AppContext instance. Useful for accessing services.
 
 ---
 
-### beforeAction() · [source](../../src/Cli/Task.php#L151)
+### getMiddlewares() · [source](../../src/Cli/Task.php#L185)
 
-`public function beforeAction(string $action, array $params): void`
+`public function getMiddlewares(): array`
 
-Called before the action method is executed.
-
-Override in a subclass to perform setup work (e.g. register event listeners based on options).
-The method has access to $this->options and $this->console at this point.
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$action` | string | - | The resolved PHP method name that will be invoked (e.g. "runAction"). |
-| `$params` | array | - | Positional parameters that will be passed to the action. |
+Get the middleware for the task. Used by the Console to build the
+middleware pipeline when dispatching an action.
 
 **➡️ Return value**
 
-- Type: void
+- Type: array
 
 
 ---
 
-### afterAction() · [source](../../src/Cli/Task.php#L162)
+### getActionMiddlewares() · [source](../../src/Cli/Task.php#L196)
 
-`public function afterAction(string $action, array $params): void`
+`public function getActionMiddlewares(string $action): array`
 
-Called after the action method has finished executing (including when an exception is thrown).
-
-Override in a subclass to perform teardown or post-processing work (e.g. flush collected SQL logs).
+Get the middleware for a specific action. Used by the Console to build
+the middleware pipeline when dispatching an action.
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$action` | string | - | The resolved PHP method name that was invoked (e.g. "runAction"). |
-| `$params` | array | - | Positional parameters that were passed to the action. |
+| `$action` | string | - | The resolved PHP method name (e.g. "runAction"). |
 
 **➡️ Return value**
 
-- Type: void
+- Type: array
+
+
+---
+
+### getInterceptors() · [source](../../src/Cli/Task.php#L206)
+
+`public function getInterceptors(): array`
+
+Get the AOP interceptors for this task. Used by the Console to wrap the
+action method in an interceptor chain.
+
+**➡️ Return value**
+
+- Type: array
 
 
 

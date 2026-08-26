@@ -18,6 +18,8 @@ class DatabaseExceptionOccurred extends DatabaseEvent
     public function __construct(
         Database $database,
         public readonly PDOException $exception,
+        public readonly ?string $sql = null,
+        public readonly ?array $params = null,
     ) {
         parent::__construct($database);
     }

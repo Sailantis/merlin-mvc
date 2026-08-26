@@ -3,28 +3,18 @@
 namespace Azera\Core;
 
 use Azera\AppContext;
-use Azera\ResolvedRoute;
+use Azera\Core\ResolvedRoute;
 use Azera\Http\Response;
 use InvalidArgumentException;
 use Azera\Core\Exceptions\ActionNotFoundException;
 use Azera\Core\Exceptions\InvalidControllerException;
 use Azera\Core\Exceptions\ControllerNotFoundException;
 
-/** 
+/**
  * Dispatcher is responsible for handling the execution of controller actions based on the current routing information. It builds a middleware pipeline, and invokes the action, returning a Response object. It supports global and group-based middleware, as well as controller and action-specific middleware.
  */
 class Dispatcher
 {
-    /**
-     * Method names that end with 'Action' but are lifecycle hooks, not
-     * dispatchable actions. Attempting to dispatch one via a dynamic route
-     * will result in an {@see ActionNotFoundException}.
-     */
-    protected const RESERVED_ACTIONS = [
-        'beforeAction' => true,
-        'afterAction'  => true
-    ];
-
     protected AppContext $context;
 
     /**
@@ -202,12 +192,6 @@ class Dispatcher
             $actionName = $this->defaultAction;
         }
 
-        if (isset(static::RESERVED_ACTIONS[$actionName])) {
-            throw new ActionNotFoundException(
-                "Action '{$actionName}' is a lifecycle hook and cannot be dispatched directly."
-            );
-        }
-
         $controllerClass = $namespace !== ''
             ? $namespace . '\\' . $controllerName
             : $controllerName;
@@ -258,8 +242,7 @@ class Dispatcher
         string $action,
         array $routeParams,
         AppContext $context
-    ): array
-    {
+    ): array {
 
         try {
             $ref = new \ReflectionMethod($controller, $action);
@@ -457,7 +440,7 @@ class Dispatcher
         }
 
         // 2) Controller-based Middleware
-        $controllerMiddleware = $controller->getMiddleware();
+        $controllerMiddleware = $controller->getMiddlewares();
         if (!empty($controllerMiddleware)) {
             foreach ($controllerMiddleware as $mw) {
                 $middleware[] = $this->normalizeMiddleware($mw);
@@ -465,7 +448,7 @@ class Dispatcher
         }
 
         // 3) Action-based Middleware
-        $actionMiddleware = $controller->getActionMiddleware($action);
+        $actionMiddleware = $controller->getActionMiddlewares($action);
         if (!empty($actionMiddleware)) {
             foreach ($actionMiddleware as $mw) {
                 $middleware[] = $this->normalizeMiddleware($mw);
@@ -480,18 +463,14 @@ class Dispatcher
                 $params
             );
 
-        // If no middleware, return direct controller invocation
-        if (empty($middleware)) {
-            return $core;
-        }
+        // Run the pipeline efficiently
+        $next  = $core;
+        $count = count($middleware);
 
-        // Run the pipeline
-        $next = $core;
-
-        foreach (array_reverse($middleware) as $mw) {
+        for ($i = $count - 1; $i >= 0; $i--) {
             /** @var MiddlewareInterface $mw */
-            $current = $mw;
-            $next    = fn() => $current->process($context, $next);
+            $mw   = $middleware[$i];
+            $next = fn() => $mw->process($context, $next);
         }
 
         return $next;
@@ -533,19 +512,7 @@ class Dispatcher
 
     protected function invokeController(Controller $controller, string $action, array $params): Response
     {
-        $before = $controller->beforeAction($action, $params);
-        if ($before instanceof Response) {
-            return $before;
-        }
-
-        try {
-            $result = $controller->$action(...$params);
-        } finally {
-            $after = $controller->afterAction($action, $params);
-            if ($after instanceof Response) {
-                $result = $after;
-            }
-        }
+        $result = $controller->$action(...$params);
 
         if ($result instanceof Response) {
             return $result;

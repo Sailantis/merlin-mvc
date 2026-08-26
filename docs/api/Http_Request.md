@@ -30,9 +30,9 @@ It also handles method overrides, proxy headers, content negotiation, and file u
 
 ---
 
-### getBody() · [source](../../src/Http/Request.php#L47)
+### body() · [source](../../src/Http/Request.php#L46)
 
-`public function getBody(): string`
+`public function body(): string`
 
 Get the raw request body
 Caches the body since php://input can only be read once
@@ -44,9 +44,9 @@ Caches the body since php://input can only be read once
 
 ---
 
-### getJsonBody() · [source](../../src/Http/Request.php#L61)
+### jsonBody() · [source](../../src/Http/Request.php#L60)
 
-`public function getJsonBody(bool $assoc = true): mixed`
+`public function jsonBody(bool $assoc = true): mixed`
 
 Get and parse JSON request body
 
@@ -68,7 +68,7 @@ Get and parse JSON request body
 
 ---
 
-### input() · [source](../../src/Http/Request.php#L81)
+### input() · [source](../../src/Http/Request.php#L80)
 
 `public function input(string|null $name = null, mixed $default = null): mixed`
 
@@ -88,7 +88,7 @@ Get an input parameter from the request (POST takes precedence over GET)
 
 ---
 
-### query() · [source](../../src/Http/Request.php#L95)
+### query() · [source](../../src/Http/Request.php#L94)
 
 `public function query(string|null $name = null, mixed $default = null): mixed`
 
@@ -108,7 +108,27 @@ Get a query parameter from the request
 
 ---
 
-### post() · [source](../../src/Http/Request.php#L109)
+### get() · [source](../../src/Http/Request.php#L108)
+
+`public function get(string|null $name = null, mixed $default = null): mixed`
+
+Get a GET parameter from the request
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$name` | string\|null | `null` |  |
+| `$default` | mixed | `null` |  |
+
+**➡️ Return value**
+
+- Type: mixed
+
+
+---
+
+### post() · [source](../../src/Http/Request.php#L122)
 
 `public function post(string|null $name = null, mixed $default = null): mixed`
 
@@ -128,7 +148,7 @@ Get a POST parameter from the request
 
 ---
 
-### server() · [source](../../src/Http/Request.php#L123)
+### server() · [source](../../src/Http/Request.php#L136)
 
 `public function server(string|null $name = null, mixed $default = null): mixed`
 
@@ -148,7 +168,7 @@ Get a server variable from the request
 
 ---
 
-### header() · [source](../../src/Http/Request.php#L137)
+### header() · [source](../../src/Http/Request.php#L150)
 
 `public function header(string $name, mixed $default = null): mixed`
 
@@ -169,7 +189,7 @@ Get a request header value
 
 ---
 
-### hasInput() · [source](../../src/Http/Request.php#L147)
+### hasInput() · [source](../../src/Http/Request.php#L160)
 
 `public function hasInput(string $name): bool`
 
@@ -186,7 +206,7 @@ Get a request header value
 
 ---
 
-### hasQuery() · [source](../../src/Http/Request.php#L152)
+### hasQuery() · [source](../../src/Http/Request.php#L165)
 
 `public function hasQuery(string $name): bool`
 
@@ -203,7 +223,7 @@ Get a request header value
 
 ---
 
-### hasPost() · [source](../../src/Http/Request.php#L157)
+### hasPost() · [source](../../src/Http/Request.php#L170)
 
 `public function hasPost(string $name): bool`
 
@@ -220,9 +240,9 @@ Get a request header value
 
 ---
 
-### getMethod() · [source](../../src/Http/Request.php#L166)
+### method() · [source](../../src/Http/Request.php#L179)
 
-`public function getMethod(): string`
+`public function method(): string`
 
 Get the HTTP method of the request, accounting for method overrides in POST requests
 
@@ -233,7 +253,7 @@ Get the HTTP method of the request, accounting for method overrides in POST requ
 
 ---
 
-### isPost() · [source](../../src/Http/Request.php#L188)
+### isPost() · [source](../../src/Http/Request.php#L201)
 
 `public function isPost(): bool`
 
@@ -246,9 +266,9 @@ Checks whether the request method is POST
 
 ---
 
-### getScheme() · [source](../../src/Http/Request.php#L197)
+### scheme() · [source](../../src/Http/Request.php#L210)
 
-`public function getScheme(): string`
+`public function scheme(): string`
 
 Get the request scheme (http or https)
 
@@ -259,7 +279,7 @@ Get the request scheme (http or https)
 
 ---
 
-### isSecure() · [source](../../src/Http/Request.php#L213)
+### isSecure() · [source](../../src/Http/Request.php#L226)
 
 `public function isSecure(): bool`
 
@@ -272,9 +292,9 @@ Checks whether request has been made using HTTPS
 
 ---
 
-### getHost() · [source](../../src/Http/Request.php#L222)
+### host() · [source](../../src/Http/Request.php#L235)
 
-`public function getHost(): string`
+`public function host(): string`
 
 Get the host name of the request, accounting for proxy headers and Host header
 
@@ -285,9 +305,9 @@ Get the host name of the request, accounting for proxy headers and Host header
 
 ---
 
-### getPort() · [source](../../src/Http/Request.php#L240)
+### port() · [source](../../src/Http/Request.php#L253)
 
-`public function getPort(): int`
+`public function port(): int`
 
 Get the port number of the request, accounting for proxy headers and Host header
 
@@ -298,9 +318,9 @@ Get the port number of the request, accounting for proxy headers and Host header
 
 ---
 
-### getUri() · [source](../../src/Http/Request.php#L263)
+### uri() · [source](../../src/Http/Request.php#L276)
 
-`public function getUri(): string`
+`public function uri(): string`
 
 Get the full URI of the request
 
@@ -311,9 +331,9 @@ Get the full URI of the request
 
 ---
 
-### getPath() · [source](../../src/Http/Request.php#L272)
+### path() · [source](../../src/Http/Request.php#L285)
 
-`public function getPath(): string`
+`public function path(): string`
 
 Get the path component of the request URI (without query string)
 
@@ -324,9 +344,9 @@ Get the path component of the request URI (without query string)
 
 ---
 
-### getClientIp() · [source](../../src/Http/Request.php#L283)
+### clientIp() · [source](../../src/Http/Request.php#L296)
 
-`public function getClientIp(bool $trustForwarded = false): string|false`
+`public function clientIp(bool $trustForwarded = false): string|false`
 
 Get the client IP address, accounting for proxy headers if trusted
 
@@ -343,9 +363,9 @@ Get the client IP address, accounting for proxy headers if trusted
 
 ---
 
-### getAcceptableContent() · [source](../../src/Http/Request.php#L367)
+### acceptableContent() · [source](../../src/Http/Request.php#L379)
 
-`public function getAcceptableContent(bool $sort = false): array`
+`public function acceptableContent(bool $sort = false): array`
 
 Get the list of acceptable content types from the Accept header, with quality factors
 
@@ -363,9 +383,9 @@ Get the list of acceptable content types from the Accept header, with quality fa
 
 ---
 
-### getBestAccept() · [source](../../src/Http/Request.php#L376)
+### bestAccept() · [source](../../src/Http/Request.php#L388)
 
-`public function getBestAccept(): string`
+`public function bestAccept(): string`
 
 Get the best acceptable content type from the Accept header
 
@@ -376,9 +396,9 @@ Get the best acceptable content type from the Accept header
 
 ---
 
-### getLanguages() · [source](../../src/Http/Request.php#L386)
+### languages() · [source](../../src/Http/Request.php#L398)
 
-`public function getLanguages(bool $sort = false): array`
+`public function languages(bool $sort = false): array`
 
 Get the list of acceptable languages from the Accept-Language header, with quality factors
 
@@ -396,9 +416,9 @@ Get the list of acceptable languages from the Accept-Language header, with quali
 
 ---
 
-### getBestLanguage() · [source](../../src/Http/Request.php#L395)
+### bestLanguage() · [source](../../src/Http/Request.php#L407)
 
-`public function getBestLanguage(): string`
+`public function bestLanguage(): string`
 
 Get the best acceptable language from the Accept-Language header
 
@@ -409,9 +429,9 @@ Get the best acceptable language from the Accept-Language header
 
 ---
 
-### getEncodings() · [source](../../src/Http/Request.php#L405)
+### encodings() · [source](../../src/Http/Request.php#L417)
 
-`public function getEncodings(bool $sort = false): array`
+`public function encodings(bool $sort = false): array`
 
 Get the list of acceptable encodings from the Accept-Encoding header, with quality factors
 
@@ -429,9 +449,9 @@ Get the list of acceptable encodings from the Accept-Encoding header, with quali
 
 ---
 
-### getBestEncoding() · [source](../../src/Http/Request.php#L414)
+### bestEncoding() · [source](../../src/Http/Request.php#L426)
 
-`public function getBestEncoding(): string`
+`public function bestEncoding(): string`
 
 Get the best acceptable encoding from the Accept-Encoding header
 
@@ -442,9 +462,9 @@ Get the best acceptable encoding from the Accept-Encoding header
 
 ---
 
-### getCharsets() · [source](../../src/Http/Request.php#L424)
+### charsets() · [source](../../src/Http/Request.php#L436)
 
-`public function getCharsets(bool $sort = false): array`
+`public function charsets(bool $sort = false): array`
 
 Get the list of acceptable charsets from the Accept-Charset header, with quality factors
 
@@ -462,9 +482,9 @@ Get the list of acceptable charsets from the Accept-Charset header, with quality
 
 ---
 
-### getBestCharset() · [source](../../src/Http/Request.php#L433)
+### bestCharset() · [source](../../src/Http/Request.php#L445)
 
-`public function getBestCharset(): string`
+`public function bestCharset(): string`
 
 Get the best acceptable charset from the Accept-Charset header
 
@@ -475,7 +495,7 @@ Get the best acceptable charset from the Accept-Charset header
 
 ---
 
-### isJson() · [source](../../src/Http/Request.php#L479)
+### isJson() · [source](../../src/Http/Request.php#L491)
 
 `public function isJson(): bool`
 
@@ -488,7 +508,7 @@ Checks whether the request expects a JSON response based on Content-Type or Acce
 
 ---
 
-### isAjax() · [source](../../src/Http/Request.php#L496)
+### isAjax() · [source](../../src/Http/Request.php#L508)
 
 `public function isAjax(): bool`
 
@@ -501,9 +521,9 @@ Checks whether the request is an AJAX request based on X-Requested-With header o
 
 ---
 
-### getBasicAuth() · [source](../../src/Http/Request.php#L508)
+### basicAuth() · [source](../../src/Http/Request.php#L520)
 
-`public function getBasicAuth(): array|null`
+`public function basicAuth(): array|null`
 
 Get Basic Auth credentials from the request, accounting for different server configurations
 
@@ -515,11 +535,11 @@ Get Basic Auth credentials from the request, accounting for different server con
 
 ---
 
-### getAuthorization() · [source](../../src/Http/Request.php#L542)
+### authorization() · [source](../../src/Http/Request.php#L554)
 
-`public function getAuthorization(): array|null`
+`public function authorization(): array|null`
 
-Get any HTTP auth scheme from the Authorization header
+Get any HTTP auth scheme from the request
 
 **➡️ Return value**
 
@@ -529,9 +549,9 @@ Get any HTTP auth scheme from the Authorization header
 
 ---
 
-### getUserAgent() · [source](../../src/Http/Request.php#L567)
+### userAgent() · [source](../../src/Http/Request.php#L579)
 
-`public function getUserAgent(): string`
+`public function userAgent(): string`
 
 Get the User-Agent string from the request headers
 
@@ -542,9 +562,9 @@ Get the User-Agent string from the request headers
 
 ---
 
-### getContentType() · [source](../../src/Http/Request.php#L576)
+### contentType() · [source](../../src/Http/Request.php#L588)
 
-`public function getContentType(): string`
+`public function contentType(): string`
 
 Get the Content-Type header from the request
 
@@ -555,9 +575,9 @@ Get the Content-Type header from the request
 
 ---
 
-### getFile() · [source](../../src/Http/Request.php#L629)
+### file() · [source](../../src/Http/Request.php#L641)
 
-`public function getFile(string $key): Azera\Http\UploadedFile|null`
+`public function file(string $key): Azera\Http\UploadedFile|null`
 
 Get the first uploaded file for a given field name, or null if not present
 
@@ -574,9 +594,9 @@ Get the first uploaded file for a given field name, or null if not present
 
 ---
 
-### getFiles() · [source](../../src/Http/Request.php#L647)
+### files() · [source](../../src/Http/Request.php#L659)
 
-`public function getFiles(string $key): array`
+`public function files(string $key): array`
 
 Get all uploaded files for a given field name, or an empty array if not present
 

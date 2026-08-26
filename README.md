@@ -323,7 +323,7 @@ $completedOrders = Order::query()
     ->columns(['user_id', 'SUM(total) AS total_spent']);
 
 // Use it as a derived table with ->from()
-$topBuyers = Query::new()
+$topBuyers = Query::raw()
     ->from($completedOrders, 'co')
     ->where('co.total_spent >', 500)
     ->orderBy('co.total_spent DESC')
@@ -342,10 +342,10 @@ $report = User::query()
 
 #### Using the Query Builder Directly on Tables
 
-For queries that don't belong to any model, start with `Query::new()` and specify the table manually:
+For queries that don't belong to any model, start with `Query::raw()` and specify the table manually:
 
 ```php
-$results = Query::new()
+$results = Query::raw()
     ->table('orders o')
     ->join('users u', 'o.user_id = u.id')
     ->where('o.status', 'completed')

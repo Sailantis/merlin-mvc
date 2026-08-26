@@ -3,7 +3,9 @@
 **Master the query builder** - Deep dive into Azera's powerful and intuitive query builder. Learn how to construct complex SELECT queries, perform joins, use subqueries, aggregate data, and leverage prepared statements for security.
 
 Azera uses a unified fluent query builder: `Azera\Db\Query`.
-You can access it directly via `Query::new()` or through models with `Model::query()`.
+You can access it directly via `Query::raw()` (literal tables) or `Query::new()` (model/mapping
+resolution via the AppContext-registered `TableResolver`), or through models with
+`Model::query()`.
 
 ## Basic Setup
 
@@ -22,25 +24,28 @@ AppContext::instance()->dbManager()->set('default', new Database(
 
 ## Query Entry Points
 
-You can build queries in two ways: directly using Query::new() for table-level operations, or through models for object-oriented workflows.
+You can build queries in three ways: raw table names (`Query::raw()`), model classes
+(`Query::new()` with the default resolver), or through models with `Model::query()`.
 
 ```php
 use Azera\Db\Query;
 
-// Plain table
-$q = Query::new()->table('users');
+// Plain table (literal — no model resolution)
+$q = Query::raw()->table('users');
 
-// From model
+// Model class (resolves table, connection, and enables hydration)
 $users = User::query()->where('status', 'active')->select();
 ```
+
+> **See also:** [Table Resolvers](#table-resolvers) below for using model mappings
+> without model classes, or custom resolver implementations.
 
 ## SELECT
 
 The query builder provides a fluent interface for constructing SELECT queries. Chain methods to add conditions, joins, sorting, and pagination. All queries use prepared statements for security.
 
 ```php
-$users = Query::new()
-    ->table('users', 'u')
+$users = Query::raw()->table('users', 'u')
     ->columns(['u.id', 'u.username', 'u.email'])
     ->where('u.created_at >', '2024-01-01')
     ->where('u.status', 'active')
@@ -49,14 +54,12 @@ $users = Query::new()
     ->offset(0)
     ->select();
 
-$user = Query::new()
-    ->table('users')
+$user = Query::raw()->table('users')
     ->where('id', 5)
     ->first();
 
 // DISTINCT
-$emails = Query::new()
-    ->table('orders')
+$emails = Query::raw()->table('orders')
     ->columns(['customer_email'])
     ->distinct(true)
     ->select();
@@ -172,13 +175,12 @@ Use a `Query` instance as the table source for a derived table. The subquery is 
 use Azera\Db\Query;
 
 // Build the inner query independently
-$recent = Query::new()
-    ->table('orders')
+$recent = Query::raw()->table('orders')
     ->where('created_at > :since', ['since' => '2025-01-01'])
     ->columns(['user_id', 'total']);
 
 // Use it as a derived table with an alias
-$results = Query::new()
+$results = Query::raw()
     ->from($recent, 'recent_orders')
     ->where('recent_orders.total >', 100)
     ->select();
@@ -189,7 +191,7 @@ $results = Query::new()
 
 ```php
 // Equivalent: plain string still works
-$q = Query::new()->from('users', 'u')->where('u.status', 'active')->select();
+$q = Query::raw()->from('users', 'u')->where('u.status', 'active')->select();
 ```
 
 ## JOIN, GROUP, HAVING
@@ -197,8 +199,7 @@ $q = Query::new()->from('users', 'u')->where('u.status', 'active')->select();
 Build complex queries with joins, aggregations, and grouping. The query builder makes it easy to construct sophisticated SQL while maintaining readability.
 
 ```php
-$rows = Query::new()
-    ->table('posts', 'p')
+$rows = Query::raw()->table('posts', 'p')
     ->columns([
         'p.id',
         'p.title',
@@ -220,14 +221,12 @@ Any join method (`join`, `innerJoin`, `leftJoin`, `rightJoin`, `crossJoin`) also
 
 ```php
 // Pre-aggregate orders into a subquery
-$orderTotals = Query::new()
-    ->table('orders')
+$orderTotals = Query::raw()->table('orders')
     ->where('status', 'completed')
     ->groupBy('user_id')
     ->columns(['user_id', 'SUM(total) AS total_spent']);
 
-$results = Query::new()
-    ->table('users', 'u')
+$results = Query::raw()->table('users', 'u')
     ->leftJoin($orderTotals, 'ot', 'ot.user_id = u.id')
     ->columns(['u.username', 'ot.total_spent'])
     ->where('ot.total_spent >', 500)
@@ -299,7 +298,7 @@ $deleted = User::query()
 Insert multiple rows in a single statement with `bulkValues()`:
 
 ```php
-Query::new()->table('tags')->bulkValues([
+Query::raw()->table('tags')->bulkValues([
     ['name' => 'php'],
     ['name' => 'mysql'],
     ['name' => 'redis'],
@@ -318,7 +317,7 @@ User::query()->ignore()->insert(['email' => 'existing@example.com', 'username' =
 User::query()->replace()->insert(['id' => 1, 'email' => 'updated@example.com']);
 ```
 
-### RETURNING clause (PostgreSQL / MySQL 8.0.27+)
+### RETURNING clause (PostgreSQL / MySQL 8.0.27+ / MariaDB 10.5.0+ / SQLite 3.35+)
 
 Chain `returning()` on INSERT, UPDATE, or DELETE to get column values back from the database:
 
@@ -338,7 +337,7 @@ $row = User::query()
 ### TRUNCATE
 
 ```php
-Query::new()->table('cache_entries')->truncate();
+Query::raw()->table('cache_entries')->truncate();
 ```
 
 ## EXISTS / COUNT
@@ -366,15 +365,13 @@ Use `forUpdate()` for pessimistic write locks and `sharedLock()` for shared/read
 
 ```php
 // SELECT … FOR UPDATE (exclusive lock)
-$user = Query::new()
-    ->table('users')
+$user = Query::raw()->table('users')
     ->where('id', 5)
     ->forUpdate(true)
     ->first();
 
 // SELECT … LOCK IN SHARE MODE (MySQL) / FOR SHARE (PostgreSQL)
-$user = Query::new()
-    ->table('users')
+$user = Query::raw()->table('users')
     ->where('id', 5)
     ->sharedLock(true)
     ->first();
@@ -410,8 +407,7 @@ You can enable reverse pagination using the third argument. It does not change y
 
 ```php
 // Messages sorted oldest → newest
-$messages = Query::new()
-    ->table('messages')
+$messages = Query::raw()->table('messages')
     ->where('room_id', 15)
     ->orderBy('id ASC')
     ->paginate(page: 1, pageSize: 3, reverse: true)
@@ -451,7 +447,7 @@ Post::query()
 
 ```php
 // param() — value supplied separately via bind()
-Query::new()->table('articles')
+Query::raw()->table('articles')
     ->bind(['userId' => 42, 'ts' => time()])
     ->set([
         'updated_by' => Sql::param('userId'),
@@ -492,7 +488,7 @@ Post::query()
 
 ```php
 // NOW(), COALESCE(), custom functions, …
-Query::new()->table('sessions')
+Query::raw()->table('sessions')
     ->insert([
         'user_id'    => 42,
         'created_at' => Sql::func('NOW'),
@@ -505,7 +501,7 @@ Query::new()->table('sessions')
 Driver-aware: PostgreSQL uses `expr::type`, MySQL/SQLite use `CAST(expr AS type)`.
 
 ```php
-Query::new()->table('stats')
+Query::raw()->table('stats')
     ->columns([Sql::cast(Sql::column('score'), 'DECIMAL(10,2)')->as('score_decimal')])
     ->select();
 ```
@@ -535,7 +531,7 @@ User::query()
 ### Sql::pgArray() — PostgreSQL array literals
 
 ```php
-Query::new()->table('posts')
+Query::raw()->table('posts')
     ->insert([
         'title' => 'PHP Tutorial',
         'tags'  => Sql::pgArray(['php', 'programming', 'web']),
@@ -578,13 +574,12 @@ User::query()
 
 ```php
 $lastLogin = Sql::subQuery(
-    Query::new()->table('logins')
+    Query::raw()->table('logins')
         ->columns('MAX(created_at)')
         ->where('user_id = users.id')
 );
 
-Query::new()
-    ->table('users')
+Query::raw()->table('users')
     ->columns(['id', 'username', $lastLogin->as('last_login')])
     ->select();
 ```
@@ -627,8 +622,90 @@ try {
 }
 ```
 
+## Table Resolvers
+
+The query builder uses a **`TableResolver`** strategy to decide what a table name
+means. The resolver turns a logical name (e.g. `User`, `users`, `App\Models\Order`)
+into a concrete source descriptor: table name, schema, connection roles, model class
+(for hydration), and primary key fields (for UPSERT).
+
+### Built-in resolvers
+
+| Resolver | Used by | Behavior |
+|---|---|---|
+| `LiteralResolver` | `Query::raw()` | Treats the name as a literal table. Supports `schema.table` notation. No hydration. |
+| `ModelResolver` | `Query::new()` (fallback) | Resolves model class names via `source()`, `schema()`, `readRole()`, `writeRole()`, `idFields()`. Throws on unknown names (typo-safe). |
+| `MappingResolver` | Custom | Resolves logical names from a `ModelMapping` configuration. No hydration, but supports per-model `connection`/`read`/`write` roles. |
+| `ChainResolver` | AppContext default | Tries each resolver in order; throws if none match (strict). |
+
+### Query entry points
+
+```php
+// Literal tables — no resolution, fast arrays
+$rows = Query::raw()->table('users')->where('active', 1)->select();
+
+// Model classes — resolves table, connection, enables hydration
+$users = User::query()->where('status', 'active')->select();
+
+// Custom resolver — low-level escape hatch
+$query = Query::new()->using(new MappingResolver($mapping))->table('User');
+```
+
+### Registering a default resolver
+
+Register a `ChainResolver` in `AppContext` at bootstrap so `Query::new()` can resolve
+both model classes and mapping entries:
+
+```php
+use Azera\AppContext;
+use Azera\Db\Resolver\ChainResolver;
+use Azera\Db\Resolver\ModelResolver;
+use Azera\Db\Resolver\MappingResolver;
+use Azera\Db\Resolver\TableResolver;
+use Azera\Core\ModelMapping;
+
+$mapping = ModelMapping::fromArray([
+    'User'    => 'users',
+    'Order'   => ['source' => 'orders', 'schema' => 'public', 'connection' => 'analytics'],
+]);
+
+AppContext::instance()->set(TableResolver::class, new ChainResolver(
+    new ModelResolver(),
+    new MappingResolver($mapping),
+));
+```
+
+Once registered, `Query::new()` uses the chain automatically — no per-call mapping needed:
+
+```php
+// Resolves 'User' via ModelResolver (if it's a class) or MappingResolver (if in mapping)
+$results = Query::new()->table('User')->where('status', 'active')->select();
+```
+
+### Connection roles in ModelMapping
+
+Each mapping entry can specify a `connection` key (sets both read+write) or
+individual `read`/`write` overrides:
+
+```php
+$mapping = ModelMapping::fromArray([
+    // Single connection for both read and write
+    'Order' => ['source' => 'orders', 'connection' => 'analytics'],
+
+    // Separate read and write connections
+    'User' => ['source' => 'users', 'read' => 'replica', 'write' => 'primary'],
+]);
+```
+
+### Typo detection
+
+The strict `ChainResolver` and `ModelResolver` **throw** on unknown names.
+`Query::new()->table('Userr')` throws `ResolveException` — a typo is never silently
+treated as a literal table. To use literal table names, use `Query::raw()` explicitly.
+
 ## See Also
 
 - [Models & ORM](04-MODELS-ORM.md)
 - [Cookbook](10-COOKBOOK.md)
 - [API Reference](api/README.md)
+

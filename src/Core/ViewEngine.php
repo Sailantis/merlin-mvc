@@ -16,7 +16,7 @@ abstract class ViewEngine
 {
     protected string $extension; // set by concrete engines
     protected array $namespaces = [];
-    protected string $viewPath = __DIR__ . '/../../../../../views';
+    protected string $viewPath = __DIR__ . '/../../../../../views'; // relative to vendor/sailantis/azera-framework/src/Core/
     protected int $renderDepth = 0;
     protected ?string $layout = null;
     protected array $vars = [];
@@ -80,7 +80,6 @@ abstract class ViewEngine
     {
         return $this->namespaces;
     }
-
 
     /**
      * Set the base path for resolving relative view names.
@@ -197,7 +196,6 @@ abstract class ViewEngine
         return $this->renderDepth;
     }
 
-
     /**
      * Resolve a view name to an actual file path on the filesystem.
      * @param string $view View name to resolve.
@@ -245,7 +243,7 @@ abstract class ViewEngine
         } else {
             // relative view name, resolve to path using dot-notation
             $relative = \str_replace('.', '/', $view);
-            $path = $this->viewPath . '/' . $relative;
+            $path     = $this->viewPath . '/' . $relative;
         }
 
         if ($addExtension) {

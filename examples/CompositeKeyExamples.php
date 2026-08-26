@@ -3,7 +3,7 @@ namespace Azera\CompositeKeyExamples;
 
 /**
  * Example Models demonstrating composite key support
- * 
+ *
  * This file shows various use cases for the refactored Model class
  */
 
@@ -29,16 +29,12 @@ class User extends Model
 // Usage:
 $user = new User();
 $user->username = 'johndoe';
-$user->email = 'john@example.com';
-$user->save();  // Auto-populates $user->id
+$user->email    = 'john@example.com';
+$user->save(); // Auto-populates $user->id
 echo "Created user with ID: {$user->id}\n";
 
 $user->email = 'newemail@example.com';
-$user->update();  // WHERE (id = ?)
-
-// ============================================================================
-// Example 2: Composite Primary Key
-// ============================================================================
+$user->update(); // WHERE (id = ?)
 
 class UserProduct extends Model
 {
@@ -56,22 +52,17 @@ class UserProduct extends Model
 
 // Usage:
 $up = new UserProduct();
-$up->user_id = 10;
+$up->user_id    = 10;
 $up->product_id = 25;
-$up->quantity = 5;
-$up->price = 99.99;
+$up->quantity   = 5;
+$up->price      = 99.99;
 $up->save();
 
 // Update
 $up->quantity = 10;
-$up->update();  // WHERE (user_id = 10) AND (product_id = 25)
+$up->update(); // WHERE (user_id = 10) AND (product_id = 25)
 
-// Delete
-$up->delete();  // WHERE (user_id = 10) AND (product_id = 25)
-
-// ============================================================================
-// Example 3: Multi-Tenant with Composite Keys
-// ============================================================================
+$up->delete(); // WHERE (user_id = 10) AND (product_id = 25)
 
 class TenantData extends Model
 {
@@ -94,14 +85,18 @@ class TenantData extends Model
 // PostgreSQL: Both tenant_id and id can be auto-generated
 $data = new TenantData();
 $data->data = 'test data';
-$data->save();  // RETURNING * populates both tenant_id and id
+$data->save(); // RETURNING * populates both tenant_id and id
 echo "Created with tenant_id: {$data->tenant_id}, id: {$data->id}\n";
 
-// MySQL/SQLite: Composite keys must be pre-set
+// MySQL 8.0.27+ / MariaDB 10.5.0+ / SQLite 3.35+: RETURNING also backfills both generated keys
+$data = new TenantData();
+$data->data = 'test data';
+$data->save(); // RETURNING * populates both tenant_id and id
+
 $data = new TenantData();
 $data->tenant_id = 5;
-$data->id = 100;
-$data->data = 'test data';
+$data->id        = 100;
+$data->data      = 'test data';
 $data->save();
 
 // ============================================================================
@@ -125,11 +120,10 @@ class TextModel extends Model
 $GLOBALS['lang'] = 'de';
 
 $text = new TextModel();
-$text->key = 'welcome';
+$text->key   = 'welcome';
 $text->value = 'Willkommen!';
-$text->save();  // Inserts into 'text_de' table
+$text->save(); // Inserts into 'text_de' table
 
-// Query from German table
 $texts = TextModel::query()
     ->where('key', 'welcome')
     ->select();
@@ -147,7 +141,7 @@ class Product extends Model
 }
 
 // Automatically uses correct connection
-$products = Product::query()  // Uses readConnection()
+$products = Product::query()
     ->where('stock >', 0)
     ->select();
 
@@ -156,11 +150,7 @@ $products = Product::query()  // Uses readConnection()
  */
 $product = $products->firstModel();
 $product->stock -= 1;
-$product->update();  // Uses writeConnection()
-
-// ============================================================================
-// Example 6: State Tracking for Efficient Updates
-// ============================================================================
+$product->update(); // Uses writeConnection()
 
 class Order extends Model
 {
@@ -178,12 +168,11 @@ $order = Order::query()
 
 // Model tracks original state
 $order->status = 'shipped';
-$order->total = 150.00;
+$order->total  = 150.00;
 
 // Only sends changed fields to database
-$order->update();  // UPDATE orders SET status = ?, total = ? WHERE id = ?
+$order->update(); // UPDATE orders SET status = ?, total = ? WHERE id = ?
 
-// Check if model has changed
 if ($order->hasChanged()) {
     echo "Order has unsaved changes\n";
 }
@@ -205,9 +194,9 @@ class CartItem extends Model
 }
 
 $item = new CartItem();
-$item->user_id = 10;
+$item->user_id    = 10;
 $item->product_id = 25;
-$item->quantity = 1;
+$item->quantity   = 1;
 
 // First call: INSERT
 $item->save();
@@ -216,11 +205,7 @@ $item->save();
 $item->quantity = 5;
 
 // Second call: UPDATE (because state exists and IDs are set)
-$item->save();  // UPDATE ... WHERE (user_id = 10) AND (product_id = 25)
-
-// ============================================================================
-// Example 8: Batch Operations with Builder
-// ============================================================================
+$item->save(); // UPDATE ... WHERE (user_id = 10) AND (product_id = 25)
 
 class Activity extends Model
 {

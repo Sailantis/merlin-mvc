@@ -132,7 +132,7 @@ Azera dispatches typed PSR-14 events for database operations. All events live in
 | `TransactionStarted` | After `begin()` |
 | `TransactionCommitted` | After `commit()` |
 | `TransactionRolledBack` | After `rollback()` |
-| `DatabaseExceptionOccurred` | When a `PDOException` is caught |
+| `DatabaseOperationFailed` | When a `PDOException` is caught |
 | `ReconnectAttempt` | Before a reconnect attempt |
 | `Reconnected` | After a successful reconnect |
 | `ReconnectFailed` | When a reconnect attempt fails |

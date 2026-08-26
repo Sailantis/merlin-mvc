@@ -47,7 +47,7 @@ class MigrateTask extends Task
     private SchemaDiff $schemaDiff;
     private SqlGenerator $sqlGenerator;
 
-    public function beforeAction(string $action, array $params): void
+    public function __construct()
     {
         $this->schemaDiff   = new SchemaDiff();
         $this->sqlGenerator = new SqlGenerator();

@@ -694,9 +694,10 @@ objects and cannot call methods.
 Precedence:
 1. JsonSerializable → jsonSerialize() then recurse
 2. Objects with toArray() → toArray() then recurse
-3. Other objects → get_object_vars() then recurse
-4. Arrays → recurse element by element
-5. Scalars / null → pass through
+3. Traversable (Iterator / IteratorAggregate) → iterator_to_array() then recurse
+4. Other objects → get_object_vars() then recurse
+5. Arrays → recurse element by element
+6. Scalars / null → pass through
 
 **🧭 Parameters**
 

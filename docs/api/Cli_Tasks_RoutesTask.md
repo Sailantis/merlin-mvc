@@ -5,7 +5,7 @@
 List all registered routes.
 
 Usage:
-  azera routes:list
+  routes:list
 
 Displays a table of all routes registered via the Router, showing
 HTTP method, path pattern, handler (controller::action), route name
@@ -27,17 +27,6 @@ be called automatically by the `azera` binary before any task runs.
 `public function listAction(): void`
 
 List all registered routes.
-
-**➡️ Return value**
-
-- Type: void
-
-
----
-
-### runAction() · [source](../../src/Cli/Tasks/RoutesTask.php#L81)
-
-`public function runAction(): void`
 
 **➡️ Return value**
 

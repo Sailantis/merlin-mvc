@@ -7,8 +7,10 @@ use Azera\Db\Query;
 use ReflectionClass;
 use Azera\Db\Database;
 use Azera\Db\ResultSet;
+use Azera\Db\Resolver\ModelResolver;
 
 /**
+ * Base class for models in Azera.
  * @template T of Model
  * @method static Query<T> query()
  * @method static ResultSet<T> findAll(array $conditions = [])
@@ -74,8 +76,8 @@ abstract class Model
 	 */
 	public static function query(?string $alias = null): Query
 	{
-		$instance = new static();
-		return Query::new($instance->readConnection())
+		return (new Query)
+			->using(AppContext::instance()->get(ModelResolver::class))
 			->table(static::class, $alias);
 	}
 
@@ -513,7 +515,7 @@ abstract class Model
 
 		$db = $this->writeConnection();
 
-		if ($db->getDriver() === 'pgsql') {
+		if ($db->supportsReturning()) {
 			$result = $builder->returning(['*'])->insert($values);
 			if ($result instanceof ResultSet && ($row = $result->fetchAssoc())) {
 				foreach ($row as $field => $value) {
@@ -612,6 +614,26 @@ abstract class Model
 
 		// Fallback to default role
 		return $type;
+	}
+
+	/**
+	 * Return the database connection role used for read (SELECT) queries.
+	 *
+	 * @return string The role name (e.g. 'read', 'replica').
+	 */
+	public function readRole(): string
+	{
+		return $this->__connectionRole('read');
+	}
+
+	/**
+	 * Return the database connection role used for write (INSERT/UPDATE/DELETE) queries.
+	 *
+	 * @return string The role name (e.g. 'write', 'primary').
+	 */
+	public function writeRole(): string
+	{
+		return $this->__connectionRole('write');
 	}
 
 	/**

@@ -3,7 +3,11 @@
 namespace Azera\Core;
 
 /**
- * Class to map models
+ * ModelMapping is a configuration class that maps logical model names to
+ * database table sources.
+ * It provides methods to define, retrieve, and manipulate model mappings,
+ * including automatic conversion of model names to table names (snake_case)
+ * and optional pluralization.
  */
 class ModelMapping
 {
@@ -11,7 +15,6 @@ class ModelMapping
 	 * @var array
 	 */
 	protected array $mapping;
-
 
 	/**
 	 * Create ModelMapping from array config
@@ -28,14 +31,20 @@ class ModelMapping
 			if (\is_string($config)) {
 				// "User" => "users"
 				$config = [
-					'source' => $config,
-					'schema' => null,
+					'source'     => $config,
+					'schema'     => null,
+					'connection' => null,
+					'read'       => null,
+					'write'      => null,
 				];
 			} elseif (\is_bool($config) && $config === true) {
 				// "User" => true  (auto-generate source name)
 				$config = [
-					'source' => static::convertModelToSource($name),
-					'schema' => null,
+					'source'     => static::convertModelToSource($name),
+					'schema'     => null,
+					'connection' => null,
+					'read'       => null,
+					'write'      => null,
 				];
 			} elseif (!\is_array($config)) {
 				throw new \InvalidArgumentException("Model config must be a string, an array, or true for model '$name'");
@@ -43,10 +52,28 @@ class ModelMapping
 				throw new \InvalidArgumentException("Model source cannot be empty for model '$name'");
 			} elseif (!\is_string($config['source'])) {
 				throw new \InvalidArgumentException("Model source must be a string for model '$name'");
-			} elseif (!isset($config['schema'])) {
-				$config['schema'] = null;
-			} elseif (!\is_string($config['schema'])) {
-				throw new \InvalidArgumentException("Model schema must be a string for model '$name'");
+			} else {
+				// Normalize optional keys
+				if (!isset($config['schema'])) {
+					$config['schema'] = null;
+				} elseif (!\is_string($config['schema'])) {
+					throw new \InvalidArgumentException("Model schema must be a string for model '$name'");
+				}
+				if (!isset($config['connection'])) {
+					$config['connection'] = null;
+				} elseif (!\is_string($config['connection'])) {
+					throw new \InvalidArgumentException("Model connection must be a string for model '$name'");
+				}
+				if (!isset($config['read'])) {
+					$config['read'] = null;
+				} elseif (!\is_string($config['read'])) {
+					throw new \InvalidArgumentException("Model read connection must be a string for model '$name'");
+				}
+				if (!isset($config['write'])) {
+					$config['write'] = null;
+				} elseif (!\is_string($config['write'])) {
+					throw new \InvalidArgumentException("Model write connection must be a string for model '$name'");
+				}
 			}
 			$instance->mapping[$name] = $config;
 		}
@@ -63,7 +90,7 @@ class ModelMapping
 	 */
 	public static function usePluralTableNames(bool $enable): void
 	{
-		self::$pluralizeTableNames = $enable;
+		static::$pluralizeTableNames = $enable;
 	}
 
 	/**
@@ -71,7 +98,7 @@ class ModelMapping
 	 */
 	public static function usingPluralTableNames(): bool
 	{
-		return self::$pluralizeTableNames;
+		return static::$pluralizeTableNames;
 	}
 
 	/**
@@ -79,9 +106,12 @@ class ModelMapping
 	 * @param string $name
 	 * @param string|null $source
 	 * @param string|null $schema
+	 * @param string|null $connection Connection role for both read and write
+	 * @param string|null $read Connection role for read queries (overrides $connection)
+	 * @param string|null $write Connection role for write queries (overrides $connection)
 	 * @return $this
 	 */
-	public function add(string $name, ?string $source = null, ?string $schema = null): static
+	public function add(string $name, ?string $source = null, ?string $schema = null, ?string $connection = null, ?string $read = null, ?string $write = null): static
 	{
 		if (empty($name)) {
 			throw new \InvalidArgumentException('Model name cannot be empty');
@@ -90,8 +120,11 @@ class ModelMapping
 			$source = static::convertModelToSource($name);
 		}
 		$this->mapping[$name] = [
-			'source' => $source,
-			'schema' => $schema,
+			'source'     => $source,
+			'schema'     => $schema,
+			'connection' => $connection,
+			'read'       => $read,
+			'write'      => $write,
 		];
 		return $this;
 	}
@@ -105,7 +138,6 @@ class ModelMapping
 	{
 		return $this->mapping[$name] ?? null;
 	}
-
 
 	/**
 	 * Get all model mappings as an array
@@ -128,7 +160,7 @@ class ModelMapping
 	{
 		// AdminUserFlags -> admin_user_flags
 		$source = static::toSnakeCase($modelName);
-		if (self::$pluralizeTableNames) {
+		if (static::$pluralizeTableNames) {
 			// Pluralize only the last word segment (e.g. admin_user -> admin_users)
 			$pos = strrpos($source, '_');
 			if ($pos !== false) {
@@ -159,12 +191,12 @@ class ModelMapping
 		// unify separators
 		$name = str_replace(['-', '.', ' '], '_', $name);
 
-		$result = '';
-		$length = strlen($name);
+		$result       = '';
+		$length       = strlen($name);
 		$isUnderscore = false; // ensure initialization
 
 		for ($i = 0; $i < $length; $i++) {
-			$char = $name[$i];
+			$char    = $name[$i];
 			$isUpper = ctype_upper($char);
 
 			if ($isUpper) {
@@ -174,11 +206,9 @@ class ModelMapping
 				// - uppercase followed by lowercase (XMLParser → xml_parser)
 				if (
 					$i > 0 &&
-					(
-						ctype_lower($name[$i - 1]) ||
+					(ctype_lower($name[$i - 1]) ||
 						ctype_digit($name[$i - 1]) ||
-						($i + 1 < $length && ctype_lower($name[$i + 1]))
-					)
+						($i + 1 < $length && ctype_lower($name[$i + 1])))
 				) {
 					if (!$isUnderscore) {
 						$result .= '_';
@@ -206,53 +236,53 @@ class ModelMapping
 
 	/** Irregular singular → plural mappings */
 	protected static array $irregulars = [
-		'person' => 'people',
-		'mouse' => 'mice',
-		'child' => 'children',
-		'man' => 'men',
-		'woman' => 'women',
-		'tooth' => 'teeth',
-		'foot' => 'feet',
-		'goose' => 'geese',
-		'ox' => 'oxen',
-		'louse' => 'lice',
-		'cactus' => 'cacti',
-		'focus' => 'foci',
+		'person'   => 'people',
+		'mouse'    => 'mice',
+		'child'    => 'children',
+		'man'      => 'men',
+		'woman'    => 'women',
+		'tooth'    => 'teeth',
+		'foot'     => 'feet',
+		'goose'    => 'geese',
+		'ox'       => 'oxen',
+		'louse'    => 'lice',
+		'cactus'   => 'cacti',
+		'focus'    => 'foci',
 		'analysis' => 'analyses',
-		'index' => 'indices',
+		'index'    => 'indices',
 		'appendix' => 'appendices',
 
 		// additional Latin/Greek irregulars
-		'datum' => 'data',
-		'bacterium' => 'bacteria',
-		'criterion' => 'criteria',
+		'datum'      => 'data',
+		'bacterium'  => 'bacteria',
+		'criterion'  => 'criteria',
 		'phenomenon' => 'phenomena',
-		'medium' => 'media',
-		'radius' => 'radii',
-		'matrix' => 'matrices',
-		'vertex' => 'vertices',
-		'axis' => 'axes',
-		'fungus' => 'fungi',
-		'syllabus' => 'syllabi',
+		'medium'     => 'media',
+		'radius'     => 'radii',
+		'matrix'     => 'matrices',
+		'vertex'     => 'vertices',
+		'axis'       => 'axes',
+		'fungus'     => 'fungi',
+		'syllabus'   => 'syllabi',
 
 		// invariant plurals (same singular and plural)
-		'sheep' => 'sheep',
-		'deer' => 'deer',
-		'fish' => 'fish',
-		'species' => 'species',
-		'series' => 'series',
-		'aircraft' => 'aircraft',
-		'moose' => 'moose',
-		'salmon' => 'salmon',
-		'bison' => 'bison',
+		'sheep'     => 'sheep',
+		'deer'      => 'deer',
+		'fish'      => 'fish',
+		'species'   => 'species',
+		'series'    => 'series',
+		'aircraft'  => 'aircraft',
+		'moose'     => 'moose',
+		'salmon'    => 'salmon',
+		'bison'     => 'bison',
 		'offspring' => 'offspring',
 
 		// other common irregulars
-		'thesis' => 'theses',
-		'crisis' => 'crises',
-		'diagnosis' => 'diagnoses',
+		'thesis'      => 'theses',
+		'crisis'      => 'crises',
+		'diagnosis'   => 'diagnoses',
 		'parenthesis' => 'parentheses',
-		'synthesis' => 'syntheses',
+		'synthesis'   => 'syntheses',
 	];
 
 	/**

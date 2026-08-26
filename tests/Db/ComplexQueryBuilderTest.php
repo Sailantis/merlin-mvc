@@ -17,14 +17,12 @@ class ComplexQueryBuilderTest extends TestCase
 {
     protected function setUp(): void
     {
-        // Disable model resolution for plain table testing
-        Query::useModels(false);
+        // No global state to reset — each query uses its own resolver
     }
 
     protected function tearDown(): void
     {
-        // Re-enable models after tests
-        Query::useModels(true);
+        // No global state to restore
     }
 
     /**
@@ -33,7 +31,7 @@ class ComplexQueryBuilderTest extends TestCase
      * - String concatenation
      * - CASE expressions
      * - Column aliases
-     * 
+     *
      * Original SQL:
      * SELECT cu.customer_id AS id,
      *     (cu.first_name || ' '::text) || cu.last_name AS name,
@@ -55,7 +53,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexCustomerViewQuery(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         // Build the query
         $sb->table('customer cu')
@@ -122,11 +120,11 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexCustomerViewQueryWithConditionObjects(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         // Create Condition objects for joins (provides better identifier protection)
         $addressJoinCondition = Condition::new($db)->where('cu.address_id = a.address_id');
-        $cityJoinCondition = Condition::new($db)->where('a.city_id = city.city_id');
+        $cityJoinCondition    = Condition::new($db)->where('a.city_id = city.city_id');
         $countryJoinCondition = Condition::new($db)->where('city.country_id = country.country_id');
 
         // Build the query
@@ -165,7 +163,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexQueryWithWhere(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         $sb->table('customer cu')
             ->columns([
@@ -202,7 +200,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexQueryWithInnerJoin(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         $sb->table('customer cu')
             ->columns([
@@ -229,7 +227,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexQueryWithLeftJoin(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         $sb->table('customer cu')
             ->columns([
@@ -259,7 +257,7 @@ class ComplexQueryBuilderTest extends TestCase
     {
         // PostgreSQL version
         $dbPg = new TestPgDatabase();
-        $sbPg = new Query($dbPg);
+        $sbPg = Query::raw($dbPg);
 
         $sbPg->table('customer cu')
             ->columns([
@@ -276,7 +274,7 @@ class ComplexQueryBuilderTest extends TestCase
 
         // MySQL version (same code!)
         $dbMysql = new TestMysqlDatabase();
-        $sbMysql = new Query($dbMysql);
+        $sbMysql = Query::raw($dbMysql);
 
         $sbMysql->table('customer cu')
             ->columns([
@@ -309,7 +307,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testComplexCaseExpressionWithSql(): void
     {
         $db = new TestPgDatabase();
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         $sb->table('customer cu')
             ->columns([
@@ -353,7 +351,7 @@ class ComplexQueryBuilderTest extends TestCase
     public function testJoinConditionWithAndProducesValidCountSql(): void
     {
         $db = new TestMysqlDatabase();
-        $q = new \Azera\Db\Query($db);
+        $q  = Query::raw($db);
 
         $q->table('v2_bible_text text')
             ->join('v2_bible_book book', 'book.translation_id = text.translation_id and book.number = text.book_number')

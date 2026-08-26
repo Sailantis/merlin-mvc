@@ -2,11 +2,16 @@
 
 **Full name:** [Azera\Core\ModelMapping](../../src/Core/ModelMapping.php)
 
-Class to map models
+ModelMapping is a configuration class that maps logical model names to
+database table sources.
+
+It provides methods to define, retrieve, and manipulate model mappings,
+including automatic conversion of model names to table names (snake_case)
+and optional pluralization.
 
 ## 🚀 Public methods
 
-### fromArray() · [source](../../src/Core/ModelMapping.php#L21)
+### fromArray() · [source](../../src/Core/ModelMapping.php#L24)
 
 `public static function fromArray(array $mapping): static`
 
@@ -25,7 +30,7 @@ Create ModelMapping from array config
 
 ---
 
-### usePluralTableNames() · [source](../../src/Core/ModelMapping.php#L64)
+### usePluralTableNames() · [source](../../src/Core/ModelMapping.php#L91)
 
 `public static function usePluralTableNames(bool $enable): void`
 
@@ -47,7 +52,7 @@ When enabled, model names are converted to plural snake_case table names
 
 ---
 
-### usingPluralTableNames() · [source](../../src/Core/ModelMapping.php#L72)
+### usingPluralTableNames() · [source](../../src/Core/ModelMapping.php#L99)
 
 `public static function usingPluralTableNames(): bool`
 
@@ -60,9 +65,9 @@ Returns whether automatic table name pluralization is enabled.
 
 ---
 
-### add() · [source](../../src/Core/ModelMapping.php#L84)
+### add() · [source](../../src/Core/ModelMapping.php#L114)
 
-`public function add(string $name, string|null $source = null, string|null $schema = null): static`
+`public function add(string $name, string|null $source = null, string|null $schema = null, string|null $connection = null, string|null $read = null, string|null $write = null): static`
 
 Add model mapping
 
@@ -73,6 +78,9 @@ Add model mapping
 | `$name` | string | - |  |
 | `$source` | string\|null | `null` |  |
 | `$schema` | string\|null | `null` |  |
+| `$connection` | string\|null | `null` | Connection role for both read and write |
+| `$read` | string\|null | `null` | Connection role for read queries (overrides $connection) |
+| `$write` | string\|null | `null` | Connection role for write queries (overrides $connection) |
 
 **➡️ Return value**
 
@@ -81,7 +89,7 @@ Add model mapping
 
 ---
 
-### get() · [source](../../src/Core/ModelMapping.php#L104)
+### get() · [source](../../src/Core/ModelMapping.php#L137)
 
 `public function get(string $name): array|null`
 
@@ -100,7 +108,7 @@ Get model mapping by name
 
 ---
 
-### toArray() · [source](../../src/Core/ModelMapping.php#L114)
+### toArray() · [source](../../src/Core/ModelMapping.php#L146)
 
 `public function toArray(): array`
 
@@ -113,7 +121,7 @@ Get all model mappings as an array
 
 ---
 
-### convertModelToSource() · [source](../../src/Core/ModelMapping.php#L127)
+### convertModelToSource() · [source](../../src/Core/ModelMapping.php#L159)
 
 `public static function convertModelToSource(string $modelName): string`
 
@@ -136,7 +144,7 @@ When pluralization is enabled, the last word segment is pluralized (e.g. AdminUs
 
 ---
 
-### toSnakeCase() · [source](../../src/Core/ModelMapping.php#L157)
+### toSnakeCase() · [source](../../src/Core/ModelMapping.php#L189)
 
 `public static function toSnakeCase(string $name): string`
 

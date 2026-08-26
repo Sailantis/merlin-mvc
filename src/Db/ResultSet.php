@@ -33,20 +33,20 @@ class ResultSet implements \Iterator, \Countable
 	 * @param PDOStatement    $statement    The executed PDO statement.
 	 * @param string|null     $sqlStatement The original SQL string (used by reexecute()).
 	 * @param array|null      $boundParams  Bound parameters (used by reexecute()).
-	 * @param Model|null      $model        Optional model instance used for hydration (sets the fetch class).
+	 * @param class-string|null $modelClass Optional model class name used for hydration (sets the fetch class).
 	 */
 	public function __construct(
 		Database $connection,
 		PDOStatement $statement,
 		?string $sqlStatement = null,
 		?array $boundParams = null,
-		?Model $model = null
+		?string $modelClass = null
 	) {
 		$this->db           = $connection;
 		$this->statement    = $statement;
 		$this->sqlStatement = $sqlStatement;
 		$this->boundParams  = $boundParams;
-		$this->modelClass   = $model ? \get_class($model) : null;
+		$this->modelClass   = $modelClass;
 
 		$this->fetchMode = $connection->getInternalConnection()
 			->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);

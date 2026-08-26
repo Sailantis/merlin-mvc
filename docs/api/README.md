@@ -2,10 +2,27 @@
 
 ## Classes & Interfaces overview
 
+### `Azera\Aop`
+
+- [Transactional](Aop_Transactional.md) `Azera\Aop\Transactional`
+- [Advice](Aop_Advice.md) `Azera\Aop\Advice`
+- [Advised](Aop_Advised.md) `Azera\Aop\Advised`
+- [Cache](Aop_Cache.md) `Azera\Aop\Cache`
+- [CacheInterceptor](Aop_CacheInterceptor.md) `Azera\Aop\CacheInterceptor`
+- [TransactionalInterceptor](Aop_TransactionalInterceptor.md) `Azera\Aop\TransactionalInterceptor`
+- [InterceptorInterface](Aop_InterceptorInterface.md) `Azera\Aop\InterceptorInterface`
+- [Log](Aop_Log.md) `Azera\Aop\Log`
+- [LogInterceptor](Aop_LogInterceptor.md) `Azera\Aop\LogInterceptor`
+- [Pipeline](Aop_Pipeline.md) `Azera\Aop\Pipeline`
+- [ProxyFactory](Aop_ProxyFactory.md) `Azera\Aop\ProxyFactory`
+- [Retry](Aop_Retry.md) `Azera\Aop\Retry`
+- [RetryInterceptor](Aop_RetryInterceptor.md) `Azera\Aop\RetryInterceptor`
+- [Transactional](Aop_Transactional.md) `Azera\Aop\Transactional`
+- [TransactionalInterceptor](Aop_TransactionalInterceptor.md) `Azera\Aop\TransactionalInterceptor`
+
 ### `Azera`
 
 - [AppContext](AppContext.md) `Azera\AppContext`
-- [ResolvedRoute](ResolvedRoute.md) `Azera\ResolvedRoute`
 - [Exception](Exception.md) `Azera\Exception`
 
 ### `Azera\Boot`
@@ -15,6 +32,12 @@
 - [BootstrapResolver](Boot_BootstrapResolver.md) `Azera\Boot\BootstrapResolver`
 - [FileBridge](Boot_FileBridge.md) `Azera\Boot\FileBridge`
 
+### `Azera\Cache`
+
+- [ArrayCache](Cache_ArrayCache.md) `Azera\Cache\ArrayCache`
+- [InvalidArgumentException](Cache_InvalidArgumentException.md) `Azera\Cache\InvalidArgumentException`
+- [NullCache](Cache_NullCache.md) `Azera\Cache\NullCache`
+
 ### `Azera\Cli`
 
 - [Console](Cli_Console.md) `Azera\Cli\Console`
@@ -23,10 +46,18 @@
 ### `Azera\Cli\Tasks`
 
 - [AboutTask](Cli_Tasks_AboutTask.md) `Azera\Cli\Tasks\AboutTask`
+- [CacheTask](Cli_Tasks_CacheTask.md) `Azera\Cli\Tasks\CacheTask`
 - [DbTask](Cli_Tasks_DbTask.md) `Azera\Cli\Tasks\DbTask`
+- [MakeTask](Cli_Tasks_MakeTask.md) `Azera\Cli\Tasks\MakeTask`
+- [MigrateTask](Cli_Tasks_MigrateTask.md) `Azera\Cli\Tasks\MigrateTask`
 - [ModelTask](Cli_Tasks_ModelTask.md) `Azera\Cli\Tasks\ModelTask`
 - [RoutesTask](Cli_Tasks_RoutesTask.md) `Azera\Cli\Tasks\RoutesTask`
 - [ServeTask](Cli_Tasks_ServeTask.md) `Azera\Cli\Tasks\ServeTask`
+- [TestTask](Cli_Tasks_TestTask.md) `Azera\Cli\Tasks\TestTask`
+
+### `Azera\Config`
+
+- [Config](Config_Config.md) `Azera\Config\Config`
 
 ### `Azera\Core`
 
@@ -36,6 +67,7 @@
 - [MiddlewareInterface](Core_MiddlewareInterface.md) `Azera\Core\MiddlewareInterface`
 - [Model](Core_Model.md) `Azera\Core\Model`
 - [ModelMapping](Core_ModelMapping.md) `Azera\Core\ModelMapping`
+- [ResolvedRoute](Core_ResolvedRoute.md) `Azera\Core\ResolvedRoute`
 - [Router](Core_Router.md) `Azera\Core\Router`
 - [ViewEngine](Core_ViewEngine.md) `Azera\Core\ViewEngine`
 
@@ -67,10 +99,41 @@
 - [ResultSet](Db_ResultSet.md) `Azera\Db\ResultSet`
 - [Sql](Db_Sql.md) `Azera\Db\Sql`
 - [SqlCase](Db_SqlCase.md) `Azera\Db\SqlCase`
+- [Statement](Db_Statement.md) `Azera\Db\Statement`
+
+### `Azera\Db\Event`
+
+- [DatabaseEvent](Db_Event_DatabaseEvent.md) `Azera\Db\Event\DatabaseEvent`
+- [DatabaseExceptionOccurred](Db_Event_DatabaseExceptionOccurred.md) `Azera\Db\Event\DatabaseExceptionOccurred`
+- [DatabaseOperationFailed](Db_Event_DatabaseOperationFailed.md) `Azera\Db\Event\DatabaseOperationFailed`
+- [QueryExecuted](Db_Event_QueryExecuted.md) `Azera\Db\Event\QueryExecuted`
+- [ReconnectAborted](Db_Event_ReconnectAborted.md) `Azera\Db\Event\ReconnectAborted`
+- [ReconnectAttempt](Db_Event_ReconnectAttempt.md) `Azera\Db\Event\ReconnectAttempt`
+- [Reconnected](Db_Event_Reconnected.md) `Azera\Db\Event\Reconnected`
+- [ReconnectFailed](Db_Event_ReconnectFailed.md) `Azera\Db\Event\ReconnectFailed`
+- [StatementExecuted](Db_Event_StatementExecuted.md) `Azera\Db\Event\StatementExecuted`
+- [StatementPrepared](Db_Event_StatementPrepared.md) `Azera\Db\Event\StatementPrepared`
+- [TransactionCommitted](Db_Event_TransactionCommitted.md) `Azera\Db\Event\TransactionCommitted`
+- [TransactionRolledBack](Db_Event_TransactionRolledBack.md) `Azera\Db\Event\TransactionRolledBack`
+- [TransactionStarted](Db_Event_TransactionStarted.md) `Azera\Db\Event\TransactionStarted`
 
 ### `Azera\Db\Exceptions`
 
 - [TransactionLostException](Db_Exceptions_TransactionLostException.md) `Azera\Db\Exceptions\TransactionLostException`
+
+### `Azera\Db\Resolver`
+
+- [ChainResolver](Db_Resolver_ChainResolver.md) `Azera\Db\Resolver\ChainResolver`
+- [LiteralResolver](Db_Resolver_LiteralResolver.md) `Azera\Db\Resolver\LiteralResolver`
+- [MappingResolver](Db_Resolver_MappingResolver.md) `Azera\Db\Resolver\MappingResolver`
+- [ModelResolver](Db_Resolver_ModelResolver.md) `Azera\Db\Resolver\ModelResolver`
+- [ResolveException](Db_Resolver_ResolveException.md) `Azera\Db\Resolver\ResolveException`
+- [TableResolver](Db_Resolver_TableResolver.md) `Azera\Db\Resolver\TableResolver`
+
+### `Azera\Event`
+
+- [EventDispatcher](Event_EventDispatcher.md) `Azera\Event\EventDispatcher`
+- [NullEventDispatcher](Event_NullEventDispatcher.md) `Azera\Event\NullEventDispatcher`
 
 ### `Azera\Http`
 
@@ -81,6 +144,30 @@
 - [Session](Http_Session.md) `Azera\Http\Session`
 - [SessionMiddleware](Http_SessionMiddleware.md) `Azera\Http\SessionMiddleware`
 - [UploadedFile](Http_UploadedFile.md) `Azera\Http\UploadedFile`
+
+### `Azera\Lifecycle`
+
+- [RequestScoped](Lifecycle_RequestScoped.md) `Azera\Lifecycle\RequestScoped`
+
+### `Azera\Log`
+
+- [NullLogger](Log_NullLogger.md) `Azera\Log\NullLogger`
+
+### `Azera\Queue`
+
+- [Job](Queue_Job.md) `Azera\Queue\Job`
+- [JobInterface](Queue_JobInterface.md) `Azera\Queue\JobInterface`
+- [QueueException](Queue_QueueException.md) `Azera\Queue\QueueException`
+- [QueueInterface](Queue_QueueInterface.md) `Azera\Queue\QueueInterface`
+- [SyncQueue](Queue_SyncQueue.md) `Azera\Queue\SyncQueue`
+
+### `Azera\Security`
+
+- [AuthManagerInterface](Security_AuthManagerInterface.md) `Azera\Security\AuthManagerInterface`
+- [CsrfMiddleware](Security_CsrfMiddleware.md) `Azera\Security\CsrfMiddleware`
+- [GuardInterface](Security_GuardInterface.md) `Azera\Security\GuardInterface`
+- [Hasher](Security_Hasher.md) `Azera\Security\Hasher`
+- [RateLimiter](Security_RateLimiter.md) `Azera\Security\RateLimiter`
 
 ### `Azera\Sync`
 
@@ -96,6 +183,14 @@
 - [ModelParser](Sync_ModelParser.md) `Azera\Sync\ModelParser`
 - [ParsedModel](Sync_ParsedModel.md) `Azera\Sync\ParsedModel`
 - [ParsedProperty](Sync_ParsedProperty.md) `Azera\Sync\ParsedProperty`
+- [SchemaDiff](Sync_SchemaDiff.md) `Azera\Sync\SchemaDiff`
+- [SqlOperation](Sync_SqlOperation.md) `Azera\Sync\SqlOperation`
+- [CreateTable](Sync_CreateTable.md) `Azera\Sync\CreateTable`
+- [AddColumn](Sync_AddColumn.md) `Azera\Sync\AddColumn`
+- [DropColumn](Sync_DropColumn.md) `Azera\Sync\DropColumn`
+- [AlterColumn](Sync_AlterColumn.md) `Azera\Sync\AlterColumn`
+- [DropIndex](Sync_DropIndex.md) `Azera\Sync\DropIndex`
+- [SqlGenerator](Sync_SqlGenerator.md) `Azera\Sync\SqlGenerator`
 - [SyncOptions](Sync_SyncOptions.md) `Azera\Sync\SyncOptions`
 - [SyncResult](Sync_SyncResult.md) `Azera\Sync\SyncResult`
 - [SyncRunner](Sync_SyncRunner.md) `Azera\Sync\SyncRunner`

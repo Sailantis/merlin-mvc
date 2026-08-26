@@ -39,6 +39,14 @@ class TestDatabase extends \Azera\Db\Database
         return $this->driverName;
     }
 
+    /**
+     * Simulate a modern server that supports RETURNING for pgsql/mysql/sqlite.
+     */
+    public function supportsReturning(): bool
+    {
+        return in_array($this->driverName, ['pgsql', 'mysql', 'sqlite'], true);
+    }
+
     public function quote($str): string
     {
         if ($str === null) {
@@ -68,11 +76,15 @@ class TestDatabase extends \Azera\Db\Database
     }
 
     /**
-     * Mock prepare - logs the query
+     * Mock prepare - logs the query and returns a PreparedStatement wrapping the mock statement
      */
-    public function prepare($statement): TestPdoStatement
+    public function prepare($statement): \Azera\Db\Statement
     {
-        return new TestPdoStatement($this->getNextMockResult());
+        return new \Azera\Db\Statement(
+            $this,
+            new TestPdoStatement($this->getNextMockResult()),
+            (string) $statement
+        );
     }
 
     /**

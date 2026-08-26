@@ -5,6 +5,7 @@ namespace Azera\Cli;
 use Azera\Cli\Console\OutputRendering;
 use Azera\Cli\Console\HelpRendering;
 use Azera\Cli\Console\TaskDiscovery;
+use Azera\Core\MiddlewareInterface;
 use ReflectionClass;
 
 /**
@@ -67,14 +68,10 @@ class Console
     protected const SHRINK_SENTINEL = "\x1E";
 
     /**
-     * Method names that end with 'Action' but are lifecycle hooks, not
-     * dispatchable actions. They are excluded from help listings and from
-     * the single-action task detection heuristic.
+     * Global middleware, run for every task action across all tasks.
+     * Mirrors {@see \Azera\Core\Dispatcher::$globalMiddleware}.
      */
-    protected const RESERVED_ACTIONS = [
-        'beforeAction' => true,
-        'afterAction'  => true
-    ];
+    protected array $globalMiddleware = [];
 
     protected $sectionStyles = ['bmagenta', '#e998ee'];
     protected $taskStyles = ['bold', 'bgreen', '#21e194'];
@@ -128,8 +125,7 @@ class Console
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the public dispatchable action methods on a task class,
-     * excluding the reserved lifecycle hooks (beforeAction/afterAction).
+     * Returns the public dispatchable action methods on a task class.
      *
      * @return array<string,\ReflectionMethod>
      */
@@ -140,9 +136,6 @@ class Console
         foreach ($ref->getMethods(\ReflectionMethod::IS_PUBLIC) as $m) {
             $name = $m->getName();
             if (!str_ends_with($name, 'Action')) {
-                continue;
-            }
-            if (isset(static::RESERVED_ACTIONS[$name])) {
                 continue;
             }
             $actions[$name] = $m;
@@ -167,6 +160,19 @@ class Console
     public function clearTasks(): void
     {
         $this->tasks = [];
+    }
+
+    /**
+     * Register a global middleware that runs for every task action.
+     *
+     * Accepts a {@see \Azera\Core\MiddlewareInterface} instance, a class
+     * string, an array [class, args], or a closure factory.
+     *
+     * @param mixed $middleware
+     */
+    public function addMiddleware($middleware): void
+    {
+        $this->globalMiddleware[] = $middleware;
     }
 
     // -------------------------------------------------------------------------
@@ -370,12 +376,117 @@ class Console
 
         $task->options = $options;
         $task->console = $this;
-        $task->beforeAction($method, $params);
-        try {
-            $task->$method(...$params);
-        } finally {
-            $task->afterAction($method, $params);
+
+        // Core handler: invoke the action method.
+        $core = fn() => $task->$method(...$params);
+
+        // Wrap the action method with AOP interceptors (innermost), composed
+        // as a plain closure chain — no proxy class generation.
+        $interceptors = $this->normalizeInterceptors($task->getInterceptors());
+        $action       = empty($interceptors)
+            ? $core
+            : fn() => (new \Azera\Aop\Pipeline($interceptors))->call($core);
+
+        // Compose middleware: [global] → [task] → [action] → [interceptors] → core.
+        /** @var MiddlewareInterface[] $middleware */
+        $middleware = [];
+        foreach ($this->globalMiddleware as $mw) {
+            $middleware[] = $this->normalizeMiddleware($mw);
         }
+        foreach ($task->getMiddlewares() as $mw) {
+            $middleware[] = $this->normalizeMiddleware($mw);
+        }
+        foreach ($task->getActionMiddlewares($method) as $mw) {
+            $middleware[] = $this->normalizeMiddleware($mw);
+        }
+
+        $next  = $action;
+        $count = count($middleware);
+
+        for ($i = $count - 1; $i >= 0; $i--) {
+            $mw   = $middleware[$i];
+            $next = fn() => $mw->process(\Azera\AppContext::instance(), $next);
+        }
+
+        $next();
+    }
+
+    /**
+     * Normalize a middleware entry into a {@see MiddlewareInterface} instance.
+     * Accepts an instance, a class string, an array [class, args], or a
+     * closure factory.
+     *
+     * @param mixed $mw
+     */
+    protected function normalizeMiddleware($mw): MiddlewareInterface
+    {
+        if ($mw instanceof MiddlewareInterface) {
+            return $mw;
+        }
+
+        /** @var MiddlewareInterface $instance */
+
+        if ($mw instanceof \Closure) {
+            $instance = $mw();
+        } else {
+            if (\is_array($mw)) {
+                $className = $mw[0] ?? null;
+                $args      = $mw[1] ?? [];
+            } else {
+                $className = $mw;
+                $args      = [];
+            }
+            if (!is_string($className)) {
+                throw new \InvalidArgumentException("Middleware class name must be a string");
+            }
+            if (!class_exists($className)) {
+                throw new \InvalidArgumentException("Middleware class {$className} does not exist");
+            }
+            $instance = new $className(...$args);
+        }
+
+        if (!$instance instanceof MiddlewareInterface) {
+            throw new \RuntimeException("Factory did not return MiddlewareInterface");
+        }
+
+        return $instance;
+    }
+
+    /**
+     * Normalize interceptor entries into {@see \Azera\Aop\InterceptorInterface}
+     * instances. Accepts an instance, a class string, or an array [class, args].
+     *
+     * @param array $interceptors
+     * @return \Azera\Aop\InterceptorInterface[]
+     */
+    protected function normalizeInterceptors(array $interceptors): array
+    {
+        $normalized = [];
+        foreach ($interceptors as $itc) {
+            if ($itc instanceof \Azera\Aop\InterceptorInterface) {
+                $normalized[] = $itc;
+                continue;
+            }
+            if (\is_array($itc)) {
+                $className = $itc[0] ?? null;
+                $args      = $itc[1] ?? [];
+            } else {
+                $className = $itc;
+                $args      = [];
+            }
+            if (!is_string($className)) {
+                throw new \InvalidArgumentException("Interceptor class name must be a string");
+            }
+            if (!class_exists($className)) {
+                throw new \InvalidArgumentException("Interceptor class {$className} does not exist");
+            }
+            $instance = new $className(...$args);
+            if (!$instance instanceof \Azera\Aop\InterceptorInterface) {
+                throw new \RuntimeException("Interceptor {$className} must implement InterceptorInterface");
+            }
+            $normalized[] = $instance;
+        }
+        return $normalized;
     }
 
     /**

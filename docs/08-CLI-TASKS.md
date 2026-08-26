@@ -121,7 +121,7 @@ class DatabaseTask extends Task
 
 ## Single-Action vs Multi-Action Tasks
 
-A task is either **single-action** (exactly one public `*Action` method, excluding the inherited `beforeAction`/`afterAction` hooks) or **multi-action** (two or more). The Console detects this automatically from the class — there is no global "default action" to configure, and no special method name is required.
+A task is either **single-action** (exactly one public `*Action` method) or **multi-action** (two or more). The Console detects this automatically from the class — there is no global "default action" to configure, and no special method name is required.
 
 ### Single-Action Tasks
 
@@ -223,21 +223,81 @@ $dryRun = !$this->option('apply', false);
 
 ---
 
-## Lifecycle Hooks
+## Middleware and AOP Interceptors
 
-`Task` provides two optional lifecycle hooks that are called by `Console` around every action invocation. Override them in your task (or in a shared base task class) to implement cross-cutting behavior — such as registering event listeners before an action runs and flushing results afterwards — without touching the action methods themselves.
+Instead of lifecycle hooks, tasks use the same **middleware** model as controllers, plus optional **AOP interceptors** for cross-cutting behavior. `Console` composes these into a pipeline around every action invocation:
 
-```php
-public function beforeAction(string $action, array $params): void { }
-public function afterAction(string $action, array $params): void { }
+```
+[global] → [task] → [action] → [interceptors] → action method
 ```
 
-- `$action` — the resolved PHP method name that will be (or was) invoked (e.g. `"runAction"`).
-- `$params` — the positional parameters that will be (or were) passed to the action.
-- Both hooks have full access to `$this->options` and `$this->console` when they fire.
-- `afterAction()` is always called inside a `finally` block, so it runs even when the action throws an exception.
+Middleware and interceptors are declared as protected properties on the task class and run automatically — no action-method changes are needed.
 
-### Example: collect SQL queries globally
+### Middleware
+
+Task-wide middleware runs for **every** action of the task; action-scoped middleware runs only for a specific method.
+
+```php
+<?php
+namespace App\Tasks;
+
+use Azera\Cli\Task;
+
+class ImportTask extends Task
+{
+    // Runs for every action of this task.
+    protected array $middlewares = [
+        AuthMiddleware::class,
+        [RoleMiddleware::class, ['admin']],
+    ];
+
+    // Runs only for the importAction method.
+    protected array $actionMiddlewares = [
+        'importAction' => [LogStartMiddleware::class],
+    ];
+
+    public function importAction(): void
+    {
+        // ...
+    }
+}
+```
+
+Middleware implement `Azera\Core\MiddlewareInterface` — the same interface used by HTTP controllers. The `process()` method receives the `AppContext` and a `$next` callable; call `$next()` to continue the pipeline. The CLI ignores the `?Response` return value.
+
+```php
+class LogStartMiddleware implements MiddlewareInterface
+{
+    public function process(AppContext $context, callable $next): ?Response
+    {
+        $context->logger()->info('starting action');
+        return $next();
+    }
+}
+```
+
+### Global middleware
+
+Global middleware runs for every task action across all tasks. Register it on the `Console` instance:
+
+```php
+$console->addMiddleware(GlobalLogMiddleware::class);
+```
+
+### AOP interceptors
+
+Tasks can also attach `Azera\Aop\InterceptorInterface` interceptors, composed as a plain closure chain (no proxy class generation / no eval). They wrap the action method **inside** the middleware layers:
+
+```php
+protected array $interceptors = [
+    \Azera\Aop\Interceptor\LogInterceptor::class,
+    [\Azera\Aop\Interceptor\RetryInterceptor::class, [3]],
+];
+```
+
+### Example: log action start/end globally
+
+The old `beforeAction`/`afterAction` hooks can be expressed as a middleware. A middleware receives the `AppContext` and a `$next` callable — it runs code **before** `$next()`, delegates, then runs code **after** it returns. Any task that extends this base task automatically gets the logging:
 
 ```php
 <?php
@@ -245,40 +305,30 @@ namespace App\Tasks;
 
 use Azera\AppContext;
 use Azera\Cli\Task;
+use Azera\Core\MiddlewareInterface;
+use Azera\Http\Response;
+
+class LogActionMiddleware implements MiddlewareInterface
+{
+    public function process(AppContext $context, callable $next): ?Response
+    {
+        $context->logger()->info('action starting');
+
+        $result = $next();
+
+        $context->logger()->info('action finished');
+
+        return $result;
+    }
+}
 
 abstract class BaseTask extends Task
 {
-    private array $collectedSql = [];
-
-    public function beforeAction(string $action, array $params): void
-    {
-        if ($this->option('save-sql')) {
-            AppContext::instance()->dbManager()->addGlobalListener(
-                function (string $event, mixed ...$args): void {
-                    if ($event === 'db.afterQuery') {
-                        $this->collectedSql[] = $args[0]; // SQL string
-                    }
-                }
-            );
-        }
-    }
-
-    public function afterAction(string $action, array $params): void
-    {
-        $path = $this->option('save-sql');
-        if ($path && !empty($this->collectedSql)) {
-            file_put_contents($path, implode("\n", $this->collectedSql) . "\n");
-            $this->muted("SQL written to {$path}.");
-        }
-    }
+    protected array $middlewares = [LogActionMiddleware::class];
 }
 ```
 
-Any task that extends `BaseTask` automatically gains `--save-sql=<file>` support without any changes to its action methods:
-
-```bash
-php console.php import run data.csv --save-sql=import.sql
-```
+Any task that extends `BaseTask` runs `LogActionMiddleware` before and after every action, with no changes to the action methods themselves.
 
 ---
 

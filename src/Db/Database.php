@@ -2,25 +2,23 @@
 
 namespace Azera\Db;
 
-use Azera\Db\Exceptions\TransactionLostException;
-use Azera\Db\Event\DatabaseExceptionOccurred;
+use Azera\AppContext;
+use Azera\Core\Model;
+use Azera\Db\Event\DatabaseOperationFailed;
 use Azera\Db\Event\QueryExecuted;
 use Azera\Db\Event\ReconnectAborted;
 use Azera\Db\Event\ReconnectAttempt;
-use Azera\Db\Event\ReconnectFailed;
 use Azera\Db\Event\Reconnected;
-use Azera\Db\Event\StatementExecuted;
+use Azera\Db\Event\ReconnectFailed;
 use Azera\Db\Event\StatementPrepared;
 use Azera\Db\Event\TransactionCommitted;
 use Azera\Db\Event\TransactionRolledBack;
 use Azera\Db\Event\TransactionStarted;
-use Azera\Core\Model;
-use Psr\EventDispatcher\EventDispatcherInterface;
-use Azera\AppContext;
-
+use Azera\Db\Exceptions\TransactionLostException;
 use PDO;
 use PDOException;
 use PDOStatement;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use RuntimeException;
 
 /**
@@ -110,7 +108,7 @@ class Database
 	 * Returns a NullEventDispatcher when no real dispatcher is registered,
 	 * so dispatch() is always safe and cheap (single no-op method call).
 	 */
-	protected function events(): EventDispatcherInterface
+	public function events(): EventDispatcherInterface
 	{
 		return $this->eventDispatcher ??= AppContext::instance()->events();
 	}
@@ -166,108 +164,76 @@ class Database
 	public function query(string $statement, ?array $params = null): bool|PDOStatement
 	{
 		$start = microtime(true);
-		retry:
-		try {
-			if (!empty($params)) {
-				$stmt = $this->pdo->prepare($statement);
-				$stmt->execute($params);
-			} else {
-				$stmt = $this->pdo->query($statement);
+		while (true) {
+			try {
+				if (!empty($params)) {
+					$stmt = $this->pdo->prepare($statement);
+					$stmt->execute($params);
+				} else {
+					$stmt = $this->pdo->query($statement);
+				}
+				if ($stmt === false) {
+					$info = $this->pdo->errorInfo();
+					$ex   = new PDOException($info[2] ?? 'Unknown error');
+					$ex->errorInfo = $info;
+					throw $ex;
+				}
+				$this->statement = $stmt;
+				return ($stmt->columnCount() > 0) ? $stmt : true;
+			} catch (PDOException $exception) {
+				$this->processPdoException($exception, 'query', $statement, $params);
+			} finally {
+				$this->events()->dispatch(new QueryExecuted(
+					$this,
+					$statement,
+					$params,
+					(microtime(true) - $start) * 1000.0
+				));
 			}
-			if ($stmt === false) {
-				$info = $this->pdo->errorInfo();
-				$ex   = new PDOException($info[2] ?? 'Unknown error');
-				$ex->errorInfo = $info;
-				throw $ex;
-			}
-		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
-			goto retry;
-		} finally {
-			$this->events()->dispatch(new QueryExecuted(
-				$this,
-				$statement,
-				$params,
-				(microtime(true) - $start) * 1000.0
-			));
 		}
-		$this->statement = $stmt;
-		return ($stmt->columnCount() > 0) ? $stmt : true;
 	}
 
 	/**
-	 * Prepare a SQL statement and return the resulting PDOStatement object.
+	 * Prepare a SQL statement and return a Statement wrapper.
+	 *
+	 * Each call returns an independent Statement that owns its PDO
+	 * statement, so any number of statements can be prepared and executed
+	 * concurrently without clobbering a single shared slot.
+	 *
 	 * @param string $statement SQL statement to prepare
-	 * @return PDOStatement
+	 * @return Statement
 	 * @throws \Exception
 	 */
-	public function prepare(string $statement): bool|PDOStatement
+	public function prepare(string $statement): Statement
 	{
-		retry:
-		try {
-			$stmt = $this->pdo->prepare($statement);
-			if ($stmt === false) {
-				$info = $this->pdo->errorInfo();
-				$ex   = new PDOException($info[2] ?? 'Unknown error');
-				$ex->errorInfo = $info;
-				throw $ex;
+		while (true) {
+			try {
+				$stmt = $this->pdo->prepare($statement);
+				if ($stmt === false) {
+					$info = $this->pdo->errorInfo();
+					$ex   = new PDOException($info[2] ?? 'Unknown error');
+					$ex->errorInfo = $info;
+					throw $ex;
+				}
+				return new Statement($this, $stmt, $statement);
+			} catch (PDOException $exception) {
+				$this->processPdoException($exception, 'prepare', $statement);
+			} finally {
+				$this->events()->dispatch(new StatementPrepared($this, $statement));
 			}
-		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
-			goto retry;
-		} finally {
-			$this->events()->dispatch(new StatementPrepared($this, $statement));
 		}
-		$this->statement = $stmt;
-		return $stmt;
-	}
-
-	/**
-	 * Execute the most recently prepared statement with the given bound parameters.
-	 * @param array $params Optional parameters to bind for this execution
-	 * @return bool|PDOStatement Returns the PDOStatement for SELECT-like queries or true for others
-	 * @throws RuntimeException If no prepared statement is available
-	 * @throws Exception On database errors
-	 */
-	public function execute(array $params = []): bool|PDOStatement
-	{
-		if (empty($this->statement)) {
-			throw new RuntimeException(
-				"No prepared statement to execute"
-			);
-		}
-		$start = microtime(true);
-		try {
-			$ok = $this->statement->execute($params);
-
-			if ($ok === false) {
-				$info = $this->statement->errorInfo();
-				$ex   = new PDOException($info[2] ?? 'Unknown error');
-				$ex->errorInfo = $info;
-				throw $ex;
-			}
-
-		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
-			throw $exception;
-		} finally {
-			$this->events()->dispatch(new StatementExecuted(
-				$this,
-				$params,
-				(microtime(true) - $start) * 1000.0
-			));
-		}
-
-		return ($this->statement->columnCount() > 0) ? $this->statement : true;
 	}
 
 	/**
 	 * @param PDOException $exception
+	 * @param string $operation The database operation that failed.
+	 * @param string|null $sql The SQL statement that failed, if known.
+	 * @param array|null $params Bound parameters for the failed statement, if known.
 	 * @throws Exception
 	 */
-	protected function processPdoException(PDOException $exception)
+	public function processPdoException(PDOException $exception, string $operation, ?string $sql = null, ?array $params = null)
 	{
-		$this->events()->dispatch(new DatabaseExceptionOccurred($this, $exception));
+		$this->events()->dispatch(new DatabaseOperationFailed($this, $exception, $operation, $sql, $params));
 		$inTransaction = !empty($this->transactionLevel);
 		switch ($exception->errorInfo[1]) {
 			case 1213:
@@ -500,7 +466,7 @@ class Database
 			}
 			return $result;
 		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
+			$this->processPdoException($exception, 'beginTransaction');
 			throw $exception;
 		} finally {
 			$this->events()->dispatch(
@@ -547,7 +513,7 @@ class Database
 			}
 			return $result;
 		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
+			$this->processPdoException($exception, 'commit');
 			throw $exception;
 		} finally {
 			$this->events()->dispatch(
@@ -594,7 +560,7 @@ class Database
 			}
 			return $result;
 		} catch (PDOException $exception) {
-			$this->processPdoException($exception);
+			$this->processPdoException($exception, 'rollback');
 			throw $exception;
 		} finally {
 			$this->events()->dispatch(
@@ -664,6 +630,43 @@ class Database
 	public function builder(): Query
 	{
 		return new Query($this);
+	}
+
+	/**
+	 * Whether the connected server supports the RETURNING clause on INSERT/UPDATE/DELETE.
+	 *
+	 * PostgreSQL supports it natively. MySQL 8.0.27+, MariaDB 10.5.0+ and SQLite 3.35+
+	 * also support it. Older servers must fall back to lastInsertId() for ID backfilling.
+	 *
+	 * @return bool
+	 */
+	public function supportsReturning(): bool
+	{
+		static $supportsReturning = null;
+		if ($supportsReturning === null) {
+			switch ($this->driverName) {
+				case 'pgsql':
+					$supportsReturning = true;
+					break;
+				case 'mysql':
+					// MariaDB connects through the PDO MySQL driver, so its version
+					// string (e.g. "10.4.28-MariaDB") must be detected separately.
+					$version = (string) $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
+					if (stripos($version, 'mariadb') !== false) {
+						$supportsReturning = version_compare($version, '10.5.0', '>=');
+					} else {
+						$supportsReturning = version_compare($version, '8.0.27', '>=');
+					}
+					break;
+				case 'sqlite':
+					$version           = $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
+					$supportsReturning = version_compare((string) $version, '3.35.0', '>=');
+					break;
+				default:
+					$supportsReturning = false;
+			}
+		}
+		return $supportsReturning;
 	}
 
 	/**

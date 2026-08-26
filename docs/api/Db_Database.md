@@ -6,7 +6,7 @@ Class Database
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Db/Database.php#L49)
+### __construct() · [source](../../src/Db/Database.php#L62)
 
 `public function __construct(string $dsn, string $user = '', string $pass = '', array $options = []): mixed`
 
@@ -32,7 +32,7 @@ Create a new database connection using the provided DSN, credentials and options
 
 ---
 
-### connect() · [source](../../src/Db/Database.php#L84)
+### connect() · [source](../../src/Db/Database.php#L96)
 
 `public function connect(): mixed`
 
@@ -49,26 +49,23 @@ Establish a new PDO connection using the current configuration
 
 ---
 
-### addListener() · [source](../../src/Db/Database.php#L100)
+### events() · [source](../../src/Db/Database.php#L113)
 
-`public function addListener(callable $listener): static`
+`public function events(): Psr\EventDispatcher\EventDispatcherInterface`
 
-Add an event listener for database events
+Resolve the event dispatcher from AppContext, cached on first call.
 
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$listener` | callable | - | A callable that receives the event name and relevant data |
+Returns a NullEventDispatcher when no real dispatcher is registered,
+so dispatch() is always safe and cheap (single no-op method call).
 
 **➡️ Return value**
 
-- Type: static
+- Type: Psr\EventDispatcher\EventDispatcherInterface
 
 
 ---
 
-### setAutoReconnect() · [source](../../src/Db/Database.php#L124)
+### setAutoReconnect() · [source](../../src/Db/Database.php#L129)
 
 `public function setAutoReconnect(bool $enabled = true, int $maxAttempts = 0, float $retryDelay = 1, float $backoffMultiplier = 2, float $maxRetryDelay = 30, bool $jitter = true, callable|null $onReconnect = null): static`
 
@@ -93,7 +90,7 @@ Configure automatic reconnection behavior with detailed options
 
 ---
 
-### getAutoReconnect() · [source](../../src/Db/Database.php#L150)
+### getAutoReconnect() · [source](../../src/Db/Database.php#L154)
 
 `public function getAutoReconnect(): array|bool`
 
@@ -106,7 +103,7 @@ Get auto-reconnect configuration
 
 ---
 
-### query() · [source](../../src/Db/Database.php#L162)
+### query() · [source](../../src/Db/Database.php#L166)
 
 `public function query(string $statement, array|null $params = null): PDOStatement|bool`
 
@@ -130,11 +127,15 @@ Execute a SQL statement with optional parameters and return the resulting statem
 
 ---
 
-### prepare() · [source](../../src/Db/Database.php#L197)
+### prepare() · [source](../../src/Db/Database.php#L209)
 
-`public function prepare(string $statement): PDOStatement|bool`
+`public function prepare(string $statement): Azera\Db\Statement`
 
-Prepare a SQL statement and return the resulting PDOStatement object.
+Prepare a SQL statement and return a Statement wrapper.
+
+Each call returns an independent Statement that owns its PDO
+statement, so any number of statements can be prepared and executed
+concurrently without clobbering a single shared slot.
 
 **🧭 Parameters**
 
@@ -144,7 +145,7 @@ Prepare a SQL statement and return the resulting PDOStatement object.
 
 **➡️ Return value**
 
-- Type: PDOStatement|bool
+- Type: [Statement](Db_Statement.md)
 
 **⚠️ Throws**
 
@@ -153,32 +154,31 @@ Prepare a SQL statement and return the resulting PDOStatement object.
 
 ---
 
-### execute() · [source](../../src/Db/Database.php#L226)
+### processPdoException() · [source](../../src/Db/Database.php#L236)
 
-`public function execute(array $params = []): PDOStatement|bool`
-
-Execute the most recently prepared statement with the given bound parameters.
+`public function processPdoException(PDOException $exception, string $operation, string|null $sql = null, array|null $params = null): mixed`
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$params` | array | `[]` | Optional parameters to bind for this execution |
+| `$exception` | PDOException | - |  |
+| `$operation` | string | - | The database operation that failed. |
+| `$sql` | string\|null | `null` | The SQL statement that failed, if known. |
+| `$params` | array\|null | `null` | Bound parameters for the failed statement, if known. |
 
 **➡️ Return value**
 
-- Type: PDOStatement|bool
-- Description: Returns the PDOStatement for SELECT-like queries or true for others
+- Type: mixed
 
 **⚠️ Throws**
 
-- RuntimeException  If no prepared statement is available
-- Exception  On database errors
+- Exception
 
 
 ---
 
-### selectRow() · [source](../../src/Db/Database.php#L397)
+### selectRow() · [source](../../src/Db/Database.php#L367)
 
 `public function selectRow(string $query, array|null $params = null, int $fetchMode = 0): array|bool`
 
@@ -199,7 +199,7 @@ Fetch a single row from the database as object, associative array, or numeric ar
 
 ---
 
-### selectAll() · [source](../../src/Db/Database.php#L412)
+### selectAll() · [source](../../src/Db/Database.php#L382)
 
 `public function selectAll(string $query, array|null $params = null, int $fetchMode = 0): array`
 
@@ -220,7 +220,7 @@ Fetch all rows from the database as an array of objects, associative arrays, or 
 
 ---
 
-### rowCount() · [source](../../src/Db/Database.php#L424)
+### rowCount() · [source](../../src/Db/Database.php#L394)
 
 `public function rowCount(): int`
 
@@ -234,7 +234,7 @@ Return the number of rows affected by the last executed statement.
 
 ---
 
-### lastInsertId() · [source](../../src/Db/Database.php#L436)
+### lastInsertId() · [source](../../src/Db/Database.php#L406)
 
 `public function lastInsertId(string|null $table = null, string|null $field = null): string|bool`
 
@@ -257,7 +257,7 @@ For PostgreSQL, pass the table and primary key field to use currval(pg_get_seria
 
 ---
 
-### begin() · [source](../../src/Db/Database.php#L472)
+### begin() · [source](../../src/Db/Database.php#L442)
 
 `public function begin(bool $nesting = true): int|bool`
 
@@ -281,7 +281,7 @@ Begin a new transaction, or create a savepoint if nested transactions are enable
 
 ---
 
-### commit() · [source](../../src/Db/Database.php#L515)
+### commit() · [source](../../src/Db/Database.php#L486)
 
 `public function commit(bool $nesting = true): int|bool`
 
@@ -305,7 +305,7 @@ Commit the current transaction or release the current savepoint (for nested tran
 
 ---
 
-### rollback() · [source](../../src/Db/Database.php#L561)
+### rollback() · [source](../../src/Db/Database.php#L533)
 
 `public function rollback(bool $nesting = true): int|bool`
 
@@ -328,7 +328,7 @@ Rollback the current transaction or to a savepoint if nesting is enabled and sup
 
 ---
 
-### quote() · [source](../../src/Db/Database.php#L606)
+### quote() · [source](../../src/Db/Database.php#L579)
 
 `public function quote(string|null $str): string|bool`
 
@@ -347,7 +347,7 @@ Quote a string for use in a query.
 
 ---
 
-### quoteIdentifier() · [source](../../src/Db/Database.php#L621)
+### quoteIdentifier() · [source](../../src/Db/Database.php#L594)
 
 `public function quoteIdentifier(string|null ...$args): string`
 
@@ -369,7 +369,7 @@ Parts are joined with a dot separator. NULL parts are skipped. "*" is passed thr
 
 ---
 
-### getInternalConnection() · [source](../../src/Db/Database.php#L650)
+### getInternalConnection() · [source](../../src/Db/Database.php#L623)
 
 `public function getInternalConnection(): PDO|null`
 
@@ -383,7 +383,7 @@ Return the underlying PDO connection instance.
 
 ---
 
-### builder() · [source](../../src/Db/Database.php#L659)
+### builder() · [source](../../src/Db/Database.php#L632)
 
 `public function builder(): Azera\Db\Query`
 
@@ -396,7 +396,23 @@ Create a new Query builder instance associated with this database connection.
 
 ---
 
-### getDriver() · [source](../../src/Db/Database.php#L668)
+### supportsReturning() · [source](../../src/Db/Database.php#L645)
+
+`public function supportsReturning(): bool`
+
+Whether the connected server supports the RETURNING clause on INSERT/UPDATE/DELETE.
+
+PostgreSQL supports it natively. MySQL 8.0.27+, MariaDB 10.5.0+ and SQLite 3.35+
+also support it. Older servers must fall back to lastInsertId() for ID backfilling.
+
+**➡️ Return value**
+
+- Type: bool
+
+
+---
+
+### getDriver() · [source](../../src/Db/Database.php#L678)
 
 `public function getDriver(): string`
 

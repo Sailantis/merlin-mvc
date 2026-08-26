@@ -146,4 +146,57 @@ class AppContextAccessorsTest extends TestCase
         $ctx = AppContext::instance();
         $this->assertSame($ctx->config(), $ctx->config());
     }
+
+    public function testClearRequestScopeResetsBuiltInRequestScopedState(): void
+    {
+        $ctx = AppContext::instance();
+
+        // Prime per-request services so they exist.
+        $requestBefore = $ctx->request();
+        $cookiesBefore = $ctx->cookies();
+        $ctx->setRoute(new \Azera\Core\ResolvedRoute('App', 'Index', 'index', [], [], [], []));
+
+        $ctx->clearRequestScope();
+
+        // Built-in request-scoped accessors lazily create fresh instances.
+        $this->assertNotSame($requestBefore, $ctx->request());
+        $this->assertNotSame($cookiesBefore, $ctx->cookies());
+        $this->assertNull($ctx->route());
+    }
+
+    public function testClearRequestScopeFlushesRequestScopedServices(): void
+    {
+        $ctx = AppContext::instance();
+        $svc = new class implements \Azera\Lifecycle\RequestScoped
+        {
+            public int $resets = 0;
+
+            public function resetState(): void
+            {
+                $this->resets++;
+            }
+        };
+
+        $ctx->set($svc::class, $svc);
+
+        $ctx->clearRequestScope();
+
+        $this->assertSame(1, $svc->resets);
+    }
+
+    public function testClearRequestScopeKeepsPersistentInfrastructure(): void
+    {
+        $ctx = AppContext::instance();
+
+        $db     = $ctx->dbManager();
+        $router = $ctx->router();
+        $logger = $ctx->logger();
+
+        $ctx->clearRequestScope();
+
+        // Persistent infrastructure is untouched.
+        $this->assertSame($db, $ctx->dbManager());
+        $this->assertSame($router, $ctx->router());
+        $this->assertSame($logger, $ctx->logger());
+    }
 }

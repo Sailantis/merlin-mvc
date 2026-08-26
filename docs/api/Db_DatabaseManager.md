@@ -8,7 +8,7 @@ This class allows the definition of multiple database connections (e.g. "default
 
 ## 🚀 Public methods
 
-### set() · [source](../../src/Db/DatabaseManager.php#L32)
+### set() · [source](../../src/Db/DatabaseManager.php#L26)
 
 `public function set(string $role, Azera\Db\Database|callable $factory): static`
 
@@ -28,52 +28,7 @@ Define a database connection for a specific role.
 
 ---
 
-### addGlobalListener() · [source](../../src/Db/DatabaseManager.php#L52)
-
-`public function addGlobalListener(callable $listener): static`
-
-Add an event listener that will be attached to every database connection managed by this instance.
-
-Listeners registered before a factory is resolved will be applied on first access.
-Listeners registered after a connection is already resolved will be applied immediately.
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$listener` | callable | - | A callable that receives (string $event, mixed ...$args) |
-
-**➡️ Return value**
-
-- Type: static
-
-
----
-
-### addListener() · [source](../../src/Db/DatabaseManager.php#L70)
-
-`public function addListener(string $role, callable $listener): static`
-
-Add an event listener for a specific database role.
-
-If the role's connection is already resolved, the listener is applied immediately.
-If the role uses a factory that has not been called yet, the listener will be applied on first access.
-
-**🧭 Parameters**
-
-| Name | Type | Default | Description |
-|---|---|---|---|
-| `$role` | string | - | The name of the role to listen on |
-| `$listener` | callable | - | A callable that receives (string $event, mixed ...$args) |
-
-**➡️ Return value**
-
-- Type: static
-
-
----
-
-### setDefault() · [source](../../src/Db/DatabaseManager.php#L86)
+### setDefault() · [source](../../src/Db/DatabaseManager.php#L45)
 
 `public function setDefault(string $role): static`
 
@@ -96,7 +51,7 @@ Set the default database role to use when requesting the default connection. By 
 
 ---
 
-### has() · [source](../../src/Db/DatabaseManager.php#L102)
+### has() · [source](../../src/Db/DatabaseManager.php#L61)
 
 `public function has(string $role): bool`
 
@@ -116,7 +71,7 @@ Check if a database role is defined.
 
 ---
 
-### get() · [source](../../src/Db/DatabaseManager.php#L114)
+### get() · [source](../../src/Db/DatabaseManager.php#L73)
 
 `public function get(string $role): Azera\Db\Database`
 
@@ -140,7 +95,7 @@ Get the Database instance for a specific role.
 
 ---
 
-### getOrDefault() · [source](../../src/Db/DatabaseManager.php#L153)
+### getOrDefault() · [source](../../src/Db/DatabaseManager.php#L105)
 
 `public function getOrDefault(string $role): Azera\Db\Database`
 
@@ -164,7 +119,7 @@ Get the Database instance for a specific role, or the default if the role is not
 
 ---
 
-### getDefault() · [source](../../src/Db/DatabaseManager.php#L168)
+### getDefault() · [source](../../src/Db/DatabaseManager.php#L120)
 
 `public function getDefault(): Azera\Db\Database`
 
@@ -182,7 +137,7 @@ Get the default Database instance.
 
 ---
 
-### roles() · [source](../../src/Db/DatabaseManager.php#L181)
+### roles() · [source](../../src/Db/DatabaseManager.php#L133)
 
 `public function roles(): array`
 
@@ -196,7 +151,7 @@ Return the names of all registered database roles.
 
 ---
 
-### defaultRole() · [source](../../src/Db/DatabaseManager.php#L191)
+### defaultRole() · [source](../../src/Db/DatabaseManager.php#L143)
 
 `public function defaultRole(): string|null`
 

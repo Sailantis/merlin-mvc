@@ -33,9 +33,9 @@ Create a new UploadedFile from raw PHP file upload data.
 
 ---
 
-### getClientFilename() · [source](../../src/Http/UploadedFile.php#L39)
+### clientFilename() · [source](../../src/Http/UploadedFile.php#L38)
 
-`public function getClientFilename(): string`
+`public function clientFilename(): string`
 
 Return the original file name as provided by the client.
 
@@ -49,9 +49,9 @@ Do NOT use this value for file system operations without sanitising it first.
 
 ---
 
-### getClientMediaType() · [source](../../src/Http/UploadedFile.php#L49)
+### clientMediaType() · [source](../../src/Http/UploadedFile.php#L48)
 
-`public function getClientMediaType(): string`
+`public function clientMediaType(): string`
 
 Return the MIME type as provided by the client (not verified server-side).
 
@@ -63,9 +63,9 @@ Return the MIME type as provided by the client (not verified server-side).
 
 ---
 
-### getSize() · [source](../../src/Http/UploadedFile.php#L59)
+### size() · [source](../../src/Http/UploadedFile.php#L58)
 
-`public function getSize(): int`
+`public function size(): int`
 
 Return the file size in bytes as reported by the upload.
 
@@ -77,7 +77,7 @@ Return the file size in bytes as reported by the upload.
 
 ---
 
-### isValid() · [source](../../src/Http/UploadedFile.php#L69)
+### isValid() · [source](../../src/Http/UploadedFile.php#L68)
 
 `public function isValid(): bool`
 
@@ -91,7 +91,7 @@ Check whether the file was uploaded without errors.
 
 ---
 
-### moveTo() · [source](../../src/Http/UploadedFile.php#L80)
+### moveTo() · [source](../../src/Http/UploadedFile.php#L79)
 
 `public function moveTo(string $targetPath): void`
 

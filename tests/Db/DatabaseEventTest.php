@@ -42,10 +42,14 @@ class EventTestDatabase extends Database
         return true;
     }
 
-    public function prepare(string $statement): bool|\PDOStatement
+    public function prepare(string $statement): \Azera\Db\Statement
     {
         $this->events()->dispatch(new StatementPrepared($this, $statement));
-        return true;
+        return new \Azera\Db\Statement(
+            $this,
+            new TestPdoStatement(),
+            $statement
+        );
     }
 
     public function begin(bool $nesting = true): bool|int

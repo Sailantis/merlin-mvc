@@ -1,23 +1,23 @@
 # 🧩 Class: ResolvedRoute
 
-**Full name:** [Azera\ResolvedRoute](../../src/AppContext.php)
+**Full name:** [Azera\Core\ResolvedRoute](../../src/Core/ResolvedRoute.php)
 
 ResolvedRoute represents the fully resolved route and execution context
 used by the dispatcher to invoke the matched controller and action.
 
 ## 🌍 Public Properties
 
-- `public readonly` string|null `$namespace` · [source](../../src/AppContext.php)
-- `public readonly` string `$controller` · [source](../../src/AppContext.php)
-- `public readonly` string `$action` · [source](../../src/AppContext.php)
-- `public readonly` array `$params` · [source](../../src/AppContext.php)
-- `public readonly` array `$vars` · [source](../../src/AppContext.php)
-- `public readonly` array `$groups` · [source](../../src/AppContext.php)
-- `public readonly` array `$override` · [source](../../src/AppContext.php)
+- `public readonly` string|null `$namespace` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` string `$controller` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` string `$action` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` array `$params` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` array `$vars` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` array `$groups` · [source](../../src/Core/ResolvedRoute.php)
+- `public readonly` array `$override` · [source](../../src/Core/ResolvedRoute.php)
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/AppContext.php#L462)
+### __construct() · [source](../../src/Core/ResolvedRoute.php#L22)
 
 `public function __construct(string|null $namespace, string $controller, string $action, array $params, array $vars, array $groups, array $override): mixed`
 

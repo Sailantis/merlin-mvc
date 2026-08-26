@@ -197,7 +197,7 @@ Use a `Query` instance as the `FROM` source to pre-aggregate or pre-filter data 
 use Azera\Db\Query;
 
 // Step 1 — build the inner query independently
-$activeSales = Query::new()
+$activeSales = Query::raw()
     ->table('orders')
     ->where('status', 'completed')
     ->where('created_at > :since', ['since' => '2025-01-01'])
@@ -205,7 +205,7 @@ $activeSales = Query::new()
     ->columns(['user_id', 'SUM(total) AS revenue']);
 
 // Step 2 — wrap it as a derived table
-$topCustomers = Query::new()
+$topCustomers = Query::raw()
     ->from($activeSales, 'sales')   // alias required so outer query can reference columns
     ->where('sales.revenue >', 1000)
     ->orderBy('sales.revenue DESC')
@@ -221,13 +221,13 @@ Join any pre-built `Query` directly. Works with `join()`, `leftJoin()`, `innerJo
 use Azera\Db\Query;
 
 // Aggregate products to their latest price
-$latestPrices = Query::new()
+$latestPrices = Query::raw()
     ->table('price_history')
     ->where('effective_date <= :today', ['today' => date('Y-m-d')])
     ->groupBy('product_id')
     ->columns(['product_id', 'MAX(price) AS current_price']);
 
-$catalogue = Query::new()
+$catalogue = Query::raw()
     ->table('products', 'p')
     ->leftJoin($latestPrices, 'lp', 'lp.product_id = p.id')
     ->columns(['p.name', 'p.sku', 'lp.current_price'])
@@ -333,7 +333,7 @@ class ArticleController extends Controller
 
 ## 15) Session-based Authentication
 
-A complete login/logout flow with a `beforeAction` guard. The session is activated by `SessionMiddleware` in the dispatcher setup.
+A complete login/logout flow with an auth middleware guard. The session is activated by `SessionMiddleware` in the dispatcher setup.
 
 ```php
 // bootstrap — register the session middleware once
@@ -371,21 +371,26 @@ class AuthController extends Controller
 }
 ```
 
-Protect any controller by overriding `beforeAction()`:
+Protect any controller by attaching an auth middleware to its `$middleware` property:
 
 ```php
 use Azera\Http\Response;
 use Azera\Core\Controller;
 
-class AccountController extends Controller
+class AuthMiddleware implements MiddlewareInterface
 {
-    public function beforeAction(string $action = null, array $params = []): ?Response
+    public function process(AppContext $context, callable $next): ?Response
     {
-        if (!$this->session()?->get('user_id')) {
+        if (!$context->session()?->get('user_id')) {
             return Response::redirect('/login');
         }
-        return null;
+        return $next($context);
     }
+}
+
+class AccountController extends Controller
+{
+    protected array $middlewares = [AuthMiddleware::class];
 
     public function dashboardAction(): string
     {
@@ -430,16 +435,16 @@ Embed the token in every HTML form:
 </form>
 ```
 
-Validate server-side — for example, in a middleware or `beforeAction`:
+Validate server-side with a middleware:
 
 ```php
-public function beforeAction(string $action = null, array $params = []): ?Response
+public function process(AppContext $context, callable $next): ?Response
 {
-    $method = $this->request()->getMethod();
+    $method = $context->request()->getMethod();
     if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && !csrf_verify()) {
         return \Azera\Http\Response::status(419); // token mismatch
     }
-    return null;
+    return $next($context);
 }
 ```
 

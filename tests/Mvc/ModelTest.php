@@ -8,6 +8,8 @@ use Azera\AppContext;
 use Azera\Db\Query;
 use Azera\Core\ModelMapping;
 use Azera\Tests\Db\TestPgDatabase;
+use Azera\Tests\Db\TestMysqlDatabase;
+use Azera\Tests\Db\TestSqliteDatabase;
 use PHPUnit\Framework\TestCase;
 
 class DummyModel extends \Azera\Core\Model
@@ -34,14 +36,24 @@ class DummyDefaultedModel extends \Azera\Core\Model
     }
 }
 
+class DummyCompositeModel extends \Azera\Core\Model
+{
+    public $tenant_id;
+    public $id;
+    public $name;
+
+    public function idFields(): array
+    {
+        return ['tenant_id', 'id'];
+    }
+}
+
 class ModelTest extends TestCase
 {
     protected function setUp(): void
     {
         AppContext::setInstance(new AppContext());
         ModelMapping::usePluralTableNames(false);
-        Query::useModels(true);
-        Query::setModelMapping(null);
     }
 
     public function testStateSaveLoadAndHasChanged(): void
@@ -50,8 +62,8 @@ class ModelTest extends TestCase
         AppContext::instance()->dbManager()->set('default', $db);
 
         $m = new DummyModel();
-        $m->id = null;
-        $m->name = 'Alice';
+        $m->id        = null;
+        $m->name      = 'Alice';
         $m->_internal = 'secret';
 
         $m->saveState();
@@ -123,8 +135,8 @@ class ModelTest extends TestCase
         ]);
 
         $model = new DummyDefaultedModel();
-        $model->id = null;
-        $model->name = 'Echo';
+        $model->id         = null;
+        $model->name       = 'Echo';
         $model->created_at = null;
 
         $this->assertTrue($model->insert());
@@ -178,5 +190,49 @@ class ModelTest extends TestCase
         $this->assertSame(5, $model->id);
         $this->assertSame('Foxtrot', $model->name);
         $this->assertNotNull($model->getState());
+    }
+
+    public function testCompositeKeyInsertBackfillsAllIdsViaReturningOnMysql(): void
+    {
+        $db = new TestMysqlDatabase();
+        AppContext::instance()->dbManager()->set('default', $db);
+        $db->setMockResults([
+            [
+                ['tenant_id' => 7, 'id' => 42, 'name' => 'Composite']
+            ]
+        ]);
+
+        $model = new DummyCompositeModel();
+        $model->name = 'Composite';
+
+        $this->assertTrue($model->insert());
+
+        $query = $db->getLastQuery();
+        $this->assertNotNull($query);
+        $this->assertStringContainsString('RETURNING', strtoupper($query['sql']));
+        $this->assertSame(7, $model->tenant_id);
+        $this->assertSame(42, $model->id);
+    }
+
+    public function testCompositeKeyInsertBackfillsAllIdsViaReturningOnSqlite(): void
+    {
+        $db = new TestSqliteDatabase();
+        AppContext::instance()->dbManager()->set('default', $db);
+        $db->setMockResults([
+            [
+                ['tenant_id' => 3, 'id' => 99, 'name' => 'Composite']
+            ]
+        ]);
+
+        $model = new DummyCompositeModel();
+        $model->name = 'Composite';
+
+        $this->assertTrue($model->insert());
+
+        $query = $db->getLastQuery();
+        $this->assertNotNull($query);
+        $this->assertStringContainsString('RETURNING', strtoupper($query['sql']));
+        $this->assertSame(3, $model->tenant_id);
+        $this->assertSame(99, $model->id);
     }
 }

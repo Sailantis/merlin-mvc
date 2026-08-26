@@ -435,9 +435,6 @@ trait HelpRendering
             if (!str_ends_with($name, 'Action')) {
                 continue;
             }
-            if (isset(static::RESERVED_ACTIONS[$name])) {
-                continue;
-            }
             $actionName = $this->methodToActionName($name);
             $doc        = $m->getDocComment() ?: '';
             $actions[$actionName] = $this->extractDocHeader($doc);

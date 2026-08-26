@@ -9,19 +9,17 @@ use Azera\Db\Query;
 use Azera\AppContext;
 use Azera\Db\Condition;
 use Azera\Core\ModelMapping;
+use Azera\Db\Resolver\MappingResolver;
 use PHPUnit\Framework\TestCase;
 
 class SelectBuilderTest extends TestCase
 {
     public function testBasicSelectWithJoinGroupOrderLimit(): void
     {
-        // Disable model lookup to use plain table names
-        Query::useModels(false);
-
         $db = new TestPgDatabase();
         AppContext::setInstance(new AppContext());
         AppContext::instance()->dbManager()->set('default', $db);
-        $sb = new Query($db);
+        $sb = Query::raw($db);
 
         // Use Condition for JOIN to get identifier protection
         $joinCondition = Condition::new($db)->where('o.user_id = u.id');
@@ -42,14 +40,12 @@ class SelectBuilderTest extends TestCase
     public function testConditionResolvesModelToTableAlias(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(true);
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Model' => ['source' => 'user', 'schema' => null],
-        ]));
 
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
-        $sb = new Query($db);
+        $sb = Query::new($db)->using(new MappingResolver(ModelMapping::fromArray([
+            'Model' => ['source' => 'user', 'schema' => null],
+        ])));
 
         $sb->table('Model')
             ->columns(['Model.id', 'Model.name']);
@@ -59,7 +55,7 @@ class SelectBuilderTest extends TestCase
             ->where('Model.status', 'active')
             ->group(function (Condition $g) {
                 $g->where('Model.role', 'admin')
-                  ->orWhere('Model.role', 'moderator');
+                    ->orWhere('Model.role', 'moderator');
             });
 
         $sb->where($c);
@@ -75,15 +71,12 @@ class SelectBuilderTest extends TestCase
         // Test the documentation example: Model.column notation in SelectBuilder with JOINs and Sql composition
         // This is crucial: verifies Model.column resolves to correct table identifiers throughout the query
 
-        Query::useModels(true);
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Order' => ['source' => 'order', 'schema' => 'public'],
-            'Customer' => ['source' => 'customer', 'schema' => 'public'],
-        ]));
-
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
-        $sb = new Query($db);
+        $sb = Query::new($db)->using(new MappingResolver(ModelMapping::fromArray([
+            'Order'    => ['source' => 'order', 'schema' => 'public'],
+            'Customer' => ['source' => 'customer', 'schema' => 'public'],
+        ])));
 
         // Build the query from documentation:
         // $results = Order::selectBuilder()
@@ -120,14 +113,11 @@ class SelectBuilderTest extends TestCase
         $expected = 'SELECT "order"."id", "customer"."first_name" || \' \' || "customer"."last_name" AS "customer_name", "order"."total" FROM "public"."order" JOIN "public"."customer" ON ("customer"."id" = "order"."customer_id")';
 
         $this->assertEquals($expected, $sql);
-
-        Query::setModelMapping(null);
     }
 
     public function testReusableConditionResolvesPerQueryContext(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(true);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
@@ -135,11 +125,10 @@ class SelectBuilderTest extends TestCase
             ->where('Model.id', 1)
             ->where('Model.status', 'active');
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Model' => ['source' => 'users', 'schema' => null],
-        ]));
-
         $first = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'Model' => ['source' => 'users', 'schema' => null],
+            ])))
             ->table('Model')
             ->where($reusable)
             ->returnSql()
@@ -150,17 +139,14 @@ class SelectBuilderTest extends TestCase
             $first
         );
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Model' => ['source' => 'accounts', 'schema' => null],
-        ]));
-
         $second = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'Model' => ['source' => 'accounts', 'schema' => null],
+            ])))
             ->table('Model')
             ->where($reusable)
             ->returnSql()
             ->select();
-
-        Query::setModelMapping(null);
 
         $this->assertEquals(
             'SELECT * FROM "accounts" WHERE (("accounts"."id" = 1) AND ("accounts"."status" = \'active\'))',
@@ -171,17 +157,16 @@ class SelectBuilderTest extends TestCase
     public function testReusableJoinConditionResolvesPerModelMapping(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(true);
-        Query::setModelMapping(ModelMapping::fromArray([
-            'User' => ['source' => 'users', 'schema' => null],
-            'Order' => ['source' => 'orders', 'schema' => null],
-        ]));
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
         $joinCondition = Condition::new()->where('User.id = Order.user_id');
 
         $first = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'User'  => ['source' => 'users', 'schema' => null],
+                'Order' => ['source' => 'orders', 'schema' => null],
+            ])))
             ->table('User')
             ->join('Order', $joinCondition)
             ->returnSql()
@@ -192,18 +177,15 @@ class SelectBuilderTest extends TestCase
             $first
         );
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'User' => ['source' => 'accounts', 'schema' => null],
-            'Order' => ['source' => 'purchases', 'schema' => null],
-        ]));
-
         $second = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'User'  => ['source' => 'accounts', 'schema' => null],
+                'Order' => ['source' => 'purchases', 'schema' => null],
+            ])))
             ->table('User')
             ->join('Order', $joinCondition)
             ->returnSql()
             ->select();
-
-        Query::setModelMapping(null);
 
         $this->assertEquals(
             'SELECT * FROM "accounts" JOIN "purchases" ON (("accounts"."id" = "purchases"."user_id"))',
@@ -214,7 +196,6 @@ class SelectBuilderTest extends TestCase
     public function testReusableBoundConditionResolvesPerModelMapping(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(true);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
@@ -222,11 +203,10 @@ class SelectBuilderTest extends TestCase
             ->where('Model.status = :status')
             ->bind(['status' => 'active']);
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Model' => ['source' => 'users', 'schema' => null],
-        ]));
-
         $first = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'Model' => ['source' => 'users', 'schema' => null],
+            ])))
             ->table('Model')
             ->where($bound)
             ->returnSql()
@@ -237,17 +217,14 @@ class SelectBuilderTest extends TestCase
             $first
         );
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'Model' => ['source' => 'accounts', 'schema' => null],
-        ]));
-
         $second = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'Model' => ['source' => 'accounts', 'schema' => null],
+            ])))
             ->table('Model')
             ->where($bound)
             ->returnSql()
             ->select();
-
-        Query::setModelMapping(null);
 
         $this->assertEquals(
             'SELECT * FROM "accounts" WHERE (("accounts"."status" = \'active\'))',
@@ -258,7 +235,6 @@ class SelectBuilderTest extends TestCase
     public function testReusableBoundJoinConditionResolvesPerModelMapping(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(true);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
@@ -267,12 +243,11 @@ class SelectBuilderTest extends TestCase
             ->where('Order.state = :state')
             ->bind(['state' => 'open']);
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'User' => ['source' => 'users', 'schema' => null],
-            'Order' => ['source' => 'orders', 'schema' => null],
-        ]));
-
         $first = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'User'  => ['source' => 'users', 'schema' => null],
+                'Order' => ['source' => 'orders', 'schema' => null],
+            ])))
             ->table('User')
             ->join('Order', $joinCondition)
             ->returnSql()
@@ -283,18 +258,15 @@ class SelectBuilderTest extends TestCase
             $first
         );
 
-        Query::setModelMapping(ModelMapping::fromArray([
-            'User' => ['source' => 'accounts', 'schema' => null],
-            'Order' => ['source' => 'purchases', 'schema' => null],
-        ]));
-
         $second = Query::new($db)
+            ->using(new MappingResolver(ModelMapping::fromArray([
+                'User'  => ['source' => 'accounts', 'schema' => null],
+                'Order' => ['source' => 'purchases', 'schema' => null],
+            ])))
             ->table('User')
             ->join('Order', $joinCondition)
             ->returnSql()
             ->select();
-
-        Query::setModelMapping(null);
 
         $this->assertEquals(
             'SELECT * FROM "accounts" JOIN "purchases" ON (("accounts"."id" = "purchases"."user_id") AND ("purchases"."state" = \'open\'))',
@@ -305,16 +277,15 @@ class SelectBuilderTest extends TestCase
     public function testSubQueryInFrom(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(false);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
-        $sub = Query::new($db)
+        $sub = Query::raw($db)
             ->table('orders o')
             ->columns(['o.id', 'o.user_id'])
             ->where('o.total >', 100);
 
-        $q = Query::new($db)
+        $q = Query::raw($db)
             ->from($sub, 's')
             ->columns(['s.user_id'])
             ->returnSql()
@@ -328,16 +299,15 @@ class SelectBuilderTest extends TestCase
     public function testSubQueryInJoin(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(false);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
-        $sub = Query::new($db)
+        $sub = Query::raw($db)
             ->table('orders o')
             ->columns(['o.user_id', 'o.id'])
             ->where('o.total >', 100);
 
-        $q = Query::new($db)
+        $q = Query::raw($db)
             ->table('users u')
             ->columns(['u.id'])
             ->leftJoin($sub, 'o', Condition::new()->where('o.user_id = u.id'))
@@ -352,19 +322,17 @@ class SelectBuilderTest extends TestCase
     public function testWhereWithSqlSubQuery(): void
     {
         AppContext::setInstance(new AppContext());
-        Query::useModels(false);
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
 
-        $sub = Query::new($db)
+        $sub = Query::raw($db)
             ->table('orders o2')
             ->columns(['o2.user_id'])
             ->where('o2.total >', 100);
 
-        $q = Query::new($db)
+        $q = Query::raw($db)
             ->table('users u')
             ->inWhere('u.id', $sub)
-            //->where('u.id IN', Sql::subQuery($sub), false)
             ->returnSql()
             ->select();
 

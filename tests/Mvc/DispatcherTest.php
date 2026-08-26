@@ -50,27 +50,14 @@ class DTNullController extends Controller
     }
 }
 
-class BeforeController extends Controller
-{
-    public $called = false;
-    public function beforeAction(?string $action = null, array $params = []): ?Response
-    {
-        return Response::text('before');
-    }
-    public function act()
-    {
-        $this->called = true;
-        return 'should-not';
-    }
-}
-
 class GMW implements MiddlewareInterface
 {
     public function process(AppContext $context, callable $next): ?Response
     {
         $r = $next();
-        if ($r instanceof Response)
+        if ($r instanceof Response) {
             $r->write('-G');
+        }
         return $r;
     }
 }
@@ -79,8 +66,9 @@ class GRPMW implements MiddlewareInterface
     public function process(AppContext $context, callable $next): ?Response
     {
         $r = $next();
-        if ($r instanceof Response)
+        if ($r instanceof Response) {
             $r->write('-GR');
+        }
         return $r;
     }
 }
@@ -89,8 +77,9 @@ class CMW implements MiddlewareInterface
     public function process(AppContext $context, callable $next): ?Response
     {
         $r = $next();
-        if ($r instanceof Response)
+        if ($r instanceof Response) {
             $r->write('-C');
+        }
         return $r;
     }
 }
@@ -99,16 +88,17 @@ class AMW implements MiddlewareInterface
     public function process(AppContext $context, callable $next): ?Response
     {
         $r = $next();
-        if ($r instanceof Response)
+        if ($r instanceof Response) {
             $r->write('-A');
+        }
         return $r;
     }
 }
 
 class MWController extends Controller
 {
-    protected array $middleware = [CMW::class];
-    protected array $actionMiddleware = ['act' => [AMW::class]];
+    protected array $middlewares = [CMW::class];
+    protected array $actionMiddlewares = ['act' => [AMW::class]];
     public function act()
     {
         return 'CORE';
@@ -138,10 +128,10 @@ class RoutingStateController extends Controller
         $route = $this->context()->route();
         return [
             'controller' => $route->controller ?? null,
-            'action' => $route->action ?? null,
-            'groups' => $route->groups ?? null,
-            'vars' => $route->vars ?? null,
-            'params' => $route->params ?? null,
+            'action'     => $route->action ?? null,
+            'groups'     => $route->groups ?? null,
+            'vars'       => $route->vars ?? null,
+            'params'     => $route->params ?? null,
         ];
     }
 }
@@ -150,8 +140,8 @@ class DispatcherTest extends TestCase
 {
     private function routeWithOverride(string $controllerClass, string $action, array $params = [], array $groups = []): array
     {
-        $pos = strrpos($controllerClass, '\\');
-        $namespace = $pos === false ? '' : '\\' . substr($controllerClass, 0, $pos);
+        $pos        = strrpos($controllerClass, '\\');
+        $namespace  = $pos === false ? '' : '\\' . substr($controllerClass, 0, $pos);
         $controller = $pos === false ? $controllerClass : substr($controllerClass, $pos + 1);
 
         return [
@@ -159,9 +149,9 @@ class DispatcherTest extends TestCase
                 'params' => $params,
             ],
             'override' => [
-                'namespace' => $namespace,
+                'namespace'  => $namespace,
                 'controller' => $controller,
-                'action' => $action,
+                'action'     => $action,
             ],
             'groups' => $groups,
         ];
@@ -218,14 +208,6 @@ class DispatcherTest extends TestCase
         $this->assertEquals(204, $this->responseStatus($res));
     }
 
-    public function testBeforeAndAfterActionShortCircuit(): void
-    {
-        $disp = new Dispatcher();
-
-        $res = $disp->dispatch($this->routeWithOverride(BeforeController::class, 'act'));
-        $this->assertEquals('before', $this->responseBody($res));
-    }
-
     public function testMiddlewarePipelineOrder(): void
     {
         $disp = new Dispatcher();
@@ -279,9 +261,9 @@ class DispatcherTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertSame([
-            'namespace' => 'PhpThunder',
+            'namespace'  => 'PhpThunder',
             'controller' => 'AuthController',
-            'action' => 'loginAction',
+            'action'     => 'loginAction',
         ], $route['override']);
 
         $disp = new Dispatcher();
@@ -300,11 +282,11 @@ class DispatcherTest extends TestCase
         $res = $disp->dispatch([
             'vars' => [
                 'controller' => 'dynamic-target',
-                'action' => 'sample',
-                'params' => [],
+                'action'     => 'sample',
+                'params'     => [],
             ],
             'override' => [],
-            'groups' => [],
+            'groups'   => [],
         ]);
 
         $this->assertEquals('dynamic', $this->responseBody($res));
@@ -312,12 +294,12 @@ class DispatcherTest extends TestCase
         $res = $disp->dispatch([
             'vars' => [
                 'controller' => 'ignored-dynamic',
-                'action' => 'ignored',
+                'action'     => 'ignored',
             ],
             'override' => [
                 'controller' => 'RoutingStateController',
-                'action' => 'fromOverride',
-                'namespace' => '\\Azera\\Tests\\Mvc',
+                'action'     => 'fromOverride',
+                'namespace'  => '\\Azera\\Tests\\Mvc',
             ],
             'groups' => [],
         ]);
@@ -337,15 +319,15 @@ class DispatcherTest extends TestCase
 
         $res = $disp->dispatch([
             'vars' => [
-                'id' => 42,
+                'id'         => 42,
                 'controller' => 'routing-state',
-                'action' => 'from-override',
-                'args' => ['x', 'y'],
+                'action'     => 'from-override',
+                'args'       => ['x', 'y'],
             ],
             'override' => [
                 'controller' => 'RoutingStateController',
-                'action' => 'fromOverride',
-                'namespace' => '\\Azera\\Tests\\Mvc',
+                'action'     => 'fromOverride',
+                'namespace'  => '\\Azera\\Tests\\Mvc',
             ],
         ]);
 
@@ -371,15 +353,15 @@ class DispatcherTest extends TestCase
 
         $res = $disp->dispatch([
             'vars' => [
-                'id' => 42,
+                'id'         => 42,
                 'controller' => 'routing-state',
-                'action' => 'from-override',
-                'params' => ['x', 'y'],
+                'action'     => 'from-override',
+                'params'     => ['x', 'y'],
             ],
             'override' => [
                 'controller' => 'RoutingStateController',
-                'action' => 'fromOverride',
-                'namespace' => '\\Azera\\Tests\\Mvc',
+                'action'     => 'fromOverride',
+                'namespace'  => '\\Azera\\Tests\\Mvc',
             ],
         ]);
 
@@ -400,28 +382,5 @@ class DispatcherTest extends TestCase
         $res = $disp->dispatch($this->routeWithOverride(NullableSessionActionController::class, 'act'));
 
         $this->assertEquals('no-session', $this->responseBody($res));
-    }
-
-    /** @dataProvider reservedActionProvider */
-    public function testReservedActionsCannotBeDispatched(string $reservedAction): void
-    {
-        $context = new AppContext();
-        AppContext::setInstance($context);
-        $disp = new Dispatcher();
-
-        $this->expectException(\Azera\Core\Exceptions\ActionNotFoundException::class);
-
-        $disp->dispatch($this->routeWithOverride(
-            DTResponseController::class,
-            $reservedAction
-        ));
-    }
-
-    public static function reservedActionProvider(): array
-    {
-        return [
-            'beforeAction' => ['beforeAction'],
-            'afterAction' => ['afterAction'],
-        ];
     }
 }
