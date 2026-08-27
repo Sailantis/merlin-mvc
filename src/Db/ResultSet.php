@@ -26,6 +26,9 @@ class ResultSet implements \Iterator, \Countable
 	protected int $position = 0;
 	protected bool $initialized = false;
 
+	/** @var bool Whether this result set stems from a read-only (SELECT) statement. */
+	protected bool $isReadQuery;
+
 	/**
 	 * Create a new ResultSet wrapping a PDO statement result.
 	 *
@@ -34,19 +37,24 @@ class ResultSet implements \Iterator, \Countable
 	 * @param string|null     $sqlStatement The original SQL string (used by reexecute()).
 	 * @param array|null      $boundParams  Bound parameters (used by reexecute()).
 	 * @param class-string|null $modelClass Optional model class name used for hydration (sets the fetch class).
+	 * @param bool            $isReadQuery Whether the statement is a read-only SELECT. Defaults to true.
+	 *                          Set to false for write statements (e.g. INSERT/UPDATE/DELETE ... RETURNING),
+	 *                          which cannot be safely re-executed via {@see refresh()}.
 	 */
 	public function __construct(
 		Database $connection,
 		PDOStatement $statement,
 		?string $sqlStatement = null,
 		?array $boundParams = null,
-		?string $modelClass = null
+		?string $modelClass = null,
+		bool $isReadQuery = true
 	) {
 		$this->db           = $connection;
 		$this->statement    = $statement;
 		$this->sqlStatement = $sqlStatement;
 		$this->boundParams  = $boundParams;
 		$this->modelClass   = $modelClass;
+		$this->isReadQuery  = $isReadQuery;
 
 		$this->fetchMode = $connection->getInternalConnection()
 			->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
@@ -280,10 +288,20 @@ class ResultSet implements \Iterator, \Countable
 
 	/**
 	 * Execute the query again to repopulate the result set.
+	 *
+	 * Only read-only (SELECT) result sets can be safely refreshed. Refreshing a
+	 * write statement (e.g. INSERT/UPDATE/DELETE ... RETURNING) would re-execute
+	 * the write, so it is rejected.
+	 *
+	 * @throws Exception If this result set does not originate from a SELECT statement.
 	 * @return void
 	 */
 	public function refresh(): void
 	{
+		if (!$this->isReadQuery) {
+			throw new Exception('Cannot refresh: statement is not a read-only SELECT result set.');
+		}
+		$this->closeCursor();
 		$stmt = $this->db->query(
 			$this->sqlStatement,
 			$this->boundParams
@@ -349,6 +367,31 @@ class ResultSet implements \Iterator, \Countable
 	public function count(): int
 	{
 		return $this->statement->rowCount();
+	}
+
+	/**
+	 * Close the cursor on the underlying PDO statement.
+	 *
+	 * This releases any locks the statement may still hold.  It is especially
+	 * important for statements that only partially consumed their result set
+	 * (e.g. {@see Model::__performWrite()} fetching a single RETURNING row): on
+	 * SQLite in WAL mode, an open cursor on a write statement keeps the write
+	 * lock held on its connection, blocking writes from other connections.
+	 *
+	 * @return void
+	 */
+	public function closeCursor(): void
+	{
+		$this->statement->closeCursor();
+	}
+
+	/**
+	 * Ensure the underlying statement cursor is released when the result set
+	 * goes out of scope, so that any database locks it holds are freed.
+	 */
+	public function __destruct()
+	{
+		$this->closeCursor();
 	}
 
 }

@@ -51,6 +51,7 @@ class Statement
         $start = microtime(true);
         while (true) {
             try {
+                $this->statement->closeCursor();
                 $ok = $this->statement->execute($params);
 
                 if ($ok === false) {
@@ -107,5 +108,30 @@ class Statement
     public function getSql(): string
     {
         return $this->sql;
+    }
+
+    /**
+     * Close the cursor on the underlying PDO statement.
+     *
+     * This releases any locks the statement may still hold.  It is especially
+     * important for write statements that only partially consumed their result
+     * set: on SQLite in WAL mode, an open cursor on a write statement keeps the
+     * write lock held on its connection, blocking writes from other
+     * connections.
+     *
+     * @return void
+     */
+    public function closeCursor(): void
+    {
+        $this->statement->closeCursor();
+    }
+
+    /**
+     * Ensure the underlying statement cursor is released when this statement
+     * goes out of scope, so that any database locks it holds are freed.
+     */
+    public function __destruct()
+    {
+        $this->closeCursor();
     }
 }

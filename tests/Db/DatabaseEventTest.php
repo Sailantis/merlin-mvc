@@ -140,6 +140,19 @@ class DatabaseEventTest extends TestCase
         $this->assertSame('SELECT * FROM users', $received[0]->sql);
     }
 
+    public function testStatementCloseCursorReleasesStatementCursor(): void
+    {
+        $stmt = $this->db->prepare('INSERT INTO users (name) VALUES (?) RETURNING id');
+        $this->assertInstanceOf(\Azera\Db\Statement::class, $stmt);
+
+        // Underlying mock statement must not be closed initially.
+        $pdoStmt = $stmt->getStatement();
+        $this->assertFalse($pdoStmt->cursorClosed, 'Cursor should start open');
+
+        $stmt->closeCursor();
+        $this->assertTrue($pdoStmt->cursorClosed, 'closeCursor() should release the underlying statement cursor');
+    }
+
     public function testBeginFiresTransactionStartedEvent(): void
     {
         $received   = [];

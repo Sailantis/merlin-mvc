@@ -174,6 +174,76 @@ class ModelTest extends TestCase
         $this->assertSame(15, $model->id);
     }
 
+    public function testWriteClosesReturningCursor(): void
+    {
+        $db = new TestPgDatabase();
+        AppContext::instance()->dbManager()->set('default', $db);
+        $db->setMockResults([
+            [
+                ['id' => 21, 'name' => 'Hotel']
+            ]
+        ]);
+
+        $model = new DummyModel();
+        $model->name = 'Hotel';
+        $this->assertTrue($model->insert());
+        $this->assertSame(21, $model->id);
+
+        // The RETURNING statement's cursor must be closed after the write so
+        // that it does not hold a lock on the connection (SQLite WAL).
+        $lastStmt = $db->getLastPdoStatement();
+        $this->assertNotNull($lastStmt);
+        $this->assertTrue($lastStmt->cursorClosed, 'RETURNING cursor should be closed after a write');
+    }
+
+    public function testRefreshOnWriteResultSetThrows(): void
+    {
+        $db = new TestPgDatabase();
+        AppContext::instance()->dbManager()->set('default', $db);
+        $db->setMockResults([
+            [
+                ['id' => 22, 'name' => 'India']
+            ]
+        ]);
+
+        // A write statement (isReadResultSet=false) produces a ResultSet, but
+        // it must not be refreshable — refresh() would re-execute the write.
+        $rs = new \Azera\Db\ResultSet(
+            $db,
+            $db->query('INSERT INTO "dummy_model" ("name") VALUES (\'India\') RETURNING *'),
+            'INSERT INTO "dummy_model" ("name") VALUES (\'India\') RETURNING *',
+            [],
+            DummyModel::class,
+            false
+        );
+
+        $this->expectException(\Azera\Db\Exception::class);
+        $rs->refresh();
+    }
+
+    public function testRefreshOnReadResultSetSucceeds(): void
+    {
+        $db = new TestPgDatabase();
+        AppContext::instance()->dbManager()->set('default', $db);
+        $db->setMockResults([
+            [
+                ['id' => 23, 'name' => 'Juliet']
+            ]
+        ]);
+
+        $rs = new \Azera\Db\ResultSet(
+            $db,
+            $db->query('SELECT * FROM "dummy_model"'),
+            'SELECT * FROM "dummy_model"',
+            [],
+            DummyModel::class,
+            true
+        );
+
+        $rs->refresh();
+        $this->assertTrue(true, 'Refresh of a read-only result set should not throw');
+    }
+
     public function testFindHydratesModelInstance(): void
     {
         $db = new TestPgDatabase();

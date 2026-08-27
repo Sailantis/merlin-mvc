@@ -19,6 +19,9 @@ class TestDatabase extends \Azera\Db\Database
     /** @var int Affected rows to return */
     protected int $affectedRows = 0;
 
+    /** @var TestPdoStatement|null Last statement returned by query()/prepare() */
+    public ?TestPdoStatement $lastPdoStatement = null;
+
     /** @var string Driver name */
     protected string $driverName = 'pgsql';
 
@@ -72,7 +75,16 @@ class TestDatabase extends \Azera\Db\Database
         ];
 
         // Return mock PDOStatement
-        return new TestPdoStatement($this->getNextMockResult());
+        $this->lastPdoStatement = new TestPdoStatement($this->getNextMockResult());
+        return $this->lastPdoStatement;
+    }
+
+    /**
+     * Get the last PDO statement returned by query().
+     */
+    public function getLastPdoStatement(): ?TestPdoStatement
+    {
+        return $this->lastPdoStatement;
     }
 
     /**
@@ -233,6 +245,7 @@ class TestPdoStatement extends \PDOStatement
     protected int $position = 0;
     protected int $fetchMode = \PDO::FETCH_BOTH;
     protected ?string $fetchClass = null;
+    public bool $cursorClosed = false;
 
     public function __construct(array $results = [])
     {
@@ -320,7 +333,8 @@ class TestPdoStatement extends \PDOStatement
 
     public function closeCursor(): bool
     {
-        $this->position = 0;
+        $this->position     = 0;
+        $this->cursorClosed = true;
         return true;
     }
 }

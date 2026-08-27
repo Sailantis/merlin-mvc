@@ -1650,7 +1650,8 @@ class Query extends Condition
             $result,
             $query,
             $bindParams,
-            $this->resolvedSource['modelClass'] ?? null
+            $this->resolvedSource['modelClass'] ?? null,
+            $this->isReadQuery
         );
     }
 

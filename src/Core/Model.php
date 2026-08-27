@@ -523,6 +523,11 @@ abstract class Model
 						$this->$field = $value;
 					}
 				}
+				// Close the RETURNING cursor immediately. An open cursor on a
+				// write statement keeps the connection's write lock held
+				// (SQLite WAL), which would block writes from other
+				// connections.
+				$result->closeCursor();
 			}
 		} else {
 			$result = $builder->insert($values);
