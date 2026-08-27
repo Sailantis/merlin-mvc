@@ -7,8 +7,8 @@ use Azera\Core\MiddlewareInterface;
 
 /**
  * Middleware to manage PHP sessions.
- * 
- * This middleware ensures that a session is started for each request and 
+ *
+ * This middleware ensures that a session is started for each request and
  * provides access to session data through the AppContext. It also ensures
  * that session data is properly saved at the end of the request before the
  * response is sent.
@@ -26,14 +26,21 @@ class SessionMiddleware implements MiddlewareInterface
     public function process(AppContext $context, callable $next): ?Response
     {
         if (session_status() !== PHP_SESSION_ACTIVE) {
-            session_start();
+            // Start a new session if one is not already active.
+            // The @ operator suppresses warnings if headers have already been sent.
+            $started = @session_start();
+        } else {
+            // Session was already active, so we don't need to start it again.
+            $started = false;
         }
 
-        $context->setSession(new Session($_SESSION));
+        $context->setSession(new Session($_SESSION ?? []));
 
         $response = $next();
 
-        session_write_close();
+        if ($started) {
+            session_write_close();
+        }
 
         return $response;
     }
