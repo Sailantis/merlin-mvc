@@ -567,7 +567,10 @@ abstract class Model
 	 *  CONNECTIONS
 	 * ------------------------------------------------------------- */
 
+	/** @var array<string, string> */
 	protected static array $__defaultReadRoles = [];
+
+	/** @var array<string, string> */
 	protected static array $__defaultWriteRoles = [];
 
 	/**
