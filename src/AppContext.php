@@ -15,6 +15,7 @@ use Azera\Core\ViewEngine;
 use Azera\Db\DatabaseManager;
 use Azera\Db\Resolver\ModelResolver;
 use Azera\Db\Resolver\TableResolver;
+use Azera\Orm\Heap;
 use Azera\Event\NullEventDispatcher;
 use Azera\Http\Cookies;
 use Azera\Http\Request as HttpRequest;
@@ -37,15 +38,16 @@ class AppContext
     protected function registerDefaultServices(): void
     {
         $this->serviceDefinitions = [
-            Session::class         => fn() => $this->session(),
-            Cookies::class         => fn() => $this->cookies(),
-            HttpRequest::class     => fn() => $this->request(),
-            ViewEngine::class      => fn() => $this->view(),
+            Session::class => fn() => $this->session(),
+            Cookies::class => fn() => $this->cookies(),
+            HttpRequest::class => fn() => $this->request(),
+            ViewEngine::class => fn() => $this->view(),
             DatabaseManager::class => fn() => $this->dbManager(),
-            Router::class          => fn() => $this->router(),
-            Dispatcher::class      => fn() => $this->dispatcher(),
-            TableResolver::class   => fn() => $this->get(ModelResolver::class),
-            AppContext::class      => fn() => $this,
+            Router::class => fn() => $this->router(),
+            Dispatcher::class => fn() => $this->dispatcher(),
+            TableResolver::class => fn() => $this->get(ModelResolver::class),
+            Heap::class => fn() => $this->heap(),
+            AppContext::class => fn() => $this,
         ];
     }
 
@@ -60,6 +62,9 @@ class AppContext
     protected ?Session $session = null;
 
     protected ?Cookies $cookies = null;
+
+    /** Lazily-created request-scoped ORM identity map (see heap()). */
+    protected ?Heap $heap = null;
 
     protected ?Router $router = null;
 
@@ -154,7 +159,7 @@ class AppContext
     {
         $this->view = $engine;
         $this->serviceDefinitions[ViewEngine::class] = $engine;
-        $this->serviceInstances[ViewEngine::class]   = $engine;
+        $this->serviceInstances[ViewEngine::class] = $engine;
         return $this;
     }
 
@@ -166,6 +171,21 @@ class AppContext
     public function cookies(): Cookies
     {
         return $this->cookies ??= new Cookies();
+    }
+
+    /**
+     * Get the request-scoped ORM Heap (identity map).
+     *
+     * One heap per request: the same DB row read twice yields the same
+     * entity object, and the UnitOfWork shares this exact instance. The
+     * heap is created lazily, registered in the container, and wiped by
+     * {@see clearRequestScope()} via its RequestScoped hook (non-negotiable
+     * in persistent workers — a leaking heap would serve stale entities
+     * across requests/tenants).
+     */
+    public function heap(): Heap
+    {
+        return $this->heap ??= new Heap();
     }
 
     /**
@@ -370,7 +390,7 @@ class AppContext
         // Class-level attributes are NOT inherited by PHP, so we walk
         // up the parent chain ourselves.
         $hasAdvised = false;
-        $class      = $ref;
+        $class = $ref;
         do {
             if ($class->getAttributes(Advised::class) !== []) {
                 $hasAdvised = true;
@@ -414,9 +434,9 @@ class AppContext
      */
     public function setSession(Session $session): void
     {
-        $this->session                            = $session;
+        $this->session = $session;
         $this->serviceDefinitions[Session::class] = $session;
-        $this->serviceInstances[Session::class]   = $session;
+        $this->serviceInstances[Session::class] = $session;
     }
 
     /**
@@ -539,7 +559,7 @@ class AppContext
         if (class_exists($id)) {
             $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id]   = $service;
+            $this->serviceInstances[$id] = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -570,7 +590,7 @@ class AppContext
         if (class_exists($id)) {
             $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id]   = $service;
+            $this->serviceInstances[$id] = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -621,7 +641,7 @@ class AppContext
         if (is_string($definition) && class_exists($definition)) {
             $service = $this->build($definition);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id]   = $service;
+            $this->serviceInstances[$id] = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -744,7 +764,7 @@ class AppContext
         foreach ($ref->getConstructor()->getParameters() as $param) {
 
             $typeObj = $param->getType();
-            $types   = [];
+            $types = [];
 
             // Extract all possible types (Named, Union, Intersection)
             if ($typeObj instanceof \ReflectionNamedType) {

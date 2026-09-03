@@ -2,12 +2,13 @@
 
 namespace Azera\Tests\Orm\Fixtures;
 
+use Azera\Core\Model;
 use Azera\Orm\Attribute\Column;
 use Azera\Orm\Attribute\Document;
 
 /** Mongo document fixture. */
 #[Document(collection: 'articles')]
-class ArticleDocument
+class ArticleDocument extends Model
 {
     #[Column(type: 'int')]
     public $_id;

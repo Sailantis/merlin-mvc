@@ -165,13 +165,24 @@ class Condition
 	}
 
 	/**
-	 * Appends a condition to the current conditions using an AND operator
+	 * Appends a condition to the current conditions using an AND operator.
+	 *
+	 * Three forms:
+	 *   where('col', $value)               equality (value escaped inline)
+	 *   where('col', '=', $value)          explicit operator — BOUND param
+	 *   where('age >=', 18)                operator embedded (legacy CI style)
+	 *
+	 * Supported operators in the explicit form: =, !=, <>, <, <=, >, >=,
+	 * LIKE, NOT LIKE, IN, NOT IN. Values always go through bound
+	 * parameters (never interpolation); IN () over an empty list compiles
+	 * to the semantically correct 1=0 / 1=1.
+	 *
 	 * @param string|Condition $condition
-	 * @param $value
-	 * @param bool $escape
+	 * @param mixed $value Value, or the operator string in the explicit form
+	 * @param mixed $escape Escape flag — or the actual value in the explicit operator form
 	 * @return $this
 	 */
-	public function where(string|Condition $condition, $value = null, bool $escape = true): static
+	public function where(string|Condition $condition, $value = null, $escape = true): static
 	{
 		return $this->addWhere($condition, ' AND ', '', $value, $escape);
 	}
@@ -179,11 +190,11 @@ class Condition
 	/**
 	 * Appends a condition to the current conditions using a OR operator
 	 * @param string|Condition $condition
-	 * @param $value
-	 * @param bool $escape
+	 * @param mixed $value
+	 * @param mixed $escape
 	 * @return $this
 	 */
-	public function orWhere(string|Condition $condition, $value = null, bool $escape = true): static
+	public function orWhere(string|Condition $condition, $value = null, $escape = true): static
 	{
 		return $this->addWhere($condition, ' OR ', '', $value, $escape);
 	}
@@ -191,11 +202,11 @@ class Condition
 	/**
 	 * Appends a negated condition to the current conditions using an AND operator
 	 * @param string|Condition $condition
-	 * @param $value
-	 * @param bool $escape
+	 * @param mixed $value
+	 * @param mixed $escape
 	 * @return $this
 	 */
-	public function notWhere(string|Condition $condition, $value = null, bool $escape = true): static
+	public function notWhere(string|Condition $condition, $value = null, $escape = true): static
 	{
 		return $this->addWhere($condition, ' AND ', 'NOT ', $value, $escape);
 	}
@@ -203,25 +214,41 @@ class Condition
 	/**
 	 * Appends a negated condition to the current conditions using an OR operator
 	 * @param string|Condition $condition
-	 * @param $value
-	 * @param bool $escape
+	 * @param mixed $value
+	 * @param mixed $escape
 	 * @return $this
 	 */
-	public function orNotWhere(string|Condition $condition, $value = null, bool $escape = true): static
+	public function orNotWhere(string|Condition $condition, $value = null, $escape = true): static
 	{
 		return $this->addWhere($condition, ' OR ', 'NOT ', $value, $escape);
 	}
 
 	/**
-	 * Appends a condition to the current conditions using an operator
+	 * Appends a condition to the current conditions using an operator.
+	 *
+	 * Operator detection: when $value is exactly an operator token
+	 * (=, !=, <>, <, <=, >, >=, LIKE, NOT LIKE, IN, NOT IN), the call is
+	 * the explicit three-argument form where $escape carries the REAL
+	 * value; it is then bound as a named parameter instead of escaped
+	 * inline.
+	 *
 	 * @param string|Condition $condition
 	 * @param string $connector
-	 * @param $value
-	 * @param bool $escape
+	 * @param string $prefix
+	 * @param mixed $value
+	 * @param mixed $escape
 	 * @return $this
 	 */
-	private function addWhere(string|Condition $condition, string $connector, string $prefix, $value = null, bool $escape = true): static
+	private function addWhere(string|Condition $condition, string $connector, string $prefix, $value = null, $escape = true): static
 	{
+		if (
+			\is_string($condition) && \is_string($value)
+			&& preg_match(self::OP_TOKENS, $value)
+		) {
+			$condition = $this->validateConditionField($condition);
+			return $this->addWhereOp($condition, \strtoupper($value), $connector, $prefix, $escape);
+		}
+
 		if ($this->needConnector) {
 			$this->condition .= $connector;
 		}
@@ -277,6 +304,85 @@ class Condition
 		$this->condition .= ')';
 		$this->needConnector = true;
 		return $this;
+	}
+
+	/** Operator tokens recognized in the explicit where('col', OP, $value) form. */
+	private const OP_TOKENS = '/^(?:=|!=|<>|<|<=|>|>=|LIKE|NOT LIKE|IN|NOT IN)$/i';
+
+	/**
+	 * Hook for subclasses (Query) to validate/normalize the identifier of
+	 * an explicit three-argument where() before compilation. Default: pass
+	 * through unchanged.
+	 */
+	protected function validateConditionField(string $condition): string
+	{
+		return $condition;
+	}
+
+	/**
+	 * Compile an explicit three-argument where('col', OP, value) condition.
+	 *
+	 * Values are ALWAYS bound (named parameters :w0, :w1, …) — never
+	 * interpolated. Empty IN lists compile to the semantically correct
+	 * constant (IN () → 1=0, NOT IN () → 1=1); = / != with NULL use
+	 * IS NULL / IS NOT NULL.
+	 *
+	 * @param string $condition column (or identifier expression)
+	 * @param string $op        validated operator token (uppercased)
+	 * @param string $connector AND/OR
+	 * @param string $prefix    NOT prefix
+	 * @param mixed  $value     the comparison value
+	 */
+	private function addWhereOp(string $condition, string $op, string $connector, string $prefix, $value): static
+	{
+		if ($this->needConnector) {
+			$this->condition .= $connector;
+		}
+
+		$col = $this->protectIdentifier($condition);
+
+		// IN / NOT IN: expand to placeholders; empty set → constant SQL.
+		if ($op === 'IN' || $op === 'NOT IN') {
+			$list = \is_array($value) ? \array_values($value) : [$value];
+			if ($list === []) {
+				// Semantically exact constants: IN over nothing is never
+				// true, NOT IN over nothing always is.
+				$this->condition .= $prefix . '(' . ($op === 'IN' ? '1=0' : '1=1') . ')';
+			} else {
+				$names = [];
+				foreach ($list as $v) {
+					$name = 'w' . $this->nextOpBind();
+					$this->subQueryBindings[$name] = $v;
+					$names[] = ':' . $name;
+				}
+				$this->condition .= $prefix . '(' . $col . ' ' . $op . ' (' . implode(', ', $names) . '))';
+			}
+			$this->needConnector = true;
+			return $this;
+		}
+
+		// NULL comparisons for the equality family.
+		if ($value === null && \in_array($op, ['=', '!=', '<>'], true)) {
+			$sql = $col . (($op === '=') ? ' IS NULL' : ' IS NOT NULL');
+			$this->condition .= $prefix . '(' . $sql . ')';
+			$this->needConnector = true;
+			return $this;
+		}
+
+		// Single bound parameter: = != <> < <= > >= LIKE NOT LIKE.
+		$name = 'w' . $this->nextOpBind();
+		$this->subQueryBindings[$name] = $value;
+		$this->condition .= $prefix . '(' . $col . ' ' . $op . ' :' . $name . ')';
+		$this->needConnector = true;
+		return $this;
+	}
+
+	/** Monotonic counter for unique :wN operator-bind names. */
+	private int $opBindCounter = 0;
+
+	private function nextOpBind(): int
+	{
+		return $this->opBindCounter++;
 	}
 
 	/**

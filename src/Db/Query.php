@@ -5,6 +5,7 @@ namespace Azera\Db;
 use Azera\AppContext;
 use Azera\Core\Model;
 use Azera\Db\Resolver\LiteralResolver;
+use Azera\Db\Resolver\ModelResolver;
 use Azera\Db\Resolver\TableResolver;
 use LogicException;
 use PDOStatement;
@@ -71,9 +72,9 @@ class Query extends Condition
 
     protected array $manualBindings = [];
 
-    protected int $limit;
+    protected int $limit = 0;
 
-    protected int $offset;
+    protected int $offset = 0;
 
     protected int $rowCount;
 
@@ -81,9 +82,9 @@ class Query extends Condition
 
     protected bool $forceSelect = false;
 
-    protected ?array $columns;
+    protected ?array $columns = null;
 
-    protected array $joins;
+    protected array $joins = [];
 
     protected array $orderBy;
 
@@ -157,6 +158,22 @@ class Query extends Condition
     {
         return (new static($db))
             ->using(AppContext::instance()->get(LiteralResolver::class));
+    }
+
+    /**
+     * Factory method for a MODEL-backed query with an explicit connection —
+     * the test/CLI escape hatch for entities()/firstEntity() without a
+     * bootstrapped model stack. Production code uses Model::query().
+     *
+     * @param class-string $modelClass
+     * @param Database|null $db
+     * @return static
+     */
+    public static function modelFor(string $modelClass, ?Database $db = null): static
+    {
+        return (new static($db))
+            ->using(AppContext::instance()->get(ModelResolver::class))
+            ->table($modelClass);
     }
 
     /**
@@ -412,6 +429,21 @@ class Query extends Condition
     }
 
     /**
+     * Field validation hook from Condition: route explicit three-argument
+     * where('field', OP, value) identifiers through the metadata check.
+     */
+    protected function validateConditionField(string $condition): string
+    {
+        // Only validate the LHS: strip a trailing operator if present.
+        $candidate = trim($condition);
+        if (preg_match('/^(.*?)\s*(?:=|!=|<>|<|<=|>|>=)\s*$/', $candidate, $m)) {
+            $candidate = trim($m[1]);
+        }
+        $this->validateField($candidate);
+        return $condition;
+    }
+
+    /**
      * Adds an INNER join to the query
      * @param string|Query $model
      * @param string|Condition|null $alias
@@ -538,6 +570,14 @@ class Query extends Condition
         $this->orderBy = \is_string($orderBy)
             ? explode(',', $orderBy)
             : $orderBy;
+
+        // Typo detection (model mode): every ordering term must be a
+        // metadata field (optionally "field dir" / alias-qualified).
+        if ($this->modelFields() !== null) {
+            foreach ($this->orderBy as $term) {
+                $this->validateField((string) $term);
+            }
+        }
         return $this;
     }
 
@@ -754,10 +794,10 @@ class Query extends Condition
     /**
      * Execute SELECT query and return ResultSet or return SQL string if returnSql is enabled
      * @param array|string|null $columns Columns to select, or null to ignore parameter. Can be either a comma-separated string or an array of column names.
-     * @return ResultSet<T>|string  when returnSql is false, string when returnSql is true
+     * @return ResultSet|JoinedResultSet|string  ResultSet normally, JoinedResultSet on the eager-load path, string when returnSql is true
      * @throws Exception
      */
-    public function select(array|string|null $columns = null): ResultSet|string
+    public function select(array|string|null $columns = null): ResultSet|\Azera\Orm\JoinedResultSet|string
     {
         $this->isReadQuery = true;
         $db = $this->getDb();
@@ -796,7 +836,10 @@ class Query extends Condition
         $plan       = \Azera\Orm\HydrationMap::build($modelClass, $this->eagerLoad);
 
         // Build the joined SELECT from the plan: root columns aliased
-        // {alias}__{col}, plus one LEFT JOIN per to-one entry.
+        // {alias}__{col}, plus one LEFT JOIN per to-one entry. The builder
+        // state (where/groupBy/orderBy/limit) is honored — entities() on an
+        // eager query compiles the SAME SQL as a plain one, only with the
+        // aliased column list and joins added.
         $selects = [];
         $joins   = [];
 
@@ -818,17 +861,163 @@ class Query extends Condition
             }
         }
 
+        // Reuse the standard SELECT compiler for WHERE/GROUP BY/ORDER BY/
+        // LIMIT/OFFSET: swap in the aliased column list (a raw Sql node,
+        // emitted verbatim by protectColumns) and the joined FROM clause,
+        // compile, then restore. One compiler, zero clause duplication.
+        $savedColumns = $this->columns;
+        $savedTable   = $this->table;
+        try {
+            $this->columns = [\Azera\Db\Sql::raw(implode(', ', $selects))];
+            $this->table   = $db->quoteIdentifier($this->resolvedSource['source'])
+                . ' ' . $db->quoteIdentifier($plan['entries'][0]['alias'])
+                . implode(' ', $joins);
+            $sql = $this->compileSelect($db);
+        } finally {
+            $this->columns = $savedColumns;
+            $this->table   = $savedTable;
+        }
+
         // Execute directly on the connection (raw rows; Db events fire).
         $rows = $db->selectAll(
-            'SELECT ' . implode(', ', $selects)
-            . ' FROM ' . $db->quoteIdentifier($this->resolvedSource['source'])
-            . ' ' . $db->quoteIdentifier($plan['entries'][0]['alias'])
-            . implode(' ', $joins),
-            [],
+            $sql,
+            $this->getBindings(),
             \PDO::FETCH_ASSOC
         );
 
-        return new \Azera\Orm\JoinedResultSet($rows, $plan, $modelClass);
+        return new \Azera\Orm\JoinedResultSet($rows, $plan, $modelClass, $db, $this->getBindings());
+    }
+
+    /**
+     * ORM hydration terminal: execute the SELECT and hydrate raw rows into
+     * heap-tracked entities via the per-class FastHydrator plan.
+     *
+     * This is the unified read path — the same builder that serves raw
+     * tables (Query::raw) and FETCH_CLASS ResultSets (select()) also serves
+     * identity-mapped entities here. All hydration runs on the request-
+     * scoped heap (AppContext::heap()), so the same row read twice in one
+     * request yields the SAME object and the UnitOfWork sees it MANAGED.
+     *
+     * Requires model mode (resolved modelClass); raw-table queries throw.
+     * Explicit columns() are honored: unknown names surface as SQL errors,
+     * while known-but-aliased columns hydrate what they provide.
+     *
+     * @return list&lt;object&gt;
+     * @throws Exception|\LogicException
+     */
+    public function entities(): array
+    {
+        $this->isReadQuery = true;
+        $modelClass = $this->resolvedSource['modelClass'] ?? null;
+        if ($modelClass === null) {
+            throw new \LogicException(
+                'entities() requires a model-backed query — use Model::query() or a class name in table()'
+            );
+        }
+
+        $db = $this->getDb();
+
+        // Eager-loaded relations take the joined path (alias-separated
+        // columns + to-many second queries); plain reads compile normally.
+        if ($this->eagerLoad !== []) {
+            return iterator_to_array($this->selectWithEagerLoad($db));
+        }
+
+        $query = $this->compileSelect($db);
+        $rows  = $db->selectAll($query, $this->getBindings(), \PDO::FETCH_ASSOC);
+
+        return $this->hydrateRows($rows, $modelClass);
+    }
+
+    /**
+     * First matching row as a heap-tracked entity, or null. LIMIT 1,
+     * offset cleared — same semantics as the criteria terminals, zero
+     * extra terminal methods on the builder.
+     *
+     * @return T|null|object
+     * @throws Exception|\LogicException
+     */
+    public function firstEntity(): ?object
+    {
+        $q = clone $this;
+        $q->limit(1);
+        $q->offset = 0;
+
+        foreach ($q->entities() as $entity) {
+            return $entity;
+        }
+        return null;
+    }
+
+    /**
+     * Hydrate raw rows into heap-tracked entities (FastHydrator plan).
+     *
+     * @param list\<array\<string,mixed\>> $rows
+     * @return list\<object>
+     */
+    protected function hydrateRows(array $rows, string $modelClass): array
+    {
+        $hydrator = \Azera\Orm\FastHydrator::for($modelClass);
+        $heap     = \Azera\AppContext::instance()->heap();
+        $out      = [];
+        foreach ($rows as $row) {
+            [$entity] = $hydrator->hydrate($heap, $row);
+            if ($entity !== null) {
+                $out[] = $entity;
+            }
+        }
+        return $out;
+    }
+
+    /**
+     * Compiled field names for the resolved model class (Metadata-backed),
+     * or null when the query is not model-backed. Cached per query.
+     *
+     * @return array<string, mixed>|null field name => column meta
+     */
+    protected function modelFields(): ?array
+    {
+        $modelClass = $this->resolvedSource['modelClass'] ?? null;
+        if ($modelClass === null) {
+            return null;
+        }
+        return $this->modelFields ??= \Azera\Orm\Metadata::for($modelClass)['columns'];
+    }
+
+    /** @var array<string, mixed>|null Cached Metadata column map (model mode). */
+    protected ?array $modelFields = null;
+
+    /**
+     * Field-name typo detection (model mode): in a model-backed query the
+     * where()/orderBy() identifiers must be metadata fields (optionally
+     * qualified with an alias). Unknown names throw instead of reaching
+     * SQL and failing with a driver error. Raw-table queries skip this —
+     * there is no metadata to check against.
+     */
+    protected function validateField(string $field): string
+    {
+        $fields = $this->modelFields();
+        if ($fields === null) {
+            return $field;
+        }
+
+        // Allow "field dir" (orderBy) and alias.field forms: take the
+        // last dot-segment, then the first whitespace token.
+        $candidate = $field;
+        if (($pos = strpos($candidate, '.')) !== false) {
+            $candidate = substr($candidate, $pos + 1);
+        }
+        $candidate = trim((string) preg_replace('/\s+/', ' ', $candidate));
+        if (($pos = strpos($candidate, ' ')) !== false) {
+            $candidate = substr($candidate, 0, $pos);
+        }
+
+        if (!isset($fields[$candidate])) {
+            throw new \InvalidArgumentException(
+                "Unknown field '{$candidate}' on {$this->resolvedSource['modelClass']}"
+            );
+        }
+        return $field;
     }
 
     /**
@@ -841,6 +1030,11 @@ class Query extends Condition
         $result = $this->limit(1)->select();
         if ($this->returnSql) {
             return $result;
+        }
+        // Eager-load path returns a JoinedResultSet (no firstModel());
+        // pull its first root entity instead.
+        if ($result instanceof \Azera\Orm\JoinedResultSet) {
+            return $result->first();
         }
         return $result->firstModel();
     }

@@ -2,6 +2,7 @@
 
 namespace Azera\Tests\Orm\Fixtures;
 
+use Azera\Core\Model;
 use Azera\Orm\Attribute\BelongsTo;
 use Azera\Orm\Attribute\HasMany;
 use Azera\Orm\Attribute\HasOne;
@@ -10,7 +11,7 @@ use Azera\Orm\Attribute\HasOne;
  * Relations fixture: Article (parent) with Comment (to-many, second-query
  * strategy) and Author/Meta (to-one, join strategy).
  */
-class Comment
+class Comment extends Model
 {
     public $id;
 
@@ -23,14 +24,14 @@ class Comment
     public $body;
 }
 
-class Author
+class Author extends Model
 {
     public $id;
 
     public $name;
 }
 
-class Meta
+class Meta extends Model
 {
     public $id;
 
@@ -40,7 +41,7 @@ class Meta
     public $value;
 }
 
-class Tag
+class Tag extends Model
 {
     public $id;
 
@@ -50,7 +51,7 @@ class Tag
     public $label;
 }
 
-class ArticleWithRelations
+class ArticleWithRelations extends Model
 {
     public $id;
 

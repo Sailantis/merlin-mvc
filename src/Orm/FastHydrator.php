@@ -69,13 +69,16 @@ final class FastHydrator
     }
 
     /**
-     * Compile a row -> [entity, id, snapshotData] triple, skipping entities
-     * already in the heap (identity map hit = zero allocation).
+     * Compile a row -> [entity, id, snapshotData] triple.
      *
-     * Hot path shape (fresh-page load, every row new): build id + entity +
-     * snapshot in three tight list loops, attach once. The heap's attach()
-     * owns dedup (it must re-check stale oid mappings anyway) — probing
-     * findById() here first would only double the key-building work.
+     * Identity-map probe FIRST: with the shared request-scoped heap, the
+     * same row read twice in one request MUST yield the same object (a
+     * per-query heap never faced this because it died with the query).
+     * A hit returns the existing instance untouched — the heap snapshot
+     * stays authoritative and in-request mutations are not clobbered.
+     *
+     * Cold path: build id + entity + snapshot in three tight list loops,
+     * attach once.
      *
      * @param array<string, mixed> $row raw assoc row keyed by COLUMN name
      * @return array{0: ?object, 1: array, 2: array}
@@ -92,6 +95,15 @@ final class FastHydrator
                 return [null, [], []]; // orphan guard
             }
             $id[$this->pkFields[$i++]] = $value;
+        }
+
+        // Identity hit: same PK in one request = same instance.
+        $existing = $heap->findById($this->class, $id);
+        if ($existing !== null) {
+            $entity = $heap->entityFor($existing);
+            if ($entity !== null) {
+                return [$entity, $id, $existing->data];
+            }
         }
 
         $entity = new ($this->class)();
