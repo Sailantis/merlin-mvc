@@ -42,11 +42,21 @@ final class Heap implements RequestScoped
      * ['b'=>2,'a'=>1] produce the SAME key. List-form id arrays keep their
      * value order (position defines the field).
      *
+     * Fast path: single-PK scalar ids (the overwhelmingly common shape —
+     * e.g. ['id' => 42]) skip ksort/array_is_list and build the key with
+     * one interpolation. Composite keys keep the full canonicalization.
+     *
      * @param class-string         $class
      * @param array<string, mixed> $id    PK field => value (all values non-null)
      */
     public static function key(string $class, array $id): string
     {
+        // Fast path: exactly one PK, field name known at call site.
+        if (\count($id) === 1) {
+            $field = \key($id);
+            return $class . '|' . $field . '=' . \current($id);
+        }
+
         $isList = $id === [] || array_is_list($id);
         if (!$isList) {
             ksort($id);
@@ -66,14 +76,15 @@ final class Heap implements RequestScoped
     public function attach(object $entity, Node $node): void
     {
         $oid = \spl_object_id($entity);
-        $key = self::key($node->class, $node->id);
 
         // If this entity object was previously attached under another key,
         // drop the stale oid mapping so it cannot leak across identities.
-        $old = $this->oids[$oid] ?? null;
-        if ($old !== null && $old !== $node) {
-            unset($this->nodes[self::key($old->class, $old->id)]);
+        // Single isset() instead of null-coalesce: no node allocation on hit.
+        if (isset($this->oids[$oid]) && $this->oids[$oid] !== $node) {
+            unset($this->nodes[self::key($this->oids[$oid]->class, $this->oids[$oid]->id)]);
         }
+
+        $key = self::key($node->class, $node->id);
 
         $this->nodes[$key]    = $node;
         $this->oids[$oid]     = $node;
