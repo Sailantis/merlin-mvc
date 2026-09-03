@@ -4,7 +4,7 @@ namespace Azera\Core;
 
 use Azera\AppContext;
 use Azera\Db\Query;
-use ReflectionClass;
+use Azera\Orm\Stateful;
 use Azera\Db\Database;
 use Azera\Db\ResultSet;
 use Azera\Db\Resolver\ModelResolver;
@@ -16,7 +16,7 @@ use Azera\Db\Resolver\ModelResolver;
  * @method static ResultSet<T> findAll(array $conditions = [])
  */
 #[\AllowDynamicProperties]
-abstract class Model
+abstract class Model extends Stateful
 {
 	/* -------------------------------------------------------------
 	 *  MODEL CONFIG
@@ -79,6 +79,26 @@ abstract class Model
 		return (new Query)
 			->using(AppContext::instance()->get(ModelResolver::class))
 			->table(static::class, $alias);
+	}
+
+	/**
+	 * Start a query with eager-loaded relations.
+	 * BelongsTo/HasOne become LEFT JOINs (one SQL, alias-separated rows);
+	 * HasMany stays a second query by parent IDs. Relation names must be
+	 * declared via Orm attributes on the model.
+	 *
+	 * @param string ...$relations Relation names from Orm metadata
+	 * @return Query<static>
+	 */
+	public static function with(string ...$relations): Query
+	{
+		$query = static::query();
+
+		foreach ($relations as $name) {
+			$query->with($name);
+		}
+
+		return $query;
 	}
 
 	/* -------------------------------------------------------------
@@ -296,102 +316,6 @@ abstract class Model
 			$builder->where($field, $value);
 		}
 		return $builder->count();
-	}
-
-	/* -------------------------------------------------------------
-	 *  STATE HANDLING
-	 * ------------------------------------------------------------- */
-
-	protected $__state;
-
-	/**
-	 * Save the current state of the model for change tracking. This method clones the current instance and stores it in the __state__ property. It should be called after loading or saving the model to establish a baseline for detecting changes.
-	 * @return $this
-	 */
-	public function saveState(): static
-	{
-		$this->__state = clone $this;
-		return $this;
-	}
-
-	/**
-	 * Load the saved state of the model back into the current instance. This method copies all properties from the __state__ clone back to the current instance, except for any properties that start with '__' which are considered internal and excluded from state tracking. It should be called before saving if you want to revert any unsaved changes back to the last saved state.
-	 * @return $this
-	 */
-	public function loadState(): static
-	{
-		$state = $this->__state ?? null;
-		if ($state) {
-			$excluded = self::__getExcludedProperties();
-			foreach ($state as $field => $value) {
-				if (!isset($excluded[$field])) {
-					$this->$field = $value;
-				}
-			}
-		}
-		return $this;
-	}
-
-	/**
-	 * Get the saved state object for this model. This returns the clone of the model that was saved by saveState(), or null if no state has been saved. You can use this to inspect the original values before changes were made.
-	 * @return static|null The saved state object or null if no state saved
-	 */
-	public function getState(): ?static
-	{
-		return $this->__state;
-	}
-
-	protected function __updateState(array $values): void
-	{
-		if ($this->__state) {
-			foreach ($values as $k => $v) {
-				$this->__state->$k = $v;
-			}
-		}
-	}
-
-	protected static array $__excludedPropertiesCache = [];
-
-	protected static function __getExcludedProperties(): array
-	{
-		$class = static::class;
-
-		if (!isset(self::$__excludedPropertiesCache[$class])) {
-			$excluded = [];
-			$reflect  = new ReflectionClass($class);
-
-			foreach ($reflect->getProperties() as $prop) {
-				if (str_starts_with($prop->name, '__')) {
-					$excluded[$prop->name] = true;
-				}
-			}
-
-			self::$__excludedPropertiesCache[$class] = $excluded;
-		}
-
-		return self::$__excludedPropertiesCache[$class];
-	}
-
-	protected function __getChangedValues(): array
-	{
-		$excluded = self::__getExcludedProperties();
-		$current  = array_diff_key(get_object_vars($this), $excluded);
-
-		if ($this->__state) {
-			$original = array_diff_key(get_object_vars($this->__state), $excluded);
-			return array_diff_assoc($current, $original);
-		}
-
-		return $current;
-	}
-
-	/**
-	 * Check if any fields have changed since the last saveState() call. This compares the current field values to the saved state and returns true if there are any differences, or false if all values are the same. It ignores any properties that start with '__' as they are considered internal.
-	 * @return bool True if any fields have changed, false otherwise
-	 */
-	public function hasChanged(): bool
-	{
-		return !empty($this->__getChangedValues());
 	}
 
 	/* -------------------------------------------------------------

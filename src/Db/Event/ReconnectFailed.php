@@ -18,3 +18,5 @@ class ReconnectFailed extends DatabaseEvent
         parent::__construct($database);
     }
 }
+
+

@@ -25,11 +25,11 @@ class SyncRunner
     // -------------------------------------------------------------------------
 
     /**
-     * Synchronise a single model file against the database schema.
+     * Synchronise a single model file against the Database schema.
      *
      * @param string $filePath Absolute path to the model PHP file
      * @param bool   $dryRun   When true the file is NOT written; changes are only calculated
-     * @param string $dbRole   Database role to introspect (falls back to default if not registered)
+     * @param string $dbRole   SQL role to introspect (falls back to default if not registered)
      */
     public function syncModel(string $filePath, bool $dryRun = false, string $dbRole = 'read', ?SyncOptions $options = null): SyncResult
     {
@@ -41,7 +41,7 @@ class SyncRunner
             // 2. Resolve the table name and optional DB schema from the model
             [$tableName, $schema] = $this->resolveModelInfo($parsed->className);
 
-            // 3. Get the database connection for the requested role
+            // 3. Get the SQL connection for the requested role
             $db = $this->dbManager->getOrDefault($dbRole);
 
             // 4. Build schema provider from the connection's driver
@@ -111,7 +111,7 @@ class SyncRunner
     // -------------------------------------------------------------------------
 
     /**
-     * Return all table names in the database for the given role and optional schema.
+     * Return all table names in the Database for the given role and optional schema.
      *
      * @param  string|null $schema  DB schema to scan (PostgreSQL only; pass null to use server default).
      * @return string[]
@@ -225,3 +225,5 @@ PHP;
         return SchemaProviderFactory::create($db);
     }
 }
+
+

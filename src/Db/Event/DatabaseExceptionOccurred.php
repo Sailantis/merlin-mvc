@@ -24,3 +24,5 @@ class DatabaseExceptionOccurred extends DatabaseEvent
         parent::__construct($database);
     }
 }
+
+

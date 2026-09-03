@@ -195,12 +195,14 @@ class TestDatabase extends \Azera\Db\Database
     public function begin($nesting = true): bool
     {
         $this->queries[] = ['sql' => 'BEGIN', 'params' => []];
+        $this->transactionLevel++;
         return true;
     }
 
     public function commit($nesting = true): bool
     {
         $this->queries[] = ['sql' => 'COMMIT', 'params' => []];
+        $this->transactionLevel--;
         return true;
     }
 
@@ -219,7 +221,9 @@ class TestDatabase extends \Azera\Db\Database
         if ($handler === null) {
             $handler = new class extends \PDO
             {
-                public function __construct() {}
+                public function __construct()
+                {
+                }
                 #[\ReturnTypeWillChange]
                 public function getAttribute($attr)
                 {

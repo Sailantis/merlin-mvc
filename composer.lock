@@ -163,7 +163,7 @@
       "dist": {
         "type": "path",
         "url": "../clarity-engine",
-        "reference": "6d805c82e7342eac54fe0adbd76400a040bfee41"
+        "reference": "3be27b535eedf088c2b70adabe0bcccb00f304ec"
       },
       "require": {
         "ext-mbstring": "*",
@@ -1066,20 +1066,20 @@
     },
     {
       "name": "myclabs/deep-copy",
-      "version": "1.13.4",
+      "version": "1.14.0",
       "source": {
         "type": "git",
         "url": "https://github.com/myclabs/DeepCopy.git",
-        "reference": "07d290f0c47959fd5eed98c95ee5602db07e0b6a"
+        "reference": "8680aa248f8e07bc8fb43f56f0f5fc77a0c96aae"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/myclabs/DeepCopy/zipball/07d290f0c47959fd5eed98c95ee5602db07e0b6a",
-        "reference": "07d290f0c47959fd5eed98c95ee5602db07e0b6a",
+        "url": "https://api.github.com/repos/myclabs/DeepCopy/zipball/8680aa248f8e07bc8fb43f56f0f5fc77a0c96aae",
+        "reference": "8680aa248f8e07bc8fb43f56f0f5fc77a0c96aae",
         "shasum": ""
       },
       "require": {
-        "php": "^7.1 || ^8.0"
+        "php": "^8.0"
       },
       "conflict": {
         "doctrine/collections": "<1.6.8",
@@ -1114,15 +1114,15 @@
       ],
       "support": {
         "issues": "https://github.com/myclabs/DeepCopy/issues",
-        "source": "https://github.com/myclabs/DeepCopy/tree/1.13.4"
+        "source": "https://github.com/myclabs/DeepCopy/tree/1.14.0"
       },
       "funding": [
         {
-          "url": "https://tidelift.com/funding/github/packagist/myclabs/deep-copy",
-          "type": "tidelift"
+          "url": "https://github.com/mnapoli",
+          "type": "github"
         }
       ],
-      "time": "2025-08-01T08:46:24+00:00"
+      "time": "2026-08-11T10:17:44+00:00"
     },
     {
       "name": "nesbot/carbon",
@@ -1584,16 +1584,16 @@
     },
     {
       "name": "phpstan/phpdoc-parser",
-      "version": "2.3.3",
+      "version": "2.3.5",
       "source": {
         "type": "git",
         "url": "https://github.com/phpstan/phpdoc-parser.git",
-        "reference": "fb19eedd2bb67ff8cf7a5502ad329e701d6398a3"
+        "reference": "148cefffaf0233e4c08cc13db8a195a56dd6dfe9"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/fb19eedd2bb67ff8cf7a5502ad329e701d6398a3",
-        "reference": "fb19eedd2bb67ff8cf7a5502ad329e701d6398a3",
+        "url": "https://api.github.com/repos/phpstan/phpdoc-parser/zipball/148cefffaf0233e4c08cc13db8a195a56dd6dfe9",
+        "reference": "148cefffaf0233e4c08cc13db8a195a56dd6dfe9",
         "shasum": ""
       },
       "require": {
@@ -1625,9 +1625,9 @@
       "description": "PHPDoc parser with support for nullable, intersection and generic types",
       "support": {
         "issues": "https://github.com/phpstan/phpdoc-parser/issues",
-        "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.3"
+        "source": "https://github.com/phpstan/phpdoc-parser/tree/2.3.5"
       },
-      "time": "2026-07-08T07:01:06+00:00"
+      "time": "2026-08-31T16:05:28+00:00"
     },
     {
       "name": "phpunit/php-code-coverage",
@@ -2914,16 +2914,16 @@
     },
     {
       "name": "sebastian/recursion-context",
-      "version": "5.0.1",
+      "version": "5.0.2",
       "source": {
         "type": "git",
         "url": "https://github.com/sebastianbergmann/recursion-context.git",
-        "reference": "47e34210757a2f37a97dcd207d032e1b01e64c7a"
+        "reference": "5d32fe257a9b39cb63146924d6b4e32a22d4502a"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/sebastianbergmann/recursion-context/zipball/47e34210757a2f37a97dcd207d032e1b01e64c7a",
-        "reference": "47e34210757a2f37a97dcd207d032e1b01e64c7a",
+        "url": "https://api.github.com/repos/sebastianbergmann/recursion-context/zipball/5d32fe257a9b39cb63146924d6b4e32a22d4502a",
+        "reference": "5d32fe257a9b39cb63146924d6b4e32a22d4502a",
         "shasum": ""
       },
       "require": {
@@ -2966,7 +2966,7 @@
       "support": {
         "issues": "https://github.com/sebastianbergmann/recursion-context/issues",
         "security": "https://github.com/sebastianbergmann/recursion-context/security/policy",
-        "source": "https://github.com/sebastianbergmann/recursion-context/tree/5.0.1"
+        "source": "https://github.com/sebastianbergmann/recursion-context/tree/5.0.2"
       },
       "funding": [
         {
@@ -2986,7 +2986,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2025-08-10T07:50:56+00:00"
+      "time": "2026-08-11T05:27:39+00:00"
     },
     {
       "name": "sebastian/type",
@@ -3170,16 +3170,16 @@
     },
     {
       "name": "symfony/finder",
-      "version": "v6.4.42",
+      "version": "v6.4.44",
       "source": {
         "type": "git",
         "url": "https://github.com/symfony/finder.git",
-        "reference": "0b73dac42493acbadbba644207a715b254e9b029"
+        "reference": "211b28d13d044dacdc00c1629a3bbcff27dc793a"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/symfony/finder/zipball/0b73dac42493acbadbba644207a715b254e9b029",
-        "reference": "0b73dac42493acbadbba644207a715b254e9b029",
+        "url": "https://api.github.com/repos/symfony/finder/zipball/211b28d13d044dacdc00c1629a3bbcff27dc793a",
+        "reference": "211b28d13d044dacdc00c1629a3bbcff27dc793a",
         "shasum": ""
       },
       "require": {
@@ -3214,7 +3214,7 @@
       "description": "Finds files and directories via an intuitive fluent interface",
       "homepage": "https://symfony.com",
       "support": {
-        "source": "https://github.com/symfony/finder/tree/v6.4.42"
+        "source": "https://github.com/symfony/finder/tree/v6.4.44"
       },
       "funding": [
         {
@@ -3234,7 +3234,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2026-06-26T15:18:24+00:00"
+      "time": "2026-08-21T10:00:03+00:00"
     },
     {
       "name": "symfony/polyfill-ctype",
@@ -3490,16 +3490,16 @@
     },
     {
       "name": "symfony/translation",
-      "version": "v6.4.42",
+      "version": "v6.4.44",
       "source": {
         "type": "git",
         "url": "https://github.com/symfony/translation.git",
-        "reference": "fef99cef37890b350976f5f492854faefadd4e15"
+        "reference": "fa2235501e2cf6b1d38ab42954b248a5e93c8e89"
       },
       "dist": {
         "type": "zip",
-        "url": "https://api.github.com/repos/symfony/translation/zipball/fef99cef37890b350976f5f492854faefadd4e15",
-        "reference": "fef99cef37890b350976f5f492854faefadd4e15",
+        "url": "https://api.github.com/repos/symfony/translation/zipball/fa2235501e2cf6b1d38ab42954b248a5e93c8e89",
+        "reference": "fa2235501e2cf6b1d38ab42954b248a5e93c8e89",
         "shasum": ""
       },
       "require": {
@@ -3565,7 +3565,7 @@
       "description": "Provides tools to internationalize your application",
       "homepage": "https://symfony.com",
       "support": {
-        "source": "https://github.com/symfony/translation/tree/v6.4.42"
+        "source": "https://github.com/symfony/translation/tree/v6.4.44"
       },
       "funding": [
         {
@@ -3585,7 +3585,7 @@
           "type": "tidelift"
         }
       ],
-      "time": "2026-06-05T16:46:18+00:00"
+      "time": "2026-08-20T19:22:13+00:00"
     },
     {
       "name": "symfony/translation-contracts",

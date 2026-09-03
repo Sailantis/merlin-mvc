@@ -22,7 +22,9 @@ class TransactionalInterceptor implements InterceptorInterface
 {
     public function __construct(
         private DatabaseManager $dbManager,
-    ) {}
+    )
+    {
+    }
 
     public function intercept(object $target, ReflectionMethod $method, array $args, callable $next): mixed
     {

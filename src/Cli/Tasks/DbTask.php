@@ -76,7 +76,7 @@ class DbTask extends Task
                     $quoted = $tblSchema !== null
                         ? $db->quoteIdentifier($tblSchema, $table)
                         : $db->quoteIdentifier($table);
-                    $count  = $db->query("SELECT COUNT(*) FROM {$quoted}")->fetchColumn();
+                    $count = $db->query("SELECT COUNT(*) FROM {$quoted}")->fetchColumn();
                     $rows[] = [$schemaLabel, $tableLabel, (string) $count];
                 } catch (\Throwable) {
                     $rows[] = [$schemaLabel, $tableLabel, $this->style('error', 'bred')];
@@ -215,7 +215,7 @@ class DbTask extends Task
             return;
         }
 
-        // SELECT query — fetch all rows
+        // SELECT query â€” fetch all rows
         $rows = $result->fetchAll(\PDO::FETCH_ASSOC);
 
         if (empty($rows)) {
@@ -230,7 +230,7 @@ class DbTask extends Task
         foreach ($rows as $row) {
             $cells = [];
             foreach ($headers as $h) {
-                $val     = $row[$h];
+                $val = $row[$h];
                 $cells[] = $val === null ? $this->style('NULL', 'gray') : (string) $val;
             }
             $tableRows[] = $cells;
@@ -257,8 +257,7 @@ class DbTask extends Task
      */
     private function listAllPostgresTables(Database $db): array
     {
-        $pdo  = $db->getInternalConnection();
-        $stmt = $pdo->prepare(
+        $stmt = $db->query(
             "SELECT n.nspname AS schema, c.relname AS name
             FROM pg_class c
             JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -267,7 +266,6 @@ class DbTask extends Task
               AND c.relkind IN ('r','v','m','f')
             ORDER BY n.nspname, c.relname"
         );
-        $stmt->execute();
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 

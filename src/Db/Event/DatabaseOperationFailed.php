@@ -13,7 +13,7 @@ use PDOException;
  * exception may be re-thrown after processing; this event fires before
  * that decision is made.
  *
- * The {@see $operation} identifies which database operation failed
+ * The {@see $operation} identifies which Database operation failed
  * (e.g. `query`, `prepare`, `execute`, `beginTransaction`, `commit`,
  * `rollback`). The {@see $sql} and {@see $params} are only populated
  * when the failing operation had a SQL statement in scope.
@@ -30,3 +30,5 @@ class DatabaseOperationFailed extends DatabaseEvent
         parent::__construct($database);
     }
 }
+
+

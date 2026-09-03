@@ -22,3 +22,5 @@ class QueryExecuted extends DatabaseEvent
         parent::__construct($database);
     }
 }
+
+

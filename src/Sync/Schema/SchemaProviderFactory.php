@@ -7,16 +7,16 @@ use RuntimeException;
 
 /**
  * Factory for creating the correct {@see SchemaProvider} for a given
- * database connection based on its driver name.
+ * SQL connection based on its driver name.
  *
  * Shared by the model-sync machinery ({@see \Azera\Sync\SyncRunner}) and
- * the CLI database inspection task ({@see \Azera\Cli\Tasks\DbTask}) so
- * that driver→provider mapping lives in exactly one place.
+ * the CLI Database inspection task ({@see \Azera\Cli\Tasks\DbTask}) so
+ * that driverâ†’provider mapping lives in exactly one place.
  */
 final class SchemaProviderFactory
 {
     /**
-     * Create a SchemaProvider for the given Database connection.
+     * Create a SchemaProvider for the given SQL connection.
      *
      * @param Database $db A connected Database instance.
      * @return SchemaProvider The provider matching the connection's driver.
@@ -36,3 +36,5 @@ final class SchemaProviderFactory
         };
     }
 }
+
+

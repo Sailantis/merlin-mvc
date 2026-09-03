@@ -6,7 +6,7 @@ namespace Azera\Db\Event;
  * Base class for all database events.
  *
  * All DB events are immutable value objects. They are dispatched through
- * {@see \Azera\AppContext::events()} — the unified event system — rather
+ * {@see \Azera\AppContext::events()} â€” the unified event system â€” rather
  * than the old string-based `Database::fire()` mechanism.
  *
  * Each event carries the {@see $database} instance so listeners can
@@ -19,3 +19,6 @@ abstract class DatabaseEvent
         public readonly \Azera\Db\Database $database,
     ) {}
 }
+
+
+

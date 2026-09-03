@@ -129,7 +129,7 @@ class Query extends Condition
 
     /**
      * Constructor. Can optionally pass a Database connection to use for this query.
-     * @param Database|null $db
+     * @param Databaseata|null $db
      */
     public function __construct(?Database $db = null)
     {
@@ -721,6 +721,24 @@ class Query extends Condition
      * ------------------------------------------------------------- */
 
     /**
+     * Eager-load a relation (Phase 5 ORM path). Relation names must be
+     * declared via Orm attributes on the model. BelongsTo/HasOne become
+     * LEFT JOINs at select() time (one SQL, alias-separated rows); HasMany
+     * stays a second query by parent IDs.
+     */
+    public function with(string $relation): static
+    {
+        $this->eagerLoad[] = $relation;
+        return $this;
+    }
+
+    /**
+     * Eager-loaded relation names (set via with()).
+     * @var list<string>
+     */
+    protected array $eagerLoad = [];
+
+    /**
      * Compile and return the SQL string for this query without executing it
      * @return string
      * @throws Exception
@@ -747,6 +765,15 @@ class Query extends Condition
         if ($columns !== null) {
             $this->columns($columns);
         }
+
+        // Phase 5 eager-load path: to-one relations become LEFT JOINs with
+        // alias-separated columns ({alias}__{col}); the ORM RowSplitter
+        // hydrates one row into root + related entities. Empty eagerLoad =
+        // untouched legacy path (zero overhead when with() unused).
+        if ($this->eagerLoad !== [] && $this->resolvedSource['modelClass'] ?? false) {
+            return $this->selectWithEagerLoad($db);
+        }
+
         $query = $this->compileSelect($db);
         if ($this->returnSql) {
             return $this->prepareQueryForReturn($query);
@@ -757,6 +784,51 @@ class Query extends Condition
         }
 
         return $result;
+    }
+
+    /**
+     * ORM eager-load read: HydrationMap plan + joined SQL + RowSplitter.
+     * Raw rows only — no ResultSet in this path.
+     */
+    protected function selectWithEagerLoad($db): object
+    {
+        $modelClass = $this->resolvedSource['modelClass'];
+        $plan       = \Azera\Orm\HydrationMap::build($modelClass, $this->eagerLoad);
+
+        // Build the joined SELECT from the plan: root columns aliased
+        // {alias}__{col}, plus one LEFT JOIN per to-one entry.
+        $selects = [];
+        $joins   = [];
+
+        foreach ($plan['entries'] as $entry) {
+            foreach ($entry['fields'] as $colAlias) {
+                $selects[] = $db->quoteIdentifier($entry['alias']) . '.'
+                    . $db->quoteIdentifier(substr($colAlias, strlen($entry['alias']) + 2))
+                    . ' AS ' . $db->quoteIdentifier($colAlias);
+            }
+
+            if ($entry['joinOn'] !== null) {
+                $joins[] = 'LEFT JOIN ' . $db->quoteIdentifier(
+                    \Azera\Orm\Metadata::for($entry['class'])['source']
+                ) . ' ' . $db->quoteIdentifier($entry['alias'])
+                    . ' ON ' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[0])
+                    . '.' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[1])
+                    . ' = ' . $db->quoteIdentifier(explode('.', $entry['joinOn']['right'])[0])
+                    . '.' . $db->quoteIdentifier(explode('.', $entry['joinOn']['right'])[1]);
+            }
+        }
+
+        // Execute directly on the connection (raw rows; Db events fire).
+        $rows = $db->selectAll(
+            'SELECT ' . implode(', ', $selects)
+            . ' FROM ' . $db->quoteIdentifier($this->resolvedSource['source'])
+            . ' ' . $db->quoteIdentifier($plan['entries'][0]['alias'])
+            . implode(' ', $joins),
+            [],
+            \PDO::FETCH_ASSOC
+        );
+
+        return new \Azera\Orm\JoinedResultSet($rows, $plan, $modelClass);
     }
 
     /**
@@ -819,7 +891,7 @@ class Query extends Condition
         }
 
         // For non-RETURNING queries, try to get last insert ID
-        $lastId = $db->getInternalConnection()->lastInsertId();
+        $lastId = $db->lastInsertId();
         return $lastId ?: true;
     }
 

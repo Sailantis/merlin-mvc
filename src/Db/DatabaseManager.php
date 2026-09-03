@@ -4,9 +4,9 @@ namespace Azera\Db;
 use RuntimeException;
 
 /**
- * Manages multiple database connections (roles) and their factories.
+ * Manages multiple SQL connections (roles) and their factories.
  *
- * This class allows the definition of multiple database connections (e.g. "default", "analytics", "logging") and retrieval of them by role. The first role defined will be used as the default when requesting the default connection, but it can be changed by calling setDefault(). Each role can be defined with either a Database instance or a factory callable that returns a Database instance. The factory will only be called once per role, and the resulting Database instance will be cached for future use.
+ * This class allows the definition of multiple SQL connections (e.g. "default", "analytics", "logging") and retrieval of them by role. The first role defined will be used as the default when requesting the default connection, but it can be changed by calling setDefault(). Each role can be defined with either a Database instance or a factory callable that returns a Database instance. The factory will only be called once per role, and the resulting Database instance will be cached for future use.
  */
 class DatabaseManager
 {
@@ -17,7 +17,7 @@ class DatabaseManager
     protected ?string $defaultRole = null;
 
     /**
-     * Define a database connection for a specific role.
+     * Define a SQL connection for a specific role.
      *
      * @param string $role The name of the role (e.g. "default", "analytics")
      * @param callable|Database $factory A factory callable that returns a Database instance, or a Database instance directly
@@ -36,7 +36,7 @@ class DatabaseManager
     }
 
     /**
-     * Set the default database role to use when requesting the default connection. By default, the first defined role will be used as the default.
+     * Set the default SQL role to use when requesting the default connection. By default, the first defined role will be used as the default.
      *
      * @param string $role The name of the role to set as default
      * @return $this
@@ -53,7 +53,7 @@ class DatabaseManager
     }
 
     /**
-     * Check if a database role is defined.
+     * Check if a SQL role is defined.
      *
      * @param string $role The name of the role to check
      * @return bool True if the role is defined, false otherwise
@@ -77,7 +77,7 @@ class DatabaseManager
         }
 
         if (!isset($this->factories[$role])) {
-            throw new RuntimeException("Database role not configured: $role");
+            throw new RuntimeException("SQL role not configured: $role");
         }
 
         $factory = $this->factories[$role];
@@ -100,7 +100,7 @@ class DatabaseManager
      *
      * @param string $role The name of the role to retrieve
      * @return Database The Database instance for the specified role, or the default if not defined
-     * @throws RuntimeException If no default database is configured
+     * @throws RuntimeException If no default Database is configured
      */
     public function getOrDefault(string $role): Database
     {
@@ -115,18 +115,18 @@ class DatabaseManager
      * Get the default Database instance.
      *
      * @return Database The default Database instance
-     * @throws RuntimeException If no default database is configured
+     * @throws RuntimeException If no default Database is configured
      */
     public function getDefault(): Database
     {
         if ($this->defaultRole === null) {
-            throw new RuntimeException("No database configured");
+            throw new RuntimeException("No Database configured");
         }
         return $this->get($this->defaultRole);
     }
 
     /**
-     * Return the names of all registered database roles.
+     * Return the names of all registered SQL roles.
      *
      * @return string[] List of role names (e.g. ["default", "read", "write"]).
      */
@@ -136,7 +136,7 @@ class DatabaseManager
     }
 
     /**
-     * Return the name of the default database role, or null if none is configured.
+     * Return the name of the default SQL role, or null if none is configured.
      *
      * @return string|null The default role name.
      */
@@ -145,3 +145,4 @@ class DatabaseManager
         return $this->defaultRole;
     }
 }
+

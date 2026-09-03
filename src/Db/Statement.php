@@ -8,7 +8,7 @@ use PDOException;
 use PDOStatement;
 
 /**
- * A prepared statement bound to a Database connection.
+ * A prepared statement bound to a SQL connection.
  *
  * Unlike the legacy Database::prepare()/execute() pair, a PreparedStatement
  * owns its PDOStatement, so any number of statements can be prepared and
@@ -25,7 +25,7 @@ class Statement
     /**
      * Create a new PreparedStatement wrapping an already-prepared PDO statement.
      *
-     * @param Database     $db        Database connection used to prepare the statement.
+     * @param Database     $db        SQL connection used to prepare the statement.
      * @param PDOStatement $statement The prepared PDO statement.
      * @param string       $sql       The original SQL string (used for error reporting).
      */
@@ -128,7 +128,7 @@ class Statement
 
     /**
      * Ensure the underlying statement cursor is released when this statement
-     * goes out of scope, so that any database locks it holds are freed.
+     * goes out of scope, so that any Database locks it holds are freed.
      */
     public function __destruct()
     {

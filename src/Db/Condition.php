@@ -6,28 +6,28 @@ use Azera\AppContext;
 
 /**
  * Build conditions for WHERE, HAVING, ON etc. clauses
- * 
+ *
  * Usage examples:
- * 
+ *
  *   // Simple condition
  *   $c = Condition::create()->where('id', 123);
- * 
+ *
  *   // Qualified identifiers (automatically quoted)
  *   $c = Condition::create()->where('users.status', 'active');
- * 
+ *
  *   // Large IN lists (no regex issues)
  *   $c = Condition::create()->inWhere('id', range(1, 10000));
- * 
+ *
  *   // JOIN conditions
  *   $joinCond = Condition::create()->where('o.user_id = u.id');
  *   $sb->leftJoin('orders o', $joinCond);
- * 
+ *
  *   // Complex conditions
  *   $c = Condition::create()
  *       ->where('u.age', 18, '>=')
  *       ->where('u.status', 'active')
  *       ->group(
- *           fn(Condition $g) => 
+ *           fn(Condition $g) =>
  *              $g->where('u.role', 'admin')
  *                  ->orWhere('u.role', 'moderator')
  *       );
@@ -114,9 +114,7 @@ class Condition
 		if ($this->modelResolver !== null) {
 			try {
 				return ($this->modelResolver)($model);
-			} catch (\Exception $e) {
-				// Fall back to escaping if resolution fails
-			}
+			} catch (\Exception $e) {}
 		}
 
 		// Defer model-like identifiers while keeping condition text readable.
@@ -158,9 +156,7 @@ class Condition
 				try {
 					$replacements[$prefix] = ($this->modelResolver)($model) . '.';
 					continue;
-				} catch (\Exception $e) {
-					// Fall through to quoted fallback below.
-				}
+				} catch (\Exception $e) {}
 			}
 			$replacements[$prefix] = $prefix;
 		}
@@ -238,7 +234,7 @@ class Condition
 			}
 			// merge bind parameters from sub conditions into current builder
 			$this->subQueryBindings = $condition->getBindings() + $this->subQueryBindings;
-			$escape = false;
+			$escape    = false;
 			$condition = $condition->toSql();
 		} elseif (\is_array($value)) {
 			// phalcon style
@@ -249,7 +245,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value = '(' . $value->toSql() . ')';
+				$value  = '(' . $value->toSql() . ')';
 			} elseif ($value instanceof Condition) {
 				// sub conditions - inject model resolver if available
 				if ($this instanceof Query) {
@@ -260,7 +256,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value = '(' . $value->toSql() . ')';
+				$value  = '(' . $value->toSql() . ')';
 			}
 			// ci style - protect identifier
 			$condition = $this->protectIdentifier($condition);
@@ -419,8 +415,7 @@ class Condition
 					fn($model) => $this->getTableName($model)
 				);
 			}
-			$this->subQueryBindings =
-				$values->getBindings() + $this->subQueryBindings;
+			$this->subQueryBindings = $values->getBindings() + $this->subQueryBindings;
 			$this->condition .= '(' . $protectedCondition . " $in (" . $values->toSql() . '))';
 		} else {
 			$this->condition .= '(' . $protectedCondition . " $in (" . $this->escapeValue($values) . '))';
@@ -782,7 +777,7 @@ class Condition
 			}
 
 			$result = "";
-			$sep = "";
+			$sep    = "";
 			foreach ($value as $v) {
 				$result .= $sep;
 				$sep = ",";
@@ -896,10 +891,10 @@ class Condition
 		if (!isset($alias)) {
 			if ($offset = strripos($item, ' AS ')) {
 				$alias = substr($item, $offset + 4);
-				$item = substr($item, 0, $offset);
+				$item  = substr($item, 0, $offset);
 			} elseif ($offset = strrpos($item, ' ')) {
 				$alias = substr($item, $offset + 1);
-				$item = substr($item, 0, $offset);
+				$item  = substr($item, 0, $offset);
 			}
 		}
 
@@ -915,7 +910,7 @@ class Condition
 			$index = strpos($item, '.');
 			if ($index > 0) {
 				$table = $this->getTableName(substr($item, 0, $index));
-				$item = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
+				$item  = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
 			} else {
 				$item = $this->quoteIdentifier($item);
 			}
@@ -1008,11 +1003,11 @@ class Condition
 	protected function splitConditionOnLogicalOperators(string $condition): array
 	{
 		$parts = [];
-		$len = strlen($condition);
+		$len   = strlen($condition);
 		$upper = strtoupper($condition); // single uppercase copy for comparisons
 		$depth = 0;
 		$start = 0;
-		$i = 0;
+		$i     = 0;
 
 		while ($i < $len) {
 			$ch = $condition[$i];

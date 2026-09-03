@@ -32,7 +32,7 @@ class ResultSet implements \Iterator, \Countable
 	/**
 	 * Create a new ResultSet wrapping a PDO statement result.
 	 *
-	 * @param Database        $connection   Database connection used to execute the query.
+	 * @param Database        $connection   SQL connection used to execute the query.
 	 * @param PDOStatement    $statement    The executed PDO statement.
 	 * @param string|null     $sqlStatement The original SQL string (used by reexecute()).
 	 * @param array|null      $boundParams  Bound parameters (used by reexecute()).
@@ -56,8 +56,7 @@ class ResultSet implements \Iterator, \Countable
 		$this->modelClass   = $modelClass;
 		$this->isReadQuery  = $isReadQuery;
 
-		$this->fetchMode = $connection->getInternalConnection()
-			->getAttribute(PDO::ATTR_DEFAULT_FETCH_MODE);
+		$this->fetchMode = $connection->getDefaultFetchMode();
 	}
 
 	/**
@@ -387,7 +386,7 @@ class ResultSet implements \Iterator, \Countable
 
 	/**
 	 * Ensure the underlying statement cursor is released when the result set
-	 * goes out of scope, so that any database locks it holds are freed.
+	 * goes out of scope, so that any Database locks it holds are freed.
 	 */
 	public function __destruct()
 	{
