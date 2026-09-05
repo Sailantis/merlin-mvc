@@ -226,6 +226,43 @@ class ModelTest extends TestCase
         $this->assertSame(15, $model->id);
     }
 
+    /**
+     * Model::upsert() routes through the EM: one atomic
+     * INSERT ... ON CONFLICT ("id") DO UPDATE SET "name"=EXCLUDED."name"
+     * — PK present in VALUES but never in SET (the fast shape), entity
+     * MANAGED afterwards (identity-mapped, later save() = diff UPDATE).
+     */
+    public function testUpsertGoesThroughEmPipeline(): void
+    {
+        $db = new TestPgDatabase();
+        $this->wireStore($db);
+
+        $model = DummyModel::upsert(['id' => 999999, 'name' => 'Sentinel']);
+        $this->assertSame($model, DummyModel::find(999999)); // identity-mapped
+
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $this->assertCount(1, $dataQueries);
+        $sql = $dataQueries[0]['sql'];
+        $this->assertStringContainsString('INSERT INTO "dummy_model"', $sql);
+        $this->assertStringContainsString('ON CONFLICT ("id") DO UPDATE SET', $sql);
+        $this->assertStringContainsString('"name" = EXCLUDED."name"', $sql);
+        $this->assertStringNotContainsString('"id" = EXCLUDED."id"', $sql);
+
+        // Follow-up save() after mutation = plain diff UPDATE.
+        $db->clearQueries();
+        $model->name = 'Mutated';
+        $this->assertTrue($model->save());
+        $saveQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $this->assertCount(1, $saveQueries);
+        $this->assertStringStartsWith('UPDATE "dummy_model"', $saveQueries[0]['sql']);
+    }
+
     public function testWriteClosesReturningCursor(): void
     {
         $db = new TestPgDatabase();

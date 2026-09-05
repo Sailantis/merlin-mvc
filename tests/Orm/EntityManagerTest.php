@@ -15,6 +15,7 @@ use Azera\Orm\EntityManager;
 use Azera\Orm\FastHydrator;
 use Azera\Orm\Heap;
 use Azera\Orm\Metadata;
+use Azera\Orm\Node;
 use Azera\Orm\Storage\MongoStore;
 use Azera\Orm\Storage\PdoStore;
 use Azera\Orm\Storage\StoreManager;
@@ -87,6 +88,134 @@ class EntityManagerTest extends TestCase
     {
         $q = $this->dataQueries();
         return $q === [] ? null : end($q)['sql'];
+    }
+
+    /* ================================================== upsert pipeline
+     *
+     * SCHEDULED_UPSERT: one atomic INSERT ... ON CONFLICT DO UPDATE — the
+     * DATABASE resolves insert-vs-update (no SELECT, no unique-violation
+     * race). PK = conflict target; DO UPDATE SET covers NON-PK columns
+     * only (the fast excluded-refs shape). */
+
+    /**
+     * Full-payload upsert (PK + all non-PK set): one statement, ON CONFLICT
+     * target = "id", SET writes non-PK columns via EXCLUDED refs. All
+     * columns present → nothing to backfill → no RETURNING (the fastest
+     * shape).
+     */
+    public function testUpsertEmitsOnConflictWithNonPkExcludedSet(): void
+    {
+        $a = new Article();
+        $a->id         = 999999;
+        $a->title      = 'Sentinel';
+        $a->status     = 1;
+        $a->created_at = '2026-09-05 00:00:00';
+
+        $this->em->upsert($a);
+        $this->em->flush();
+
+        $sql = $this->lastDataSql();
+        $this->assertStringStartsWith('INSERT INTO "article"', $sql);
+        $this->assertStringContainsString('ON CONFLICT ("id") DO UPDATE SET', $sql);
+        $this->assertStringContainsString('"title" = EXCLUDED."title"', $sql);
+        $this->assertStringContainsString('"status_code" = EXCLUDED."status_code"', $sql);
+        $this->assertStringNotContainsString('"id" = EXCLUDED."id"', $sql); // PK never in SET
+        $this->assertStringNotContainsString('RETURNING', $sql);
+        $this->assertSame(Node::MANAGED, $this->heapNode($a)->state);
+    }
+
+    /**
+     * Unset non-PK columns: RETURNING * refreshes DB defaults onto the
+     * entity (mirrors insertOne's returning_all strategy).
+     */
+    public function testUpsertMissingColumnsUsesReturningAllAndBackfills(): void
+    {
+        $a = new Article();
+        $a->id    = 999999;
+        $a->title = 'Sentinel';
+        // created_at / status unset → DB defaults must round-trip.
+        $this->db->setMockResults([[['id' => '999999', 'title' => 'Sentinel', 'created_at' => '2026-09-05 00:00:00', 'status_code' => '0']]]);
+
+        $this->em->upsert($a);
+        $this->em->flush();
+
+        $this->assertStringContainsString('RETURNING *', $this->lastDataSql());
+        $this->assertSame('2026-09-05 00:00:00', $a->created_at);
+        $this->assertSame(Node::MANAGED, $this->heapNode($a)->state);
+    }
+
+    /**
+     * The upsert statement joins the flush transaction like every other
+     * scheduled write (BEGIN ... COMMIT wrap).
+     */
+    public function testUpsertJoinsFlushTransaction(): void
+    {
+        $a = new Article();
+        $a->id    = 999999;
+        $a->title = 'Sentinel';
+
+        $this->em->upsert($a);
+        $this->em->flush();
+
+        $this->assertStringStartsWith('BEGIN', $this->db->queries[0]['sql']);
+        $this->assertStringStartsWith('COMMIT', $this->db->getLastSql());
+    }
+
+    /**
+     * Upsert marks the entity MANAGED in the identity map: a follow-up
+     * mutate + save() emits a diff UPDATE, not a second upsert.
+     */
+    public function testUpsertedEntityBecomesManagedAndSavesAsUpdate(): void
+    {
+        $a = new Article();
+        $a->id    = 999999;
+        $a->title = 'Sentinel';
+
+        $this->em->upsert($a);
+        $this->em->flush();
+        $this->db->clearQueries();
+
+        $a->title = 'Mutated';
+        $this->assertTrue($a->save());
+
+        $q = $this->dataQueries();
+        $this->assertCount(1, $q);
+        $this->assertStringStartsWith('UPDATE "article"', $q[0]['sql']);
+        $this->assertStringNotContainsString('ON CONFLICT', $q[0]['sql']);
+    }
+
+    /**
+     * Mongo routing: upsert on a document hits the mongo store's
+     * updateOne(filter, $set, upsert:true) — never SQL.
+     */
+    public function testUpsertOnDocumentRoutesThroughMongoStore(): void
+    {
+        $fakes = new FakeMongoFactory();
+        $this->ctx->get(StoreManager::class)->set('mongo', 'default', new MongoStore(fn($name) => $fakes->for($name)));
+
+        $doc = new \Azera\Tests\Orm\Fixtures\ArticleDocument();
+        $doc->_id   = 'abc123';
+        $doc->title = 'Doc One';
+
+        $this->em->upsert($doc);
+        $this->em->flush();
+
+        $articles = $fakes->for('articles');
+        $this->assertCount(1, $articles->calls);
+        $this->assertSame('update', $articles->calls[0]['op']);
+        [$filter, $update, $options] = $articles->calls[0]['args'];
+        $this->assertSame(['_id' => 'abc123'], $filter);
+        $this->assertSame(['title' => 'Doc One'], $update['$set']); // PK excluded from $set
+        $this->assertTrue($options['upsert']);
+        $this->assertSame('Doc One', $articles->docs[0]['title']);
+        $this->assertSame(Node::MANAGED, $this->heapNode($doc)->state);
+    }
+
+    private function heapNode(object $entity): Node
+    {
+        $node = $this->em->heap()->find($entity);
+        $this->assertNotNull($node);
+        return $node;
     }
 
     /**

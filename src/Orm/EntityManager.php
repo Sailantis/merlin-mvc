@@ -22,7 +22,7 @@ use Azera\Orm\Storage\StoreManager;
  *
  * Reads probe the identity map first — find() hit = the same instance,
  * miss = one Store read + FastHydrator onto the shared heap. Works for
- * SQL models (PdoStore) and Mongo documents (once MongoStore lands).
+ * SQL models (PdoStore) and Mongo documents.
  *
  * The write pipeline used to be a separate UnitOfWork class; it is merged
  * here because it had exactly one caller and no public surface beyond
@@ -120,6 +120,42 @@ final class EntityManager implements RequestScoped
             $this->scheduleUpdate($entity);
         }
         // SCHEDULED_* states: already queued, nothing to do.
+
+        return $this;
+    }
+
+    /**
+     * Queue a single-statement UPSERT (INSERT ... ON CONFLICT DO UPDATE /
+     * mongo updateOne upsert:true): the DATABASE resolves insert-vs-update
+     * at write time — no prior SELECT, no insert-or-update guess, no
+     * unique-violation race. Deliberately intent-based like persist(): the
+     * caller asserts "row with this PK should exist afterwards", and the
+     * store makes it so atomically.
+     *
+     * Requires a full identity (every PK field set) — the PK is the
+     * conflict target. Anything less is an ordinary insert.
+     */
+    public function upsert(object $entity): static
+    {
+        $meta = Metadata::for($entity::class);
+
+        $id = [];
+        foreach ($meta['columns'] as $field => $col) {
+            if ($col['pk']) {
+                $id[$field] = isset($entity->{$field}) ? $entity->{$field} : null;
+            }
+        }
+
+        if (in_array(null, $id, true)) {
+            // Incomplete identity: no conflict target to promise. Degrade
+            // to a plain insert (the pre-EM Model::upsert() semantic).
+            return $this->persist($entity);
+        }
+
+        $data = $this->extractData($entity, $meta);
+
+        $node = new Node($entity::class, $id, $data, Node::SCHEDULED_UPSERT);
+        $this->heap->attach($entity, $node);
 
         return $this;
     }
@@ -509,6 +545,9 @@ final class EntityManager implements RequestScoped
             case Node::SCHEDULED_UPDATE:
                 $this->executeUpdate($node);
                 break;
+            case Node::SCHEDULED_UPSERT:
+                $this->executeUpsert($node);
+                break;
             case Node::SCHEDULED_DELETE:
                 $this->executeDelete($node);
                 break;
@@ -535,6 +574,34 @@ final class EntityManager implements RequestScoped
         // stuck in SCHEDULED_INSERT forever (next persist → duplicate
         // INSERT; exposed by the mongo live round-trip, latent for SQL
         // id-backfill inserts as well).
+        $node->state = Node::MANAGED;
+
+        if (isset($result['row']) && is_array($result['row'])) {
+            $this->applyRow($node, $entity, $result['row']);
+        } elseif (($result['id'] ?? null) !== null) {
+            $pk = $this->pkColumn($meta);
+            $this->backfill($node, $entity, [$pk['name'] => $result['id']]);
+        }
+    }
+
+    /**
+     * INSERT ... ON CONFLICT DO UPDATE (or mongo updateOne upsert:true).
+     * Single atomic statement: insert path AND update path in one round
+     * trip. Backfill mirrors executeInsert's RETURNING matrix (full row
+     * when the store refreshed unset columns, else the id).
+     */
+    private function executeUpsert(Node $node): void
+    {
+        $meta   = Metadata::for($node->class);
+        $entity = $this->entityFor($node);
+
+        // Full caller payload (nulls dropped upstream so DB defaults
+        // survive); the PK doubles as the conflict target.
+        $data = $this->extractData($entity, $meta);
+        $set  = array_filter($data, fn($v) => $v !== null);
+
+        $result = $this->storeFor($node->class)->upsertOne($node->class, $set);
+
         $node->state = Node::MANAGED;
 
         if (isset($result['row']) && is_array($result['row'])) {

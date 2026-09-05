@@ -52,7 +52,7 @@ Custom services can be registered with `$ctx->set($id, new MyService())` or `$ct
 
 ### Data Layer
 
-- `Model` (Azera\Orm) provides Active Record style methods (`find`, `findAll`, `create`, `save`, `delete`, …) delegating to the `EntityManager` — identity-mapped reads, diff-based writes, heap-backed state tracking (`hasChanged`/`loadState`)
+- `Model` (Azera\Orm) provides Active Record style methods (`find`, `findAll`, `create`, `save`, `upsert`, `delete`, …) delegating to the `EntityManager` — identity-mapped reads, diff-based writes, heap-backed state tracking (`hasChanged`/`loadState`)
 - `Query` is the fluent SQL builder for select, write, count, and exists operations; terminal calls (`insert`, `upsert`, `update`, `delete`) finalize the query
 - `Database` wraps PDO with transaction helpers and lazy connection creation
 - `ResultSet` provides iterable, countable access to model or raw-row results

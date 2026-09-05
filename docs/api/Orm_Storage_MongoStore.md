@@ -91,7 +91,25 @@ deployments.
 
 ---
 
-### deleteOne() · [source](../../src/Orm/Storage/MongoStore.php#L106)
+### upsertOne() · [source](../../src/Orm/Storage/MongoStore.php#L106)
+
+`public function upsertOne(string $class, array $data): array`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$class` | string | - |  |
+| `$data` | array | - |  |
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### deleteOne() · [source](../../src/Orm/Storage/MongoStore.php#L137)
 
 `public function deleteOne(string $class, array $id): void`
 
@@ -109,7 +127,7 @@ deployments.
 
 ---
 
-### findBy() · [source](../../src/Orm/Storage/MongoStore.php#L112)
+### findBy() · [source](../../src/Orm/Storage/MongoStore.php#L143)
 
 `public function findBy(string $class, array $where): array`
 
@@ -127,7 +145,7 @@ deployments.
 
 ---
 
-### findByPk() · [source](../../src/Orm/Storage/MongoStore.php#L120)
+### findByPk() · [source](../../src/Orm/Storage/MongoStore.php#L151)
 
 `public function findByPk(string $class, array $id): array|null`
 
@@ -145,7 +163,7 @@ deployments.
 
 ---
 
-### count() · [source](../../src/Orm/Storage/MongoStore.php#L128)
+### count() · [source](../../src/Orm/Storage/MongoStore.php#L159)
 
 `public function count(string $class, array $where = []): int`
 
@@ -163,7 +181,7 @@ deployments.
 
 ---
 
-### begin() · [source](../../src/Orm/Storage/MongoStore.php#L140)
+### begin() · [source](../../src/Orm/Storage/MongoStore.php#L171)
 
 `public function begin(): void`
 
@@ -178,7 +196,7 @@ Kept structural so the EM pipeline never branches on store type.
 
 ---
 
-### commit() · [source](../../src/Orm/Storage/MongoStore.php#L142)
+### commit() · [source](../../src/Orm/Storage/MongoStore.php#L173)
 
 `public function commit(): void`
 
@@ -189,7 +207,7 @@ Kept structural so the EM pipeline never branches on store type.
 
 ---
 
-### rollback() · [source](../../src/Orm/Storage/MongoStore.php#L144)
+### rollback() · [source](../../src/Orm/Storage/MongoStore.php#L175)
 
 `public function rollback(): void`
 
@@ -200,7 +218,7 @@ Kept structural so the EM pipeline never branches on store type.
 
 ---
 
-### inTransaction() · [source](../../src/Orm/Storage/MongoStore.php#L146)
+### inTransaction() · [source](../../src/Orm/Storage/MongoStore.php#L177)
 
 `public function inTransaction(): bool`
 

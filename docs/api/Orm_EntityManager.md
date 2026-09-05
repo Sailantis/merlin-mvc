@@ -12,7 +12,7 @@ transaction -> ID backfill.
 
 Reads probe the identity map first — find() hit = the same instance,
 miss = one Store read + FastHydrator onto the shared heap. Works for
-SQL models (PdoStore) and Mongo documents (once MongoStore lands).
+SQL models (PdoStore) and Mongo documents.
 
 The write pipeline used to be a separate UnitOfWork class; it is merged
 here because it had exactly one caller and no public surface beyond
@@ -130,7 +130,34 @@ Explicit intent — flush() sees ONLY what was persisted here
 
 ---
 
-### remove() · [source](../../src/Orm/EntityManager.php#L131)
+### upsert() · [source](../../src/Orm/EntityManager.php#L138)
+
+`public function upsert(object $entity): static`
+
+Queue a single-statement UPSERT (INSERT ... ON CONFLICT DO UPDATE /
+mongo updateOne upsert:true): the DATABASE resolves insert-vs-update
+at write time — no prior SELECT, no insert-or-update guess, no
+unique-violation race. Deliberately intent-based like persist(): the
+caller asserts "row with this PK should exist afterwards", and the
+store makes it so atomically.
+
+Requires a full identity (every PK field set) — the PK is the
+conflict target. Anything less is an ordinary insert.
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$entity` | object | - |  |
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### remove() · [source](../../src/Orm/EntityManager.php#L167)
 
 `public function remove(object $entity): static`
 
@@ -150,7 +177,7 @@ pending inserts) are just dropped from identity tracking.
 
 ---
 
-### flush() · [source](../../src/Orm/EntityManager.php#L156)
+### flush() · [source](../../src/Orm/EntityManager.php#L192)
 
 `public function flush(): void`
 
@@ -169,7 +196,7 @@ SQL+mongo flush wraps only the SQL side — no cross-type tx exists.
 
 ---
 
-### detach() · [source](../../src/Orm/EntityManager.php#L205)
+### detach() · [source](../../src/Orm/EntityManager.php#L241)
 
 `public function detach(object $entity): void`
 
@@ -188,7 +215,7 @@ Drop an entity from identity tracking (no storage effect).
 
 ---
 
-### adopt() · [source](../../src/Orm/EntityManager.php#L228)
+### adopt() · [source](../../src/Orm/EntityManager.php#L264)
 
 `public function adopt(object $entity): object`
 
@@ -220,7 +247,7 @@ the node when the entity already sits under another identity).
 
 ---
 
-### track() · [source](../../src/Orm/EntityManager.php#L255)
+### track() · [source](../../src/Orm/EntityManager.php#L291)
 
 `public function track(object $entity): object`
 
@@ -243,7 +270,7 @@ SQL only for fields changed after the track() call.
 
 ---
 
-### contains() · [source](../../src/Orm/EntityManager.php#L277)
+### contains() · [source](../../src/Orm/EntityManager.php#L313)
 
 `public function contains(object $entity): bool`
 
@@ -262,7 +289,7 @@ Whether the entity is tracked in the request heap.
 
 ---
 
-### isScheduled() · [source](../../src/Orm/EntityManager.php#L285)
+### isScheduled() · [source](../../src/Orm/EntityManager.php#L321)
 
 `public function isScheduled(object $entity): bool`
 
@@ -281,7 +308,7 @@ Whether the entity has scheduled work in the current flush cycle.
 
 ---
 
-### dirtyData() · [source](../../src/Orm/EntityManager.php#L305)
+### dirtyData() · [source](../../src/Orm/EntityManager.php#L341)
 
 `public function dirtyData(object $entity): array`
 
@@ -307,7 +334,7 @@ the node snapshot, field-name-keyed.
 
 ---
 
-### isDirty() · [source](../../src/Orm/EntityManager.php#L336)
+### isDirty() · [source](../../src/Orm/EntityManager.php#L372)
 
 `public function isDirty(object $entity): bool`
 
@@ -327,7 +354,7 @@ true — it has pending state that adopt+flush would write).
 
 ---
 
-### revert() · [source](../../src/Orm/EntityManager.php#L346)
+### revert() · [source](../../src/Orm/EntityManager.php#L382)
 
 `public function revert(object $entity): void`
 
@@ -348,7 +375,7 @@ entities — nothing to revert to.
 
 ---
 
-### clear() · [source](../../src/Orm/EntityManager.php#L374)
+### clear() · [source](../../src/Orm/EntityManager.php#L410)
 
 `public function clear(): void`
 
@@ -362,7 +389,7 @@ work is dropped, NOT flushed — explicit clear means "forget".
 
 ---
 
-### resetState() · [source](../../src/Orm/EntityManager.php#L383)
+### resetState() · [source](../../src/Orm/EntityManager.php#L419)
 
 `public function resetState(): void`
 

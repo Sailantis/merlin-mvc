@@ -312,6 +312,23 @@ $user = User::create([
 Removed. Use `upsert()` (atomic INSERT ... ON CONFLICT DO UPDATE) when you
 control the data, or `create()` when you don't.
 
+### `upsert()` — atomic create-or-update
+
+```php
+User::upsert(['id' => 7, 'username' => 'renna', 'email' => 'r@example.com']);
+```
+
+One `INSERT ... ON CONFLICT (id) DO UPDATE SET` statement — the DATABASE
+decides insert vs update at write time (no SELECT, no unique-violation
+race under concurrency). All ID fields must be present (they form the
+conflict target); on conflict, all non-ID fields are updated.
+
+Routed through the EntityManager: the model lands in the identity map
+(`User::find(7)` returns the same instance afterwards) and the statement
+joins any open flush transaction. The `DO UPDATE SET` writes non-ID
+columns only, as `EXCLUDED` references — the fastest shape on SQLite
+(including the PK in SET forces an internal DELETE+INSERT there).
+
 ### `firstOrCreate()` — find or insert
 
 ```php
@@ -339,7 +356,7 @@ $user = User::updateOrCreate(
 `save()` inspects the model's state and decides automatically:
 
 - If **all ID fields are set** → `UPDATE` (only changed fields are sent)
-- If **any ID field is missing** → `INSERT` (or upsert when there is a conflict key)
+- If **any ID field is missing** → `INSERT`
 
 Returns `false` when there is nothing to save (no changes detected).
 
@@ -361,7 +378,8 @@ $user->save(); // INSERT INTO users ...
 
 Removed in favor of ONE write pipeline: `save()` (diff INSERT or UPDATE
 through the EntityManager) and `upsert()` (single atomic
-INSERT ... ON CONFLICT DO UPDATE statement).
+INSERT ... ON CONFLICT DO UPDATE statement, also through the
+EntityManager).
 
 ### `delete()`
 

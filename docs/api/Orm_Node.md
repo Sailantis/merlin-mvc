@@ -20,6 +20,7 @@ not PHP objects. Objects would break both the diff and the L2 cache story.
 - **SCHEDULED_UPDATE** = `4`
 - **SCHEDULED_DELETE** = `5`
 - **DELETED** = `6`
+- **SCHEDULED_UPSERT** = `7`
 
 ## 🌍 Public Properties
 
@@ -31,7 +32,7 @@ not PHP objects. Objects would break both the diff and the L2 cache story.
 
 ## 🚀 Public methods
 
-### __construct() · [source](../../src/Orm/Node.php#L36)
+### __construct() · [source](../../src/Orm/Node.php#L39)
 
 `public function __construct(string $class, array $id, array $data, int $state = 1, array $changedFields = []): mixed`
 
@@ -52,7 +53,7 @@ not PHP objects. Objects would break both the diff and the L2 cache story.
 
 ---
 
-### isScheduled() · [source](../../src/Orm/Node.php#L46)
+### isScheduled() · [source](../../src/Orm/Node.php#L47)
 
 `public function isScheduled(): bool`
 

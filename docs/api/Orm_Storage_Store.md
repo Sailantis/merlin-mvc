@@ -55,7 +55,33 @@ Update one entity by PK values.
 
 ---
 
-### deleteOne() · [source](../../src/Orm/Storage/Store.php#L38)
+### upsertOne() · [source](../../src/Orm/Storage/Store.php#L45)
+
+`public function upsertOne(string $class, array $data): array`
+
+Atomic UPSERT: INSERT ... ON CONFLICT DO UPDATE (SQL) / updateOne
+with upsert:true (Mongo). The caller-set PK is the conflict target —
+$data must carry every PK column. Existence is resolved BY THE
+DATABASE at write time: no prior SELECT, no insert-or-update guess.
+
+Returns raw row(s) for backfill, same contract as insertOne
+(RETURNING * when unset non-PK columns should refresh DB defaults).
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$class` | string | - |  |
+| `$data` | array | - | column-name-keyed raw values (PK included) |
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### deleteOne() · [source](../../src/Orm/Storage/Store.php#L51)
 
 `public function deleteOne(string $class, array $id): void`
 
@@ -75,7 +101,7 @@ Delete one entity by PK values.
 
 ---
 
-### findBy() · [source](../../src/Orm/Storage/Store.php#L47)
+### findBy() · [source](../../src/Orm/Storage/Store.php#L60)
 
 `public function findBy(string $class, array $where): array`
 
@@ -95,7 +121,7 @@ Read raw rows. Returns plain assoc rows (no ResultSet).
 
 ---
 
-### findByPk() · [source](../../src/Orm/Storage/Store.php#L55)
+### findByPk() · [source](../../src/Orm/Storage/Store.php#L68)
 
 `public function findByPk(string $class, array $id): array|null`
 
@@ -115,7 +141,7 @@ Read one raw row by PK values (null when missing).
 
 ---
 
-### count() · [source](../../src/Orm/Storage/Store.php#L61)
+### count() · [source](../../src/Orm/Storage/Store.php#L74)
 
 `public function count(string $class, array $where = []): int`
 
@@ -135,7 +161,7 @@ Count matching rows.
 
 ---
 
-### begin() · [source](../../src/Orm/Storage/Store.php#L65)
+### begin() · [source](../../src/Orm/Storage/Store.php#L78)
 
 `public function begin(): void`
 
@@ -146,7 +172,7 @@ Count matching rows.
 
 ---
 
-### commit() · [source](../../src/Orm/Storage/Store.php#L66)
+### commit() · [source](../../src/Orm/Storage/Store.php#L79)
 
 `public function commit(): void`
 
@@ -157,7 +183,7 @@ Count matching rows.
 
 ---
 
-### rollback() · [source](../../src/Orm/Storage/Store.php#L67)
+### rollback() · [source](../../src/Orm/Storage/Store.php#L80)
 
 `public function rollback(): void`
 
@@ -168,7 +194,7 @@ Count matching rows.
 
 ---
 
-### inTransaction() · [source](../../src/Orm/Storage/Store.php#L72)
+### inTransaction() · [source](../../src/Orm/Storage/Store.php#L85)
 
 `public function inTransaction(): bool`
 

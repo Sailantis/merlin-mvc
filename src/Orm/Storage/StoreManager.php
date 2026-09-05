@@ -30,6 +30,7 @@ final class StoreManager implements RequestScoped
     public function set(string $type, string $role, Store|callable $store): static
     {
         $this->stores[$type][$role] = $store;
+        $this->defaults[$type] ??= $role; // Set the default role for this type if not already set
         return $this;
     }
 

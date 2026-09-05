@@ -17,7 +17,7 @@ changed.
 
 ## 🚀 Public methods
 
-### storeRole() · [source](../../src/Orm/Document.php#L29)
+### storeRole() · [source](../../src/Orm/Document.php#L28)
 
 `public function storeRole(): string`
 
@@ -33,7 +33,7 @@ the authority when both are present (it compiles into metadata).
 
 ---
 
-### save() · [source](../../src/Orm/Document.php#L40)
+### save() · [source](../../src/Orm/Document.php#L39)
 
 `public function save(): bool`
 
@@ -50,7 +50,7 @@ check whether anything was actually queued, and only then flush.
 
 ---
 
-### delete() · [source](../../src/Orm/Document.php#L55)
+### delete() · [source](../../src/Orm/Document.php#L54)
 
 `public function delete(): bool`
 
@@ -61,7 +61,7 @@ check whether anything was actually queued, and only then flush.
 
 ---
 
-### hasChanged() · [source](../../src/Orm/Document.php#L23)
+### hasChanged() · [source](../../src/Orm/Document.php#L86)
 
 `public function hasChanged(): bool`
 
@@ -75,7 +75,7 @@ true when any metadata column has a set value).
 
 ---
 
-### changedData() · [source](../../src/Orm/Document.php#L34)
+### changedData() · [source](../../src/Orm/Document.php#L97)
 
 `public function changedData(): array`
 
@@ -89,7 +89,7 @@ Field-name-keyed map of values that differ from the heap baseline
 
 ---
 
-### loadState() · [source](../../src/Orm/Document.php#L43)
+### loadState() · [source](../../src/Orm/Document.php#L106)
 
 `public function loadState(): static`
 

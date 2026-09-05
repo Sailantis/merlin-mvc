@@ -73,7 +73,25 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### deleteOne() · [source](../../src/Orm/Storage/PdoStore.php#L77)
+### upsertOne() · [source](../../src/Orm/Storage/PdoStore.php#L77)
+
+`public function upsertOne(string $class, array $data): array`
+
+**🧭 Parameters**
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `$class` | string | - |  |
+| `$data` | array | - |  |
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### deleteOne() · [source](../../src/Orm/Storage/PdoStore.php#L111)
 
 `public function deleteOne(string $class, array $id): void`
 
@@ -91,7 +109,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### findBy() · [source](../../src/Orm/Storage/PdoStore.php#L85)
+### findBy() · [source](../../src/Orm/Storage/PdoStore.php#L119)
 
 `public function findBy(string $class, array $where): array`
 
@@ -109,7 +127,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### findByPk() · [source](../../src/Orm/Storage/PdoStore.php#L94)
+### findByPk() · [source](../../src/Orm/Storage/PdoStore.php#L128)
 
 `public function findByPk(string $class, array $id): array|null`
 
@@ -127,7 +145,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### count() · [source](../../src/Orm/Storage/PdoStore.php#L100)
+### count() · [source](../../src/Orm/Storage/PdoStore.php#L134)
 
 `public function count(string $class, array $where = []): int`
 
@@ -145,7 +163,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### begin() · [source](../../src/Orm/Storage/PdoStore.php#L109)
+### begin() · [source](../../src/Orm/Storage/PdoStore.php#L143)
 
 `public function begin(): void`
 
@@ -156,7 +174,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### commit() · [source](../../src/Orm/Storage/PdoStore.php#L114)
+### commit() · [source](../../src/Orm/Storage/PdoStore.php#L148)
 
 `public function commit(): void`
 
@@ -167,7 +185,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### rollback() · [source](../../src/Orm/Storage/PdoStore.php#L119)
+### rollback() · [source](../../src/Orm/Storage/PdoStore.php#L153)
 
 `public function rollback(): void`
 
@@ -178,7 +196,7 @@ no-RETURNING driver -> lastInsertId.
 
 ---
 
-### inTransaction() · [source](../../src/Orm/Storage/PdoStore.php#L124)
+### inTransaction() · [source](../../src/Orm/Storage/PdoStore.php#L158)
 
 `public function inTransaction(): bool`
 

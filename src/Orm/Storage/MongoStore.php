@@ -103,6 +103,37 @@ final class MongoStore implements Store
         return ['row' => null, 'id' => null];
     }
 
+    public function upsertOne(string $class, array $data): array
+    {
+        $meta = Metadata::for($class);
+        $pk   = self::pkName($meta);
+
+        // Filter = the PK (the conflict target); $set = the full caller
+        // payload minus the PK. upsert:true makes the SERVER resolve
+        // insert-vs-update atomically — the mongo twin of ON CONFLICT.
+        $set = $data;
+        unset($set[$pk]);
+
+        $result = $this->collection($meta)->updateOne(
+            self::prepareFilter([$pk => $data[$pk] ?? null]),
+            ['$set' => $set],
+            ['upsert' => true],
+        );
+
+        // Backfill: server-generated ids on the upsert-miss path land in
+        // getUpsertedId() (the driver mints the ObjectId server-side); the
+        // hit path already knows its id.
+        $upserted = null;
+        if (method_exists($result, 'getUpsertedId')) {
+            $upserted = $result->getUpsertedId();
+        }
+
+        return [
+            'row' => null,
+            'id'  => $upserted !== null ? (is_object($upserted) ? (string) $upserted : $upserted) : null,
+        ];
+    }
+
     public function deleteOne(string $class, array $id): void
     {
         $meta = Metadata::for($class);

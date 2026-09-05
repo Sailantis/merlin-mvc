@@ -12,13 +12,9 @@ query builder remains available for advanced reads via `query()`
 / `with()` — its entities()/firstEntity() terminals hydrate onto
 the SAME heap, so builder reads and facade reads share identity.
 
-The only builder-backed write left here is `upsert()`: a single
-atomic INSERT ... ON CONFLICT statement, which the EM pipeline does
-not model.
-
 ## 🚀 Public methods
 
-### source() · [source](../../src/Orm/Model.php#L48)
+### source() · [source](../../src/Orm/Model.php#L40)
 
 `public function source(): string`
 
@@ -39,7 +35,7 @@ keeps that recursion-free.
 
 ---
 
-### schema() · [source](../../src/Orm/Model.php#L66)
+### schema() · [source](../../src/Orm/Model.php#L58)
 
 `public function schema(): string|null`
 
@@ -54,7 +50,7 @@ declared schema() override > null.
 
 ---
 
-### idFields() · [source](../../src/Orm/Model.php#L84)
+### idFields() · [source](../../src/Orm/Model.php#L76)
 
 `public function idFields(): array`
 
@@ -73,7 +69,7 @@ override resolves through the compile-time re-entrancy guard.
 
 ---
 
-### query() · [source](../../src/Orm/Model.php#L103)
+### query() · [source](../../src/Orm/Model.php#L95)
 
 `public static function query(string|null $alias = null): Azera\Db\Query`
 
@@ -94,7 +90,7 @@ Its entities()/firstEntity() terminals hydrate heap-tracked entities on the requ
 
 ---
 
-### with() · [source](../../src/Orm/Model.php#L119)
+### with() · [source](../../src/Orm/Model.php#L111)
 
 `public static function with(string ...$relations): Azera\Db\Query`
 
@@ -117,7 +113,7 @@ declared via Orm attributes on the model.
 
 ---
 
-### create() · [source](../../src/Orm/Model.php#L139)
+### create() · [source](../../src/Orm/Model.php#L131)
 
 `public static function create(array $values): static`
 
@@ -137,7 +133,7 @@ Create a new model instance with the given values and save it to the database. R
 
 ---
 
-### upsert() · [source](../../src/Orm/Model.php#L165)
+### upsert() · [source](../../src/Orm/Model.php#L157)
 
 `public static function upsert(array $values): static`
 
@@ -145,12 +141,11 @@ Create or update a model using database-level UPSERT semantics
 (INSERT ... ON CONFLICT DO UPDATE). A single atomic statement with
 no prior SELECT — the database handles the conflict resolution.
 
-This is the ONE write that bypasses the EntityManager pipeline
-(the EM has no atomic upsert equivalent).
-
-All ID fields must be present in $values so the conflict target is
-well-defined. On conflict, all non-ID fields from $values are
-updated.
+Routed through the [`EntityManager`](Orm_EntityManager.md): the entity lands in the
+identity map (MANAGED after flush) and the statement joins any open
+flush transaction. All ID fields must be present in $values so the
+conflict target is well-defined; on conflict, all non-ID fields
+from $values are updated.
 
 **🧭 Parameters**
 
@@ -166,7 +161,7 @@ updated.
 
 ---
 
-### firstOrCreate() · [source](../../src/Orm/Model.php#L184)
+### firstOrCreate() · [source](../../src/Orm/Model.php#L178)
 
 `public static function firstOrCreate(array $conditions, array $values = []): static`
 
@@ -187,7 +182,7 @@ Find the first model matching the given conditions or create a new one with the 
 
 ---
 
-### updateOrCreate() · [source](../../src/Orm/Model.php#L201)
+### updateOrCreate() · [source](../../src/Orm/Model.php#L195)
 
 `public static function updateOrCreate(array $conditions, array $values = []): static`
 
@@ -208,7 +203,7 @@ Find the first model matching the given conditions or update it with the provide
 
 ---
 
-### find() · [source](../../src/Orm/Model.php#L230)
+### find() · [source](../../src/Orm/Model.php#L224)
 
 `public static function find(mixed $id): static|null`
 
@@ -230,7 +225,7 @@ one request yields the same object.
 
 ---
 
-### findOrFail() · [source](../../src/Orm/Model.php#L245)
+### findOrFail() · [source](../../src/Orm/Model.php#L239)
 
 `public static function findOrFail(mixed $id): static`
 
@@ -253,7 +248,7 @@ Finds a model by its ID(s) or throws an exception if not found
 
 ---
 
-### findOne() · [source](../../src/Orm/Model.php#L261)
+### findOne() · [source](../../src/Orm/Model.php#L255)
 
 `public static function findOne(array $conditions): static|null`
 
@@ -274,7 +269,7 @@ heap-tracked result), or null when nothing matches.
 
 ---
 
-### findAll() · [source](../../src/Orm/Model.php#L277)
+### findAll() · [source](../../src/Orm/Model.php#L271)
 
 `public static function findAll(array $conditions = []): array`
 
@@ -296,7 +291,7 @@ are provided, it returns all models.
 
 ---
 
-### exists() · [source](../../src/Orm/Model.php#L291)
+### exists() · [source](../../src/Orm/Model.php#L285)
 
 `public static function exists(array $conditions): bool`
 
@@ -316,7 +311,7 @@ Check if any model exists matching the given conditions. Returns true if at leas
 
 ---
 
-### count() · [source](../../src/Orm/Model.php#L305)
+### count() · [source](../../src/Orm/Model.php#L299)
 
 `public static function count(array $conditions = []): int`
 
@@ -336,7 +331,7 @@ Count the number of models matching the given conditions. Returns the count as a
 
 ---
 
-### save() · [source](../../src/Orm/Model.php#L376)
+### save() · [source](../../src/Orm/Model.php#L370)
 
 `public function save(): bool`
 
@@ -358,7 +353,7 @@ Returns true when a write happened (a no-op flush — nothing scheduled
 
 ---
 
-### delete() · [source](../../src/Orm/Model.php#L413)
+### delete() · [source](../../src/Orm/Model.php#L407)
 
 `public function delete(): bool`
 
@@ -374,7 +369,49 @@ all ID fields are set; throws otherwise.
 
 ---
 
-### setDefaultRole() · [source](../../src/Orm/Model.php#L490)
+### hasChanged() · [source](../../src/Orm/Model.php#L433)
+
+`public function hasChanged(): bool`
+
+Whether any field differs from the heap baseline (untracked entity:
+true when any metadata column has a set value).
+
+**➡️ Return value**
+
+- Type: bool
+
+
+---
+
+### changedData() · [source](../../src/Orm/Model.php#L444)
+
+`public function changedData(): array`
+
+Field-name-keyed map of values that differ from the heap baseline
+(untracked entity: all set values).
+
+**➡️ Return value**
+
+- Type: array
+
+
+---
+
+### loadState() · [source](../../src/Orm/Model.php#L453)
+
+`public function loadState(): static`
+
+Revert all properties to the values recorded in the heap node
+snapshot (the loadState() replacement). No-op for untracked entities.
+
+**➡️ Return value**
+
+- Type: static
+
+
+---
+
+### setDefaultRole() · [source](../../src/Orm/Model.php#L474)
 
 `public static function setDefaultRole(string $role): void`
 
@@ -393,7 +430,7 @@ Set both the read and write database role for this model class.
 
 ---
 
-### setDefaultReadRole() · [source](../../src/Orm/Model.php#L501)
+### setDefaultReadRole() · [source](../../src/Orm/Model.php#L485)
 
 `public static function setDefaultReadRole(string $role): void`
 
@@ -412,7 +449,7 @@ Set the database role used for SELECT queries on this model class.
 
 ---
 
-### setDefaultWriteRole() · [source](../../src/Orm/Model.php#L511)
+### setDefaultWriteRole() · [source](../../src/Orm/Model.php#L495)
 
 `public static function setDefaultWriteRole(string $role): void`
 
@@ -431,7 +468,7 @@ Set the database role used for INSERT/UPDATE/DELETE queries on this model class.
 
 ---
 
-### readRole() · [source](../../src/Orm/Model.php#L548)
+### readRole() · [source](../../src/Orm/Model.php#L532)
 
 `public function readRole(): string`
 
@@ -445,7 +482,7 @@ Return the database connection role used for read (SELECT) queries.
 
 ---
 
-### writeRole() · [source](../../src/Orm/Model.php#L558)
+### writeRole() · [source](../../src/Orm/Model.php#L542)
 
 `public function writeRole(): string`
 
@@ -459,7 +496,7 @@ Return the database connection role used for write (INSERT/UPDATE/DELETE) querie
 
 ---
 
-### readConnection() · [source](../../src/Orm/Model.php#L570)
+### readConnection() · [source](../../src/Orm/Model.php#L554)
 
 `public function readConnection(): Azera\Db\Database`
 
@@ -474,7 +511,7 @@ Resolves the configured read role via [`DatabaseManager::getOrDefault()`](Db_Dat
 
 ---
 
-### writeConnection() · [source](../../src/Orm/Model.php#L583)
+### writeConnection() · [source](../../src/Orm/Model.php#L567)
 
 `public function writeConnection(): Azera\Db\Database`
 
@@ -485,48 +522,6 @@ Resolves the configured write role via [`DatabaseManager::getOrDefault()`](Db_Da
 **➡️ Return value**
 
 - Type: [Database](Db_Database.md)
-
-
----
-
-### hasChanged() · [source](../../src/Orm/Model.php#L23)
-
-`public function hasChanged(): bool`
-
-Whether any field differs from the heap baseline (untracked entity:
-true when any metadata column has a set value).
-
-**➡️ Return value**
-
-- Type: bool
-
-
----
-
-### changedData() · [source](../../src/Orm/Model.php#L34)
-
-`public function changedData(): array`
-
-Field-name-keyed map of values that differ from the heap baseline
-(untracked entity: all set values).
-
-**➡️ Return value**
-
-- Type: array
-
-
----
-
-### loadState() · [source](../../src/Orm/Model.php#L43)
-
-`public function loadState(): static`
-
-Revert all properties to the values recorded in the heap node
-snapshot (the loadState() replacement). No-op for untracked entities.
-
-**➡️ Return value**
-
-- Type: static
 
 
 

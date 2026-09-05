@@ -33,6 +33,9 @@ final class Node
     /** Removed from storage; entity detached from identity tracking. */
     public const DELETED = 6;
 
+    /** Queued for a single-statement UPSERT (INSERT ... ON CONFLICT DO UPDATE) at the next flush. */
+    public const SCHEDULED_UPSERT = 7;
+
     public function __construct(
         public readonly string $class,
         public readonly array $id,
@@ -45,6 +48,7 @@ final class Node
     {
         return $this->state === self::SCHEDULED_INSERT
             || $this->state === self::SCHEDULED_UPDATE
+            || $this->state === self::SCHEDULED_UPSERT
             || $this->state === self::SCHEDULED_DELETE;
     }
 }

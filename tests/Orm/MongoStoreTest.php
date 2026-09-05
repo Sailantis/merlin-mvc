@@ -118,6 +118,51 @@ final class MongoStoreTest extends TestCase
         $this->assertSame([], $fakes->docs);
     }
 
+    /**
+     * upsertOne = updateOne(filter: PK, $set minus PK, upsert:true) — the
+     * mongo twin of ON CONFLICT. Hit path: $set merges onto the doc.
+     */
+    public function testUpsertUpdatesExistingDoc(): void
+    {
+        $fakes = $this->fakes->for('articles');
+        $fakes->docs = [['_id' => 'a', 'title' => 'Old', 'tags' => ['x']]];
+
+        $result = $this->store->upsertOne(ArticleDocument::class, [
+            '_id'   => 'a',
+            'title' => 'New',
+        ]);
+
+        $this->assertSame(['row' => null, 'id' => null], $result); // hit: no new id
+        $this->assertSame('New', $fakes->docs[0]['title']);
+        $this->assertSame(['x'], $fakes->docs[0]['tags']); // untouched ($set partial)
+
+        $update = $fakes->calls[0];
+        $this->assertSame('update', $update['op']);
+        $this->assertSame(['_id' => 'a'], $update['args'][0]);
+        $this->assertSame(['$set' => ['title' => 'New']], $update['args'][1]);
+        $this->assertTrue($update['args'][2]['upsert']);
+    }
+
+    /**
+     * Upsert miss: the server mints the id — the fake mirrors the driver
+     * semantic (upsertedId backfill), the doc lands with filter+$set merged.
+     */
+    public function testUpsertInsertsWhenMissingAndBackfillsGeneratedId(): void
+    {
+        $fakes = $this->fakes->for('articles');
+
+        $result = $this->store->upsertOne(ArticleDocument::class, [
+            '_id'   => 'custom-42',
+            'title' => 'Fresh',
+        ]);
+
+        $this->assertSame('custom-42', $result['id']); // upserted doc keeps the filter's id
+        $this->assertCount(1, $fakes->docs);
+        $this->assertSame('custom-42', $fakes->docs[0]['_id']);
+        $this->assertSame('Fresh', $fakes->docs[0]['title']);
+        $this->assertSame(['title' => 'Fresh'], $fakes->calls[0]['args'][1]['$set']);
+    }
+
     public function testCount(): void
     {
         $fakes = $this->fakes->for('articles');

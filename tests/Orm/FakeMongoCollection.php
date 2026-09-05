@@ -63,14 +63,29 @@ final class FakeMongoCollection
         return new FakeInsertOneResult($id);
     }
 
-    public function updateOne(array|object $filter, array|object $update): object
+    public function updateOne(array|object $filter, array|object $update, array $options = []): object
     {
         $filter = (array) $filter;
         $update = (array) $update;
-        $this->calls[] = ['op' => 'update', 'args' => [$filter, $update]];
+        $this->calls[] = ['op' => 'update', 'args' => [$filter, $update, $options]];
 
         $index = $this->matchIndex($filter);
         if ($index === null) {
+            if (($options['upsert'] ?? false) === true) {
+                // Upsert miss: mongo builds the doc from the filter's
+                // equality fields + the $set payload. A caller-set _id in
+                // the filter is KEPT (never regenerated); only a _id-less
+                // filter gets a driver-minted id.
+                $doc = $filter;
+                if (!isset($doc['_id'])) {
+                    $doc['_id'] = (string) $this->nextId++;
+                }
+                foreach (($update['$set'] ?? []) as $k => $v) {
+                    $doc[$k] = $v;
+                }
+                $this->docs[] = $doc;
+                return new FakeUpsertResult(0, $doc['_id']);
+            }
             return new FakeUpdateResult(0);
         }
 
@@ -169,9 +184,7 @@ final class FakeMongoCollection
 /** Mirrors MongoCollection::findOne()'s cursor return contract (iterable). */
 final class FakeCursor implements \IteratorAggregate
 {
-    public function __construct(private array $docs)
-    {
-    }
+    public function __construct(private array $docs) {}
 
     public function getIterator(): \ArrayIterator
     {
@@ -181,9 +194,7 @@ final class FakeCursor implements \IteratorAggregate
 
 final class FakeInsertOneResult
 {
-    public function __construct(private mixed $insertedId)
-    {
-    }
+    public function __construct(private mixed $insertedId) {}
 
     public function getInsertedId(): mixed
     {
@@ -193,9 +204,7 @@ final class FakeInsertOneResult
 
 final class FakeUpdateResult
 {
-    public function __construct(private int $modified)
-    {
-    }
+    public function __construct(private int $modified) {}
 
     public function getModifiedCount(): int
     {
@@ -203,11 +212,28 @@ final class FakeUpdateResult
     }
 }
 
+/** Mirrors MongoCollection::updateOne()'s upsert result contract. */
+final class FakeUpsertResult
+{
+    public function __construct(
+        private int $modified,
+        private mixed $upsertedId,
+    ) {}
+
+    public function getModifiedCount(): int
+    {
+        return $this->modified;
+    }
+
+    public function getUpsertedId(): mixed
+    {
+        return $this->upsertedId;
+    }
+}
+
 final class FakeDeleteResult
 {
-    public function __construct(private int $deleted)
-    {
-    }
+    public function __construct(private int $deleted) {}
 }
 
 /**

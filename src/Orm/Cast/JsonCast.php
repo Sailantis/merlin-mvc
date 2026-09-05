@@ -40,8 +40,8 @@ final class JsonCast implements Cast
 
         if ($json === false) {
             throw new \RuntimeException(
-                'Cannot encode value as JSON for storage: ' .
-                \json_last_error_msg()
+                'Cannot encode value as JSON for storage: '
+                . \json_last_error_msg()
             );
         }
 

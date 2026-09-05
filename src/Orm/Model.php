@@ -7,7 +7,6 @@ use Azera\Db\Database;
 use Azera\Db\ModelMapping;
 use Azera\Db\Query;
 use Azera\Db\Resolver\ModelResolver;
-use Azera\Db\ResultSet;
 
 /**
  * Active-Record model over the {@see EntityManager}.
@@ -19,10 +18,6 @@ use Azera\Db\ResultSet;
  * query builder remains available for advanced reads via {@see query()}
  * / {@see with()} — its entities()/firstEntity() terminals hydrate onto
  * the SAME heap, so builder reads and facade reads share identity.
- *
- * The only builder-backed write left here is {@see upsert()}: a single
- * atomic INSERT ... ON CONFLICT statement, which the EM pipeline does
- * not model.
  */
 #[\AllowDynamicProperties]
 abstract class Model
@@ -149,12 +144,12 @@ abstract class Model
      * Create or update a model using database-level UPSERT semantics
      * (INSERT ... ON CONFLICT DO UPDATE). A single atomic statement with
      * no prior SELECT — the database handles the conflict resolution.
-     * This is the ONE write that bypasses the EntityManager pipeline
-     * (the EM has no atomic upsert equivalent).
      *
-     * All ID fields must be present in $values so the conflict target is
-     * well-defined. On conflict, all non-ID fields from $values are
-     * updated.
+     * Routed through the {@see EntityManager}: the entity lands in the
+     * identity map (MANAGED after flush) and the statement joins any open
+     * flush transaction. All ID fields must be present in $values so the
+     * conflict target is well-defined; on conflict, all non-ID fields
+     * from $values are updated.
      *
      * @param array $values Associative array of field values (must include all ID fields)
      * @return static The model instance with the given values
@@ -167,7 +162,9 @@ abstract class Model
             $instance->$key = $value;
         }
 
-        $instance->performUpsert($values);
+        $em = AppContext::instance()->entityManager();
+        $em->upsert($instance);
+        $em->flush();
 
         return $instance;
     }
@@ -423,50 +420,6 @@ abstract class Model
         $em->remove($this)->flush();
 
         return true;
-    }
-
-    /**
-     * Single-statement atomic UPSERT through the query builder
-     * (INSERT ... ON CONFLICT DO UPDATE + RETURNING backfill).
-     *
-     * @param array<string, mixed> $values
-     */
-    private function performUpsert(array $values): void
-    {
-        $idFields = $this->idFields();
-
-        // Drop null values — the builder interpolates what remains.
-        $set = [];
-        foreach ($values as $field => $value) {
-            if ($value === null) {
-                continue;
-            }
-            $set[$field] = $value;
-        }
-
-        $builder = static::query()
-            ->updateValues($set)
-            ->conflict($idFields);
-
-        $db = $this->writeConnection();
-
-        if ($db->supportsReturning()) {
-            $result = $builder->returning(['*'])->insert($set);
-            if ($result instanceof ResultSet && ($row = $result->fetchAssoc())) {
-                foreach ($row as $field => $value) {
-                    if (!isset($this->$field)) {
-                        $this->$field = $value;
-                    }
-                }
-                // Close the RETURNING cursor immediately. An open cursor on a
-                // write statement keeps the connection's write lock held
-                // (SQLite WAL), which would block writes from other
-                // connections.
-                $result->closeCursor();
-            }
-        } else {
-            $builder->insert($set);
-        }
     }
 
     /* -------------------------------------------------------------

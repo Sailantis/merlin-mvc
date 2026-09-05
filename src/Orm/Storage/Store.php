@@ -32,6 +32,19 @@ interface Store
     public function updateOne(string $class, array $data, array $id): array;
 
     /**
+     * Atomic UPSERT: INSERT ... ON CONFLICT DO UPDATE (SQL) / updateOne
+     * with upsert:true (Mongo). The caller-set PK is the conflict target —
+     * $data must carry every PK column. Existence is resolved BY THE
+     * DATABASE at write time: no prior SELECT, no insert-or-update guess.
+     * Returns raw row(s) for backfill, same contract as insertOne
+     * (RETURNING * when unset non-PK columns should refresh DB defaults).
+     *
+     * @param array<string, mixed> $data column-name-keyed raw values (PK included)
+     * @return array{row: ?array, id: int|string|null}
+     */
+    public function upsertOne(string $class, array $data): array;
+
+    /**
      * Delete one entity by PK values.
      * @param array<string, mixed> $id PK field => value
      */
