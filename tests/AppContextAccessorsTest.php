@@ -199,4 +199,32 @@ class AppContextAccessorsTest extends TestCase
         $this->assertSame($router, $ctx->router());
         $this->assertSame($logger, $ctx->logger());
     }
+
+    public function testClearRequestScopeWipesHeapAndEntityManager(): void
+    {
+        $ctx = AppContext::instance();
+
+        // Prime the heap with a tracked entity (simulates a request that
+        // loaded/flushed ORM entities).
+        $em     = $ctx->entityManager();
+        $heap   = $ctx->heap();
+        $entity = new \stdClass();
+        $heap->attach($entity, new \Azera\Orm\Node(
+            \Azera\Tests\Orm\Fixtures\Article::class,
+            ['id' => 1],
+            ['id' => 1],
+            \Azera\Orm\Node::MANAGED,
+        ));
+
+        $this->assertSame(1, $heap->count());
+
+        $ctx->clearRequestScope();
+
+        // Identity state is wiped in place — the same heap/EM instances stay
+        // registered (persistent-worker contract: handles survive, state dies).
+        $this->assertSame(0, $heap->count());
+        $this->assertSame([], $heap->all());
+        $this->assertSame($em, $ctx->entityManager());
+        $this->assertSame($heap, $ctx->heap());
+    }
 }

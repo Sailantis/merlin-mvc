@@ -36,6 +36,16 @@ final class Heap implements RequestScoped
     private array $entities = [];
 
     /**
+     * Reverse index for O(1) entityFor(): spl_object_id(node) =>
+     * spl_object_id(entity). entityFor() is on the flush hot path (every
+     * scheduled write resolves its entity through it); a linear scan over
+     * $entities made flush cost grow with total tracked entities.
+     *
+     * @var array<int, int> spl_object_id(node) => spl_object_id(entity)
+     */
+    private array $nodeOids = [];
+
+    /**
      * Build the composite identity key for an entity.
      *
      * Assoc id arrays are canonicalized (ksort) so ['a'=>1,'b'=>2] and
@@ -81,14 +91,16 @@ final class Heap implements RequestScoped
         // drop the stale oid mapping so it cannot leak across identities.
         // Single isset() instead of null-coalesce: no node allocation on hit.
         if (isset($this->oids[$oid]) && $this->oids[$oid] !== $node) {
-            unset($this->nodes[self::key($this->oids[$oid]->class, $this->oids[$oid]->id)]);
+            $stale = $this->oids[$oid];
+            unset($this->nodes[self::key($stale->class, $stale->id)], $this->nodeOids[spl_object_id($stale)]);
         }
 
         $key = self::key($node->class, $node->id);
 
-        $this->nodes[$key] = $node;
-        $this->oids[$oid] = $node;
-        $this->entities[$oid] = $entity;
+        $this->nodes[$key]                    = $node;
+        $this->oids[$oid]                     = $node;
+        $this->entities[$oid]                 = $entity;
+        $this->nodeOids[spl_object_id($node)] = $oid;
     }
 
     /**
@@ -115,13 +127,11 @@ final class Heap implements RequestScoped
      */
     public function detach(object $entity): void
     {
-        $oid = \spl_object_id($entity);
+        $oid  = \spl_object_id($entity);
         $node = $this->oids[$oid] ?? null;
 
         if ($node !== null) {
-            unset($this->nodes[self::key($node->class, $node->id)]);
-            unset($this->oids[$oid]);
-            unset($this->entities[$oid]);
+            unset($this->nodes[self::key($node->class, $node->id)], $this->oids[$oid], $this->entities[$oid], $this->nodeOids[spl_object_id($node)]);
         }
     }
 
@@ -145,16 +155,13 @@ final class Heap implements RequestScoped
     /**
      * Resolve the entity object a node was attached with (flush-time
      * backfill needs the actual instance, not just its bookkeeping node).
+     * O(1) via the reverse node => oid index.
      */
     public function entityFor(Node $node): ?object
     {
-        foreach ($this->entities as $oid => $entity) {
-            if (($this->oids[$oid] ?? null) === $node) {
-                return $entity;
-            }
-        }
+        $oid = $this->nodeOids[spl_object_id($node)] ?? null;
 
-        return null;
+        return $oid === null ? null : $this->entities[$oid];
     }
 
     /**
@@ -179,8 +186,9 @@ final class Heap implements RequestScoped
      */
     public function resetState(): void
     {
-        $this->nodes = [];
-        $this->oids = [];
+        $this->nodes    = [];
+        $this->oids     = [];
         $this->entities = [];
+        $this->nodeOids = [];
     }
 }

@@ -104,4 +104,47 @@ class HeapTest extends TestCase
         $this->assertSame([], $heap->all());
         $this->assertSame([], $heap->scheduled());
     }
+
+    public function testEntityForResolvesAttachedNodes(): void
+    {
+        $heap   = new Heap();
+        $entity = new stdClass();
+        $node   = new Node(Article::class, ['id' => 9], ['id' => 9], Node::MANAGED);
+
+        $heap->attach($entity, $node);
+
+        $this->assertSame($entity, $heap->entityFor($node));
+        $this->assertNull($heap->entityFor(new Node(Article::class, ['id' => 10], [])));
+    }
+
+    public function testEntityForStaleNodeIsNull(): void
+    {
+        $heap   = new Heap();
+        $entity = new stdClass();
+        $node   = new Node(Article::class, ['id' => 3], []);
+
+        $heap->attach($entity, $node);
+        $heap->detach($entity);
+
+        // Detached: the reverse index must not resolve the dropped node.
+        $this->assertNull($heap->entityFor($node));
+    }
+
+    public function testEntityForAfterReplaceKeepsNewestEntity(): void
+    {
+        $heap    = new Heap();
+        $first   = new stdClass();
+        $second  = new stdClass();
+        $nodeOne = new Node(Article::class, ['id' => 4], [], Node::MANAGED);
+        $nodeTwo = new Node(Article::class, ['id' => 4], [], Node::MANAGED);
+
+        $heap->attach($first, $nodeOne);
+
+        // Same identity, different entity object: attach() replaces the
+        // mapping — entityFor must resolve the NEWEST pairing both ways.
+        $heap->attach($second, $nodeTwo);
+
+        $this->assertSame($second, $heap->entityFor($nodeTwo));
+        $this->assertSame(1, $heap->count());
+    }
 }

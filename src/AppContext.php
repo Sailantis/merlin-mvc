@@ -39,14 +39,14 @@ class AppContext
     protected function registerDefaultServices(): void
     {
         $this->serviceDefinitions = [
-            Session::class => fn() => $this->session(),
-            Cookies::class => fn() => $this->cookies(),
-            HttpRequest::class => fn() => $this->request(),
-            ViewEngine::class => fn() => $this->view(),
+            Session::class         => fn() => $this->session(),
+            Cookies::class         => fn() => $this->cookies(),
+            HttpRequest::class     => fn() => $this->request(),
+            ViewEngine::class      => fn() => $this->view(),
             DatabaseManager::class => fn() => $this->dbManager(),
-            Router::class => fn() => $this->router(),
-            Dispatcher::class => fn() => $this->dispatcher(),
-            TableResolver::class => fn() => $this->get(ModelResolver::class),
+            Router::class          => fn() => $this->router(),
+            Dispatcher::class      => fn() => $this->dispatcher(),
+            TableResolver::class   => fn() => $this->get(ModelResolver::class),
             Heap::class            => fn() => $this->heap(),
             EntityManager::class   => fn() => $this->entityManager(),
             AppContext::class      => fn() => $this,
@@ -164,7 +164,7 @@ class AppContext
     {
         $this->view = $engine;
         $this->serviceDefinitions[ViewEngine::class] = $engine;
-        $this->serviceInstances[ViewEngine::class] = $engine;
+        $this->serviceInstances[ViewEngine::class]   = $engine;
         return $this;
     }
 
@@ -407,7 +407,7 @@ class AppContext
         // Class-level attributes are NOT inherited by PHP, so we walk
         // up the parent chain ourselves.
         $hasAdvised = false;
-        $class = $ref;
+        $class      = $ref;
         do {
             if ($class->getAttributes(Advised::class) !== []) {
                 $hasAdvised = true;
@@ -451,9 +451,9 @@ class AppContext
      */
     public function setSession(Session $session): void
     {
-        $this->session = $session;
+        $this->session                            = $session;
         $this->serviceDefinitions[Session::class] = $session;
-        $this->serviceInstances[Session::class] = $session;
+        $this->serviceInstances[Session::class]   = $session;
     }
 
     /**
@@ -516,6 +516,14 @@ class AppContext
                 $service->resetState();
             }
         }
+
+        // The ORM identity map and EntityManager live in dedicated lazily
+        // created properties (NOT in serviceInstances), so the loop above
+        // cannot reach them. Wipe them explicitly — both carry per-request
+        // identity state, and a leaking heap would serve stale entities
+        // across requests/tenants in persistent workers.
+        $this->heap?->resetState();
+        $this->entityManager?->resetState();
     }
 
     // --- Service Container ---
@@ -576,7 +584,7 @@ class AppContext
         if (class_exists($id)) {
             $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -607,7 +615,7 @@ class AppContext
         if (class_exists($id)) {
             $service = $this->build($id);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -658,7 +666,7 @@ class AppContext
         if (is_string($definition) && class_exists($definition)) {
             $service = $this->build($definition);
             $this->serviceDefinitions[$id] = $service;
-            $this->serviceInstances[$id] = $service;
+            $this->serviceInstances[$id]   = $service;
             $this->syncKnownServiceProperty($id, $service);
             return $service;
         }
@@ -781,7 +789,7 @@ class AppContext
         foreach ($ref->getConstructor()->getParameters() as $param) {
 
             $typeObj = $param->getType();
-            $types = [];
+            $types   = [];
 
             // Extract all possible types (Named, Union, Intersection)
             if ($typeObj instanceof \ReflectionNamedType) {
