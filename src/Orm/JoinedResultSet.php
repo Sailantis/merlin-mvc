@@ -17,7 +17,7 @@ use Azera\Db\Database;
  * All entities hydrate into the REQUEST-SCOPED heap (AppContext::heap()),
  * so a parent joined across many rows — or read again later in the same
  * request — is the same object instance, and to-many children attach to
- * the same identity map the UnitOfWork uses.
+ * the same identity map the EntityManager uses.
  *
  * Deliberately NOT a ResultSet: no FETCH_CLASS double-write, no wrapper
  * cursor; iteration yields root entities with relations attached.
@@ -31,7 +31,6 @@ final class JoinedResultSet implements \IteratorAggregate
     public function __construct(
         private array $rows,
         private array $plan,
-        private string $rootClass,
         private ?Database $db = null,
     )
     {
@@ -39,7 +38,7 @@ final class JoinedResultSet implements \IteratorAggregate
 
     public function getIterator(): \Generator
     {
-        $heap     = AppContext::instance()->heap();
+        $heap = AppContext::instance()->heap();
         $splitter = new RowSplitter($heap);
 
         // 1) Split every flat row into root + joined to-one entities.
@@ -91,10 +90,10 @@ final class JoinedResultSet implements \IteratorAggregate
             ?? throw new \LogicException('No connection available for to-many eager load');
 
         foreach ($specs as $spec) {
-            $relation   = $spec['relation'];
-            $target     = $spec['class'];
+            $relation = $spec['relation'];
+            $target = $spec['class'];
             $foreignKey = $spec['foreignKey']; // column on the target table
-            $ownerKey   = $spec['ownerKey'];   // field on the root entity
+            $ownerKey = $spec['ownerKey']; // field on the root entity
 
             $ids = [];
             foreach ($roots as $root) {
@@ -112,12 +111,12 @@ final class JoinedResultSet implements \IteratorAggregate
             }
 
             $values = \array_values($ids);
-            $meta   = Metadata::for($target);
-            $table  = $db->quoteIdentifier($meta['source']);
-            $fkCol  = $db->quoteIdentifier($foreignKey);
+            $meta = Metadata::for($target);
+            $table = $db->quoteIdentifier($meta['schema'] ?? null, $meta['source']);
+            $fkCol = $db->quoteIdentifier($foreignKey);
 
             $placeholders = implode(', ', \array_fill(0, \count($values), '?'));
-            $rows         = $db->selectAll(
+            $rows = $db->selectAll(
                 "SELECT * FROM {$table} WHERE {$fkCol} IN ({$placeholders})",
                 $values,
                 \PDO::FETCH_ASSOC
@@ -125,7 +124,7 @@ final class JoinedResultSet implements \IteratorAggregate
 
             // Hydrate into the shared heap (identity) and group by FK.
             $hydrator = FastHydrator::for($target);
-            $grouped  = [];
+            $grouped = [];
             foreach ($rows as $row) {
                 [$entity] = $hydrator->hydrate($heap, $row);
                 if ($entity === null) {

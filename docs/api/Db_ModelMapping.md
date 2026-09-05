@@ -1,6 +1,6 @@
 # 🧩 Class: ModelMapping
 
-**Full name:** [Azera\Core\ModelMapping](../../src/Core/ModelMapping.php)
+**Full name:** [Azera\Db\ModelMapping](../../src/Db/ModelMapping.php)
 
 ModelMapping is a configuration class that maps logical model names to
 database table sources.
@@ -11,7 +11,7 @@ and optional pluralization.
 
 ## 🚀 Public methods
 
-### fromArray() · [source](../../src/Core/ModelMapping.php#L24)
+### fromArray() · [source](../../src/Db/ModelMapping.php#L26)
 
 `public static function fromArray(array $mapping): static`
 
@@ -30,7 +30,7 @@ Create ModelMapping from array config
 
 ---
 
-### usePluralTableNames() · [source](../../src/Core/ModelMapping.php#L91)
+### usePluralTableNames() · [source](../../src/Db/ModelMapping.php#L93)
 
 `public static function usePluralTableNames(bool $enable): void`
 
@@ -52,7 +52,7 @@ When enabled, model names are converted to plural snake_case table names
 
 ---
 
-### usingPluralTableNames() · [source](../../src/Core/ModelMapping.php#L99)
+### usingPluralTableNames() · [source](../../src/Db/ModelMapping.php#L101)
 
 `public static function usingPluralTableNames(): bool`
 
@@ -65,7 +65,7 @@ Returns whether automatic table name pluralization is enabled.
 
 ---
 
-### add() · [source](../../src/Core/ModelMapping.php#L114)
+### add() · [source](../../src/Db/ModelMapping.php#L116)
 
 `public function add(string $name, string|null $source = null, string|null $schema = null, string|null $connection = null, string|null $read = null, string|null $write = null): static`
 
@@ -89,7 +89,7 @@ Add model mapping
 
 ---
 
-### get() · [source](../../src/Core/ModelMapping.php#L137)
+### get() · [source](../../src/Db/ModelMapping.php#L139)
 
 `public function get(string $name): array|null`
 
@@ -108,7 +108,7 @@ Get model mapping by name
 
 ---
 
-### toArray() · [source](../../src/Core/ModelMapping.php#L146)
+### toArray() · [source](../../src/Db/ModelMapping.php#L148)
 
 `public function toArray(): array`
 
@@ -121,7 +121,7 @@ Get all model mappings as an array
 
 ---
 
-### convertModelToSource() · [source](../../src/Core/ModelMapping.php#L159)
+### convertModelToSource() · [source](../../src/Db/ModelMapping.php#L161)
 
 `public static function convertModelToSource(string $modelName): string`
 
@@ -144,7 +144,7 @@ When pluralization is enabled, the last word segment is pluralized (e.g. AdminUs
 
 ---
 
-### toSnakeCase() · [source](../../src/Core/ModelMapping.php#L189)
+### toSnakeCase() · [source](../../src/Db/ModelMapping.php#L191)
 
 `public static function toSnakeCase(string $name): string`
 

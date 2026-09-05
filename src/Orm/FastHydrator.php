@@ -2,6 +2,9 @@
 
 namespace Azera\Orm;
 
+use Azera\Orm\Cast\Cast;
+use Azera\Orm\Cast\Casts;
+
 /**
  * Per-class compiled hydration plan.
  *
@@ -20,9 +23,6 @@ namespace Azera\Orm;
  */
 final class FastHydrator
 {
-    /** @var array<class-string, array> */
-    private static array $plans = [];
-
     /** @var array<class-string, self> */
     private static array $instances = [];
 
@@ -34,26 +34,35 @@ final class FastHydrator
     /** @var list<string> raw column names, aligned with $fields */
     public array $columns = [];
 
-    /** @var array<string, string> field => column name (raw row keys) */
-    public array $fieldToColumn = [];
-
     /** @var list<string> PK field names */
     public array $pkFields = [];
 
     /** @var list<string> raw column names for PK fields, aligned with $pkFields */
     public array $pkColumns = [];
 
+    /**
+     * Compiled decode plan: field POSITION -> Cast, for columns whose
+     * metadata type has a registered cast. Empty for the (common)
+     * cast-free class — hydrate() keeps the plain tight loops with zero
+     * overhead. Built ONCE per class from metadata.
+     *
+     * @var array<int, Cast>
+     */
+    private array $decoders = [];
+
     private function __construct(string $class, array $meta)
     {
         $this->class = $class;
 
         foreach ($meta['columns'] as $field => $col) {
-            $this->fields[]              = $field;
-            $this->columns[]             = $col['name'];
-            $this->fieldToColumn[$field] = $col['name'];
+            $this->fields[]  = $field;
+            $this->columns[] = $col['name'];
             if ($col['pk']) {
                 $this->pkFields[]  = $field;
                 $this->pkColumns[] = $col['name'];
+            }
+            if (($cast = Casts::for($col['type'])) !== null) {
+                $this->decoders[\count($this->fields) - 1] = $cast;
             }
         }
     }
@@ -108,22 +117,44 @@ final class FastHydrator
 
         $entity = new ($this->class)();
 
-        // Copy loop 1: field assignment from raw columns (paired lists).
+        // Copy loop 1: field assignment from raw columns (paired lists),
+        // decode() for columns with a registered cast (scalar coercion /
+        // json / pgarray) so entity properties hold PHP values.
         $fields = $this->fields;
         $cols   = $this->columns;
-        for ($j = 0, $n = \count($fields); $j < $n; $j++) {
-            if (array_key_exists($cols[$j], $row)) {
-                $entity->{$fields[$j]} = $row[$cols[$j]];
+        if ($this->decoders === []) {
+            for ($j = 0, $n = \count($fields); $j < $n; $j++) {
+                if (array_key_exists($cols[$j], $row)) {
+                    $entity->{$fields[$j]} = $row[$cols[$j]];
+                }
+            }
+        } else {
+            for ($j = 0, $n = \count($fields); $j < $n; $j++) {
+                if (!array_key_exists($cols[$j], $row)) {
+                    continue;
+                }
+                $value = $row[$cols[$j]];
+                $cast  = $this->decoders[$j] ?? null;
+                $entity->{$fields[$j]} = $cast === null ? $value : $cast->decode($value);
             }
         }
 
-        // Copy loop 2: raw snapshot for the Node.
+        // Copy loop 2: snapshot for the Node — store representation.
+        // Casted columns: encode(decode(raw)) so the snapshot matches what
+        // extractData() will produce from the hydrated entity (scalar
+        // coercion for int/float/bool — raw strings would make the first
+        // persist schedule phantom UPDATEs; canonical string for json /
+        // pgarray — encode(decode(x)) normalizes formatting). Uncasted
+        // columns pass raw.
         $data = [];
         for ($j = 0, $n = \count($fields); $j < $n; $j++) {
-            $data[$cols[$j]] = $row[$cols[$j]] ?? null;
+            $value = $row[$cols[$j]] ?? null;
+            $cast  = $this->decoders[$j] ?? null;
+            $data[$cols[$j]] = $cast === null ? $value : $cast->encode($cast->decode($value));
         }
 
         $this->attach($heap, $entity, $id, $data);
+
         return [$entity, $id, $data];
     }
 
@@ -142,7 +173,6 @@ final class FastHydrator
      */
     public static function clear(): void
     {
-        self::$plans = [];
         self::$instances = [];
     }
 }

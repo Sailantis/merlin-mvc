@@ -2,12 +2,11 @@
 
 namespace Azera\Db;
 
-use Azera\Core\Model;
 use PDO;
 use PDOStatement;
 
 /**
- * @template TModel of Model
+ * Forward-only cursor over an executed statement. Provides various fetch methods to retrieve rows as associative arrays, objects, or single column values.
  */
 class ResultSet implements \Iterator, \Countable
 {
@@ -16,10 +15,6 @@ class ResultSet implements \Iterator, \Countable
 	protected ?string $sqlStatement;
 	protected ?array $boundParams;
 	protected int $fetchMode;
-
-	/** @var class-string<TModel> */
-	protected ?string $modelClass;
-	protected mixed $firstModel = null;
 
 	// Iterator state
 	protected mixed $currentRow = null;
@@ -36,8 +31,7 @@ class ResultSet implements \Iterator, \Countable
 	 * @param PDOStatement    $statement    The executed PDO statement.
 	 * @param string|null     $sqlStatement The original SQL string (used by reexecute()).
 	 * @param array|null      $boundParams  Bound parameters (used by reexecute()).
-	 * @param class-string|null $modelClass Optional model class name used for hydration (sets the fetch class).
-	 * @param bool            $isReadQuery Whether the statement is a read-only SELECT. Defaults to true.
+	 * @param bool            $isReadQuery  Whether the statement is a read-only SELECT. Defaults to true.
 	 *                          Set to false for write statements (e.g. INSERT/UPDATE/DELETE ... RETURNING),
 	 *                          which cannot be safely re-executed via {@see refresh()}.
 	 */
@@ -46,14 +40,12 @@ class ResultSet implements \Iterator, \Countable
 		PDOStatement $statement,
 		?string $sqlStatement = null,
 		?array $boundParams = null,
-		?string $modelClass = null,
 		bool $isReadQuery = true
 	) {
 		$this->db           = $connection;
 		$this->statement    = $statement;
 		$this->sqlStatement = $sqlStatement;
 		$this->boundParams  = $boundParams;
-		$this->modelClass   = $modelClass;
 		$this->isReadQuery  = $isReadQuery;
 
 		$this->fetchMode = $connection->getDefaultFetchMode();
@@ -156,87 +148,6 @@ class ResultSet implements \Iterator, \Countable
 	}
 
 	/**
-	 * Get the next model from the result set, or false if there are no more models. This method will attempt to hydrate a model if a model class was provided when the ResultSet was created. If no model class was provided, it will return false.
-	 * @return TModel|null The next model instance, or null if there are no more models.
-	 */
-	public function nextModel(): ?Model
-	{
-		// If no model is available, model hydration is impossible
-		if (!$this->modelClass) {
-			return null;
-		}
-
-		// Hydrate via PDO
-		$this->statement->setFetchMode(
-			PDO::FETCH_CLASS,
-			$this->modelClass
-		);
-
-		$model = $this->statement->fetch();
-
-		if ($model === false) {
-			return null;
-		}
-
-		// Save state for ORM
-		if ($model instanceof Model) {
-			$model->saveState();
-		}
-
-		// Cache first model if not cached yet
-		if ($this->firstModel === null) {
-			$this->firstModel = $model;
-		}
-
-		$this->position++;
-		return $model;
-	}
-
-	/**
-	 * Get first model or object from result set.
-	 * @return TModel|null The first model instance, or null if there are no models or if the first row cannot be hydrated as a model.
-	 */
-	public function firstModel(): ?Model
-	{
-		// If already cached, return cached model
-		if ($this->firstModel !== null) {
-			return ($this->firstModel instanceof Model) ? $this->firstModel : null;
-		}
-		// If no model available, we cannot hydrate
-		if (!$this->modelClass) {
-			return null;
-		}
-		// If cursor already moved, we cannot reliably return the first model
-		if ($this->position > 0) {
-			return null;
-		}
-		// Fetch first model
-		return $this->nextModel();
-	}
-
-	/**
-	 * Get all remaining rows hydrated as model instances.
-	 *
-	 * Calls {@see nextModel()} repeatedly until the result set is exhausted.
-	 * Returns an empty array when no model class was provided at construction.
-	 *
-	 * @return array<int, TModel> An array of all remaining model instances, or an empty array if there are no more models.
-	 */
-	public function allModels(): array
-	{
-		// If no model available, we cannot hydrate
-		if (!$this->modelClass) {
-			return [];
-		}
-		// Fetch all models until no more are available
-		$models = [];
-		while ($model = $this->nextModel()) {
-			$models[] = $model;
-		}
-		return $models;
-	}
-
-	/**
 	 * Return the SQL statement that was executed to produce this result set, if available.
 	 * @return string|null The SQL statement string, or null if not available.
 	 */
@@ -257,31 +168,13 @@ class ResultSet implements \Iterator, \Countable
 	/**
 	 * Convert the result set to a plain array of rows.
 	 *
-	 * Each row is cast to an associative array (via castToArray on model
-	 * instances, or fetched as assoc from PDO for plain rows).  This makes
-	 * the result set compatible with template engines and serializers that
-	 * expect array-like data (e.g. Clarity's castToArray).
+	 * Makes the result set compatible with template engines and serializers
+	 * that expect array-like data (e.g. Clarity's castToArray).
 	 *
 	 * @return array<int, array<string, mixed>> All remaining rows as arrays.
 	 */
 	public function toArray(): array
 	{
-		if ($this->modelClass) {
-			$rows = [];
-			while ($model = $this->nextModel()) {
-				$row = [];
-				foreach (\get_object_vars($model) as $key => $val) {
-					// Skip internal model properties (prefixed with __)
-					if (\str_starts_with($key, '__')) {
-						continue;
-					}
-					$row[$key] = $val;
-				}
-				$rows[] = $row;
-			}
-			return $rows;
-		}
-
 		return $this->fetchAllAssoc();
 	}
 
@@ -309,7 +202,6 @@ class ResultSet implements \Iterator, \Countable
 		$this->currentRow  = null;
 		$this->position    = 0;
 		$this->initialized = false;
-		$this->firstModel  = null;
 	}
 
 	// Iterator methods

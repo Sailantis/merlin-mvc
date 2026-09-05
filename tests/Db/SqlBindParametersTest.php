@@ -6,7 +6,7 @@ require_once __DIR__ . '/TestDatabase.php';
 
 use Azera\Db\Sql;
 use Azera\Db\Query;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 use PHPUnit\Framework\TestCase;
 
 /**

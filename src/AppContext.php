@@ -15,6 +15,7 @@ use Azera\Core\ViewEngine;
 use Azera\Db\DatabaseManager;
 use Azera\Db\Resolver\ModelResolver;
 use Azera\Db\Resolver\TableResolver;
+use Azera\Orm\EntityManager;
 use Azera\Orm\Heap;
 use Azera\Event\NullEventDispatcher;
 use Azera\Http\Cookies;
@@ -46,8 +47,9 @@ class AppContext
             Router::class => fn() => $this->router(),
             Dispatcher::class => fn() => $this->dispatcher(),
             TableResolver::class => fn() => $this->get(ModelResolver::class),
-            Heap::class => fn() => $this->heap(),
-            AppContext::class => fn() => $this,
+            Heap::class            => fn() => $this->heap(),
+            EntityManager::class   => fn() => $this->entityManager(),
+            AppContext::class      => fn() => $this,
         ];
     }
 
@@ -65,6 +67,9 @@ class AppContext
 
     /** Lazily-created request-scoped ORM identity map (see heap()). */
     protected ?Heap $heap = null;
+
+    /** Lazily-created request-scoped EntityManager (see entityManager()). */
+    protected ?EntityManager $entityManager = null;
 
     protected ?Router $router = null;
 
@@ -177,7 +182,8 @@ class AppContext
      * Get the request-scoped ORM Heap (identity map).
      *
      * One heap per request: the same DB row read twice yields the same
-     * entity object, and the UnitOfWork shares this exact instance. The
+     * entity object, and the EntityManager diffs against the node
+     * snapshot instead of scanning every constructed instance. The
      * heap is created lazily, registered in the container, and wiped by
      * {@see clearRequestScope()} via its RequestScoped hook (non-negotiable
      * in persistent workers — a leaking heap would serve stale entities
@@ -189,9 +195,20 @@ class AppContext
     }
 
     /**
-     * Get the DatabaseManager instance. If it doesn't exist, it will be created.
+     * Get the request-scoped EntityManager (identity map + write pipeline).
      *
-     * @return DatabaseManager The DatabaseManager instance.
+     * Shares the request's Heap with everything else — FastHydrator reads,
+     * Model::save() and direct EM calls all see the same identity space.
+     * persist() schedules, flush() executes in one transaction. Wiped by
+     * {@see clearRequestScope()} like the heap.
+     */
+    public function entityManager(): EntityManager
+    {
+        return $this->entityManager ??= new EntityManager($this->heap());
+    }
+
+    /**
+     * Get the DatabaseManager instance. If it doesn't exist, it will be created.
      */
     public function dbManager(): DatabaseManager
     {

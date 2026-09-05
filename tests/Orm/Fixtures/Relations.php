@@ -2,7 +2,7 @@
 
 namespace Azera\Tests\Orm\Fixtures;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 use Azera\Orm\Attribute\BelongsTo;
 use Azera\Orm\Attribute\HasMany;
 use Azera\Orm\Attribute\HasOne;

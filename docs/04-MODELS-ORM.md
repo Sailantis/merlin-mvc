@@ -2,19 +2,20 @@
 
 **Work with database records as objects** - Discover Azera's Active Record implementation for elegant database interactions. Learn about model configuration, static query helpers, CRUD operations, state tracking, and read/write connections.
 
-Azera models use an Active Record style API backed by `Azera\Db\Query`.
+Azera models use an Active Record style API backed by the
+`Azera\Orm\EntityManager` (identity map + write pipeline).
 
 ---
 
 ## Define a Model
 
-Extend `Azera\Core\Model` and declare public properties for your table columns. No registration or mapping is needed — Azera infers the table name from the class name automatically.
+Extend `Azera\Orm\Model` and declare public properties for your table columns. No registration or mapping is needed — Azera infers the table name from the class name automatically.
 
 ```php
 <?php
 namespace App\Models;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 class User extends Model
 {
@@ -25,13 +26,164 @@ class User extends Model
 }
 ```
 
+### Declarative Attributes
+
+All model configuration can be declared with attributes, compiled once into
+cached metadata:
+
+```php
+use Azera\Orm\Model;
+use Azera\Orm\Attribute\Column;
+use Azera\Orm\Attribute\Connection;
+use Azera\Orm\Attribute\Table;
+
+#[Table(name: 'admin_users', schema: 'sales')]
+#[Connection(read: 'replica', write: 'primary')]
+class AdminUser extends Model
+{
+    #[Column(type: 'int', pk: true)]
+    public $tenant_id;
+
+    #[Column(type: 'int', pk: true)]
+    public $user_id;   // composite key = multiple pk marks
+
+    #[Column(name: 'status_code', type: 'int', pk: false)]
+    public $status;    // renamed column excluded from the key
+}
+```
+
+| Attribute                                                | Applies to           | Purpose                         |
+| -------------------------------------------------------- | -------------------- | ------------------------------- |
+| `#[Table(name:, schema:)]`                               | SQL models           | Table name and database schema  |
+| `#[Connection(role:)]` or `#[Connection(read:, write:)]` | SQL models           | Read/write connection roles     |
+| `#[Column(type:, name:, nullable:, transient:, pk:)]`    | Any persistent class | Column configuration            |
+| `#[Document(collection:, storeRole:)]`                   | Mongo documents      | Store + collection + store role |
+
+`#[Table]` / `#[Connection]` on a `#[Document]` class throw — mongo routes
+storage through `storeRole` instead.
+
+### Column Casts (value transformation)
+
+Values with a registered cast type are **encoded before every write** and
+**decoded after every read** — the entity property holds the PHP value,
+storage holds the raw store representation:
+
+```php
+class Article extends Model
+{
+    /** Portable default (inferred from `array`): JSON in a text/json column. */
+    public array $tags;
+
+    /** pg native array column — declared, because inference can't know the schema. */
+    #[Column(type: 'pgarray')]
+    public array $labels;
+}
+```
+
+| Type      | Decode (read)                                     | Encode (write)                                |
+| --------- | ------------------------------------------------- | --------------------------------------------- |
+| `int`     | `"5"` → `5` (stringifying drivers return strings) | passthrough                                   |
+| `float`   | `"4.5"` → `4.5`                                   | passthrough                                   |
+| `bool`    | `'1'`/`'t'`/`'true'` → `true`, unknown → throw    | passthrough                                   |
+| `json`    | JSON text → array (assoc), invalid → throw        | `json_encode`, scalars pass through           |
+| `pgarray` | pg array literal → scalar array (nested → nested) | pg literal, nested supported, >6 dims → throw |
+
+Why the scalar casts exist: `pdo_mysql` (emulated prepares) and
+`pdo_pgsql` return numerics as strings. Without them the typed property
+coerces to `int` while the heap snapshot keeps `"5"` — diffing compares
+`int(5) !== "5"` and the first persist of an unchanged entity schedules a
+phantom UPDATE per numeric column. The casts coerce **both** the property
+and the snapshot so diff compares like with like.
+
+Custom types — implement `Azera\Orm\Cast\Cast` (encode/decode) and
+register before first use:
+
+```php
+Azera\Orm\Cast\Casts::register('encrypted', new EncryptedCast());
+```
+
+Register before the first `Metadata::for()` of the affected class (or call
+`Metadata::clear()` after) — the decode plan is compiled per class.
+
+Semantics: the snapshot (`node->data`) always holds the **store
+representation** (encoded strings) so the diff engine compares stable
+scalars; `dirtyData()` therefore returns encoded values too. Mongo
+documents bypass value shaping entirely (BSON owns encoding — `json` is
+inert there). `datetime` decode (string → `DateTimeImmutable` on
+hydration) is deliberately **not** built-in: it would change the entity
+surface for every existing model; register a `Cast` yourself when wanted.
+
+`#[Table]` / `#[Connection]` on a `#[Document]` class throw — mongo routes
+storage through `storeRole` instead.
+
+### Mongo Documents (MongoStore)
+
+`#[Document]` classes always route to MongoDB — never the SQL store. The
+stack is two layers, not two alternatives: **ext-mongodb** (PECL) is the
+driver (wire protocol, BSON) and **mongodb/mongodb** (composer) is the
+pure-PHP API on top of it; using documents means using both.
+
+```php
+use Azera\Orm\Attribute\Column;
+use Azera\Orm\Attribute\Document;
+use Azera\Orm\Storage\MongoStore;
+use Azera\Orm\Storage\StoreManager;
+use MongoDB\Client;
+
+#[Document(collection: 'articles', storeRole: 'mongo')]
+class Article extends Document
+{
+    public $_id;              // mongo's PK; ObjectId string after insert
+    public $title;
+    #[Column(type: 'json')]
+    public $tags;             // arrays pass through raw — BSON owns encoding
+}
+
+// bootstrap: register the mongo store for the role
+$client = new Client('mongodb://localhost:27017');
+$stores->setMongo('mongo', new MongoStore($client, database: 'myapp'));
+$stores->setMongoDefault('mongo');
+
+$article = new Article();
+$article->title = 'Hello';
+$article->tags  = ['php', 'mongo'];
+$article->save();                 // INSERT — driver-generated ObjectId backfills _id
+
+$found  = Article::find($article->_id);  // EM find → heap identity
+$found->title = 'Edited';
+$found->save();                   // $set diff UPDATE (only changed fields)
+$found->delete();                 // deleteOne by _id
+```
+
+| Piece           | Contract                                                                                |
+| --------------- | --------------------------------------------------------------------------------------- |
+| Collection name | `#[Document(collection:)]` — falls back to the snake/plural convention                  |
+| Primary key     | `_id`; omitted at insert = driver-generated ObjectId, backfilled as string              |
+| `_id` filters   | the store casts 24-hex-char string `_id`s back to ObjectId automatically                |
+| Values          | arrays/dates pass through raw; the driver maps BSON                                     |
+| Transactions    | begin/commit/rollback are no-ops (multi-doc ACID needs replica-set sessions — deferred) |
+
+Store roles are split **per store type** (`setMongo()`/`getMongo()`), so a
+document can never resolve the SQL `PdoStore` and vice versa. Documents in a
+context without a registered mongo store throw loudly instead of silently
+writing a SQL table.
+
+**Primary keys:** a declared `idFields()` override is the authority. Without
+one, explicit `#[Column(pk: true)]` marks define the key (composite = several
+marks); the residual default is `['id']`. A single explicit mark switches the
+whole class off the `id`/`*_id` name convention, so a foreign-key-like `*_id`
+column never leaks into the key.
+
 ### Overrideable Methods
 
-| Method              | Default               | Purpose                      |
-| ------------------- | --------------------- | ---------------------------- |
-| `source(): string`  | snake_case class name | Table or view name           |
-| `schema(): ?string` | `null`                | Database schema (PostgreSQL) |
-| `idFields(): array` | `['id']`              | Primary key field(s)         |
+The methods below remain the dynamic escape hatch — an override wins over
+the corresponding attribute:
+
+| Method              | Default                          | Purpose                      |
+| ------------------- | -------------------------------- | ---------------------------- |
+| `source(): string`  | `#[Table(name)]` / convention    | Table or view name           |
+| `schema(): ?string` | `#[Table(schema)]` / `null`      | Database schema (PostgreSQL) |
+| `idFields(): array` | `#[Column(pk)]` marks / `['id']` | Primary key field(s)         |
 
 ```php
 class OrderItem extends Model
@@ -47,7 +199,7 @@ class OrderItem extends Model
 By default, class names are converted to snake_case (`AdminUser` → `admin_user`). Enable automatic pluralization globally:
 
 ```php
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 
 ModelMapping::usePluralTableNames(true);
 // User → users, AdminUser → admin_users, Person → people
@@ -56,6 +208,37 @@ ModelMapping::usePluralTableNames(true);
 Irregular plurals (`person` → `people`) are handled. Override `source()` on any model to bypass the convention entirely.
 
 > **Note:** Model has no `toArray()` method. Access properties directly or build an array manually: `['id' => $user->id, 'email' => $user->email]`.
+
+### Metadata Cache
+
+Attribute configuration compiles once into a per-process array (L1) that
+survives across requests in long-running workers (RoadRunner). For
+request-per-process runtimes (PHP-FPM) you can wire an **opt-in second
+tier** (L2) backed by any PSR-16 cache:
+
+```php
+use Azera\Cache\Backend\ApcuCache;   // azera-cache (Redis, File, … also work)
+use Azera\Orm\Metadata;
+
+Metadata::useCache(new ApcuCache(), ttl: 86400);
+```
+
+| Method                                  | Purpose                                                                                 |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `Metadata::useCache($psr16, ?int $ttl)` | Enable/disable the L2 backend; `$ttl` in seconds (`null` = backend default)             |
+| `Metadata::cacheSalt(?string $salt)`    | Mix a value (e.g. deploy hash) into the cache key — changing it forces a full recompile |
+| `Metadata::clear()`                     | Reset L1 + delete **only** Azera's L2 keys (never the whole shared segment)             |
+
+```php
+// Recommended: tie entries to a deploy so changed model code recompiles
+Metadata::cacheSalt($_ENV['DEPLOY_HASH']);
+```
+
+> **Important:** once an L2 backend is wired, invalidating it is your
+> responsibility — shared cache stores outlive code deploys. Use a
+> `cacheSalt()` deploy hash, a TTL, or `Metadata::clear()` on deploy.
+> Without a backend there is no L2 at all, and metadata is always
+> compiled fresh per process (always correct, microsecond cost).
 
 ---
 
@@ -82,13 +265,17 @@ All static helpers return fully hydrated model instances with state tracking alr
 
 ```php
 $user  = User::find(123);                           // ?static by primary key
-$user  = User::findOrFail(123);                     // static or throws Exception
+$user  = User::findOrFail(123);                     // static or throws RuntimeException
 $user  = User::findOne(['email' => $email]);        // ?static, first match
-$users = User::findAll(['status' => 'active']);     // ResultSet<static>
+$users = User::findAll(['status' => 'active']);     // list<static>
 
 $exists = User::exists(['email' => $email]);        // bool
 $count  = User::count(['status' => 'active']);      // int
 ```
+
+All loads go through the `EntityManager`'s identity map: the same row read
+twice in one request returns the SAME instance, and loads establish the
+heap baseline for change detection.
 
 ### Composite Keys
 
@@ -122,15 +309,8 @@ $user = User::create([
 
 ### `forceCreate()` — bypass ID guards
 
-`forceCreate()` inserts all provided values as-is, including manually set ID fields. Useful for seeding or migrations.
-
-```php
-$user = User::forceCreate([
-    'id'       => 42,
-    'username' => 'seeded',
-    'email'    => 'seed@example.com',
-]);
-```
+Removed. Use `upsert()` (atomic INSERT ... ON CONFLICT DO UPDATE) when you
+control the data, or `create()` when you don't.
 
 ### `firstOrCreate()` — find or insert
 
@@ -177,22 +357,11 @@ $user->save(); // INSERT INTO users ...
 // $user->id is set after insert
 ```
 
-### `insert()` — always INSERT
+### `insert()` / `update()` — removed
 
-Forces an `INSERT` regardless of whether ID fields are set. All non-internal properties are included.
-
-```php
-$user->insert();
-```
-
-### `update()` — always UPDATE
-
-Sends only the fields that changed since the last `saveState()`. Returns `false` if nothing changed.
-
-```php
-$user->email = 'updated@example.com';
-$user->update(); // UPDATE users SET email = ? WHERE id = ?
-```
+Removed in favor of ONE write pipeline: `save()` (diff INSERT or UPDATE
+through the EntityManager) and `upsert()` (single atomic
+INSERT ... ON CONFLICT DO UPDATE statement).
 
 ### `delete()`
 
@@ -204,32 +373,34 @@ $user->delete(); // DELETE FROM users WHERE id = ?
 
 ## State Tracking
 
-Every model returned by a static helper has its state snapshot automatically saved. This enables change detection and rollback.
+Every model loaded through a static helper is heap-tracked by the
+`EntityManager` — the node snapshot doubles as the diff baseline.
 
-| Method         | Description                                               |
-| -------------- | --------------------------------------------------------- |
-| `saveState()`  | Snapshot the current field values as the baseline         |
-| `loadState()`  | Restore all fields to the last snapshot                   |
-| `getState()`   | Return the snapshot object (`?static`), or `null` if none |
-| `hasChanged()` | `true` if any field differs from the snapshot             |
+| Method          | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `hasChanged()`  | `true` if any field differs from the heap baseline |
+| `changedData()` | Field-name-keyed map of changed values             |
+| `loadState()`   | Restore all fields to the heap baseline            |
 
 ```php
-$user = User::find(123);         // snapshot saved automatically
+$user = User::find(123);         // heap-tracked with baseline
 $user->email = 'new@example.com';
 
 $user->hasChanged();             // true
-$user->getState()->email;        // original value
+$user->changedData();            // ['email' => 'new@example.com']
 
-$user->loadState();              // revert to snapshot
+$user->loadState();              // revert to baseline
 $user->hasChanged();             // false
 
 $user->email = 'other@example.com';
 if ($user->hasChanged()) {
-    $user->update();             // UPDATE only the changed fields
+    $user->save();               // UPDATE only the changed fields
 }
 ```
 
-Properties whose names start with `__` are considered internal and are never included in state comparisons or write operations.
+The ORM tracks only the columns declared via metadata (public properties /
+`#[Column]` attributes); properties that are not part of the model's
+metadata are ignored by change detection and writes.
 
 ---
 
@@ -250,6 +421,19 @@ By default all models read from the `read` role and write to the `write` role, f
 
 ### Per-model role overrides
 
+Static config: put `#[Connection]` on the class — it sits above the
+base-model global override and below runtime setters:
+
+```php
+use Azera\Orm\Attribute\Connection;
+
+#[Connection('analytics')]                         // read + write
+#[Connection(read: 'replica', write: 'primary')]   // split routing
+class User extends Model { ... }
+```
+
+Runtime config (per-request tenancy etc.) beats the attribute:
+
 ```php
 // Both read and write to the same custom role
 User::setDefaultRole('analytics');
@@ -261,10 +445,10 @@ User::setDefaultWriteRole('primary');
 
 ### Global override (all models)
 
-Call `setDefaultRole()` on the base `Model` class to change the default for every model that has not set its own role:
+Call `setDefaultRole()` on the base `Model` class to change the default for every model that has not set its own role or `#[Connection]` attribute:
 
 ```php
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 Model::setDefaultRole('default'); // reset everything to 'default'
 ```
@@ -294,7 +478,7 @@ In the new resolver system, a `MappingResolver` wraps the mapping and is registe
 
 ```php
 use Azera\AppContext;
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 use Azera\Db\Resolver\ChainResolver;
 use Azera\Db\Resolver\MappingResolver;
 use Azera\Db\Resolver\ModelResolver;

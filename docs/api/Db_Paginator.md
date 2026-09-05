@@ -47,14 +47,15 @@ Set whether to reverse the order of items.
 
 ---
 
-### models() · [source](../../src/Db/Paginator.php#L66)
+### entities() · [source](../../src/Db/Paginator.php#L67)
 
-`public function models(): array`
+`public function entities(): array`
 
-Execute and return items as hydrated model instances.
+Execute and return items as heap-tracked model instances.
 
 Requires the query to have a model bound (e.g. via Item::query()).
-Each row is fetched as a model instance with saveState() called.
+Hydrates through the ORM (FastHydrator + request-scoped heap) — the
+same identity-mapped path as Model::find()/entities().
 
 **➡️ Return value**
 
@@ -63,13 +64,13 @@ Each row is fetched as a model instance with saveState() called.
 
 ---
 
-### objects() · [source](../../src/Db/Paginator.php#L77)
+### objects() · [source](../../src/Db/Paginator.php#L78)
 
 `public function objects(): array`
 
 Execute and return items as plain stdClass objects.
 
-No model hydration — rows are fetched directly via PDO::FETCH_OBJ.
+No entity hydration — rows are fetched directly via PDO::FETCH_OBJ.
 Table resolution and relations still go through the model.
 
 **➡️ Return value**
@@ -79,13 +80,13 @@ Table resolution and relations still go through the model.
 
 ---
 
-### assoc() · [source](../../src/Db/Paginator.php#L87)
+### assoc() · [source](../../src/Db/Paginator.php#L88)
 
 `public function assoc(): array`
 
 Execute and return items as associative arrays.
 
-No model hydration — rows are fetched directly via PDO::FETCH_ASSOC.
+No entity hydration — rows are fetched directly via PDO::FETCH_ASSOC.
 
 **➡️ Return value**
 
@@ -94,7 +95,7 @@ No model hydration — rows are fetched directly via PDO::FETCH_ASSOC.
 
 ---
 
-### fetch() · [source](../../src/Db/Paginator.php#L97)
+### fetch() · [source](../../src/Db/Paginator.php#L98)
 
 `public function fetch(mixed $fetchMode = 0): array`
 

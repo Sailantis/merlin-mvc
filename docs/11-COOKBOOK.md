@@ -306,7 +306,7 @@ class ArticleController extends Controller
             'id'    => $a->id,
             'title' => $a->title,
             'slug'  => $a->slug,
-        ], $articles->toArray());
+        ], $articles);
     }
 
     // GET /articles/{id} → 200 JSON or 404
@@ -701,7 +701,7 @@ $dispatcher->addMiddleware(new CsrfMiddleware());
 In views, include the token in forms:
 
 ```html
-<input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="_csrf_token" value="{{ csrf_token }}" />
 ```
 
 Generate the token in the controller:

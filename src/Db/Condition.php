@@ -177,50 +177,52 @@ class Condition
 	 * parameters (never interpolation); IN () over an empty list compiles
 	 * to the semantically correct 1=0 / 1=1.
 	 *
-	 * @param string|Condition $condition
-	 * @param mixed $value Value, or the operator string in the explicit form
-	 * @param mixed $escape Escape flag — or the actual value in the explicit operator form
+	 * @param string|Condition $conditionOrField
+	 * @param mixed $valueOrOp Value (CI style), or the operator token in the
+	 *                         explicit operator form
+	 * @param mixed $escapeOrValue Escape flag (CI style) — or the actual
+	 *                             value in the explicit operator form
 	 * @return $this
 	 */
-	public function where(string|Condition $condition, $value = null, $escape = true): static
+	public function where(string|Condition $conditionOrField, $valueOrOp = null, $escapeOrValue = true): static
 	{
-		return $this->addWhere($condition, ' AND ', '', $value, $escape);
+		return $this->addWhere($conditionOrField, ' AND ', '', $valueOrOp, $escapeOrValue);
 	}
 
 	/**
 	 * Appends a condition to the current conditions using a OR operator
-	 * @param string|Condition $condition
-	 * @param mixed $value
-	 * @param mixed $escape
+	 * @param string|Condition $conditionOrField
+	 * @param mixed $valueOrOp
+	 * @param mixed $escapeOrValue
 	 * @return $this
 	 */
-	public function orWhere(string|Condition $condition, $value = null, $escape = true): static
+	public function orWhere(string|Condition $conditionOrField, $valueOrOp = null, $escapeOrValue = true): static
 	{
-		return $this->addWhere($condition, ' OR ', '', $value, $escape);
+		return $this->addWhere($conditionOrField, ' OR ', '', $valueOrOp, $escapeOrValue);
 	}
 
 	/**
 	 * Appends a negated condition to the current conditions using an AND operator
-	 * @param string|Condition $condition
-	 * @param mixed $value
-	 * @param mixed $escape
+	 * @param string|Condition $conditionOrField
+	 * @param mixed $valueOrOp
+	 * @param mixed $escapeOrValue
 	 * @return $this
 	 */
-	public function notWhere(string|Condition $condition, $value = null, $escape = true): static
+	public function notWhere(string|Condition $conditionOrField, $valueOrOp = null, $escapeOrValue = true): static
 	{
-		return $this->addWhere($condition, ' AND ', 'NOT ', $value, $escape);
+		return $this->addWhere($conditionOrField, ' AND ', 'NOT ', $valueOrOp, $escapeOrValue);
 	}
 
 	/**
 	 * Appends a negated condition to the current conditions using an OR operator
-	 * @param string|Condition $condition
-	 * @param mixed $value
-	 * @param mixed $escape
+	 * @param string|Condition $conditionOrField
+	 * @param mixed $valueOrOp
+	 * @param mixed $escapeOrValue
 	 * @return $this
 	 */
-	public function orNotWhere(string|Condition $condition, $value = null, $escape = true): static
+	public function orNotWhere(string|Condition $conditionOrField, $valueOrOp = null, $escapeOrValue = true): static
 	{
-		return $this->addWhere($condition, ' OR ', 'NOT ', $value, $escape);
+		return $this->addWhere($conditionOrField, ' OR ', 'NOT ', $valueOrOp, $escapeOrValue);
 	}
 
 	/**
@@ -261,7 +263,7 @@ class Condition
 			}
 			// merge bind parameters from sub conditions into current builder
 			$this->subQueryBindings = $condition->getBindings() + $this->subQueryBindings;
-			$escape    = false;
+			$escape = false;
 			$condition = $condition->toSql();
 		} elseif (\is_array($value)) {
 			// phalcon style
@@ -272,7 +274,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value  = '(' . $value->toSql() . ')';
+				$value = '(' . $value->toSql() . ')';
 			} elseif ($value instanceof Condition) {
 				// sub conditions - inject model resolver if available
 				if ($this instanceof Query) {
@@ -283,7 +285,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value  = '(' . $value->toSql() . ')';
+				$value = '(' . $value->toSql() . ')';
 			}
 			// ci style - protect identifier
 			$condition = $this->protectIdentifier($condition);
@@ -883,7 +885,7 @@ class Condition
 			}
 
 			$result = "";
-			$sep    = "";
+			$sep = "";
 			foreach ($value as $v) {
 				$result .= $sep;
 				$sep = ",";
@@ -997,10 +999,10 @@ class Condition
 		if (!isset($alias)) {
 			if ($offset = strripos($item, ' AS ')) {
 				$alias = substr($item, $offset + 4);
-				$item  = substr($item, 0, $offset);
+				$item = substr($item, 0, $offset);
 			} elseif ($offset = strrpos($item, ' ')) {
 				$alias = substr($item, $offset + 1);
-				$item  = substr($item, 0, $offset);
+				$item = substr($item, 0, $offset);
 			}
 		}
 
@@ -1016,7 +1018,7 @@ class Condition
 			$index = strpos($item, '.');
 			if ($index > 0) {
 				$table = $this->getTableName(substr($item, 0, $index));
-				$item  = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
+				$item = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
 			} else {
 				$item = $this->quoteIdentifier($item);
 			}
@@ -1109,11 +1111,11 @@ class Condition
 	protected function splitConditionOnLogicalOperators(string $condition): array
 	{
 		$parts = [];
-		$len   = strlen($condition);
+		$len = strlen($condition);
 		$upper = strtoupper($condition); // single uppercase copy for comparisons
 		$depth = 0;
 		$start = 0;
-		$i     = 0;
+		$i = 0;
 
 		while ($i < $len) {
 			$ch = $condition[$i];

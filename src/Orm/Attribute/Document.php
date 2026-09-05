@@ -14,6 +14,7 @@ class Document
 {
     public function __construct(
         public ?string $collection = null,
+        public string $storeRole = 'default',
     )
     {
     }

@@ -9,7 +9,7 @@ namespace Azera\CompositeKeyExamples;
 
 namespace Examples;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 // ============================================================================
 // Example 1: Simple Single-Key Model (Unchanged Behavior)
@@ -148,7 +148,7 @@ $products = Product::query()
 /**
  * @var Product $product
  */
-$product = $products->firstModel();
+$product = $products->firstEntity();
 $product->stock -= 1;
 $product->update(); // Uses writeConnection()
 
@@ -163,8 +163,7 @@ class Order extends Model
 // Fetch with query builder
 $order = Order::query()
     ->where('id', 100)
-    ->select()
-    ->firstModel();
+    ->firstEntity();
 
 // Model tracks original state
 $order->status = 'shipped';

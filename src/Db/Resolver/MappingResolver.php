@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Azera\Db\Resolver;
 
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 
 /**
  * Resolves logical names via a {@see ModelMapping} configuration.
@@ -18,7 +18,9 @@ class MappingResolver implements TableResolver
 {
     public function __construct(
         private ModelMapping $mapping,
-    ) {}
+    )
+    {
+    }
 
     public function resolve(string $name): array
     {
@@ -29,16 +31,16 @@ class MappingResolver implements TableResolver
         }
 
         $connection = $entry['connection'] ?? null;
-        $read       = $entry['read'] ?? $connection;
-        $write      = $entry['write'] ?? $connection;
+        $read = $entry['read'] ?? $connection;
+        $write = $entry['write'] ?? $connection;
 
         return [
-            'source'     => $entry['source'],
-            'schema'     => $entry['schema'] ?? null,
-            'read'       => $read,
-            'write'      => $write,
+            'source' => $entry['source'],
+            'schema' => $entry['schema'] ?? null,
+            'read' => $read,
+            'write' => $write,
             'modelClass' => null,
-            'idFields'   => null,
+            'idFields' => null,
         ];
     }
 }

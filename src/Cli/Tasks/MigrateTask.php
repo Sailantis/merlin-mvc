@@ -49,7 +49,7 @@ class MigrateTask extends Task
 
     public function __construct()
     {
-        $this->schemaDiff   = new SchemaDiff();
+        $this->schemaDiff = new SchemaDiff();
         $this->sqlGenerator = new SqlGenerator();
     }
 
@@ -80,17 +80,17 @@ class MigrateTask extends Task
             return;
         }
 
-        $driver   = $db->getDriver();
+        $driver = $db->getDriver();
         $provider = SchemaProviderFactory::create($db);
-        $allOps   = [];
-        $errors   = [];
+        $allOps = [];
+        $errors = [];
 
         foreach ($modelFiles as $file) {
             try {
                 $parser = new ModelParser($file);
                 $parsed = $parser->parse();
-                $info   = $this->resolveModelInfo($parsed->className);
-                $table  = $info[0];
+                $info = $this->resolveModelInfo($parsed->className);
+                $table = $info[0];
                 $schema = $info[1];
 
                 // Check if the table exists
@@ -168,7 +168,7 @@ class MigrateTask extends Task
     private function resolveDb(): \Azera\Db\Database
     {
         $role = (string) $this->option('database', 'default');
-        $ctx  = AppContext::instance();
+        $ctx = AppContext::instance();
         return $ctx->dbManager()->getOrDefault($role);
     }
 
@@ -268,12 +268,12 @@ class MigrateTask extends Task
      */
     private function resolveModelInfo(string $className): array
     {
-        $ref      = new \ReflectionClass($className);
+        $ref = new \ReflectionClass($className);
         $instance = $ref->newInstanceWithoutConstructor();
 
-        if (!$instance instanceof \Azera\Core\Model) {
+        if (!$instance instanceof \Azera\Orm\Model) {
             throw new \RuntimeException(
-                "Class {$className} is not an instance of Azera\\Core\\Model"
+                "Class {$className} is not an instance of Azera\\Orm\\Model"
             );
         }
 
@@ -309,9 +309,9 @@ class MigrateTask extends Task
             }
         }
 
-        $pdo     = $db->getInternalConnection();
+        $pdo = $db->getInternalConnection();
         $applied = 0;
-        $errors  = 0;
+        $errors = 0;
 
         try {
             $pdo->beginTransaction();
@@ -352,11 +352,11 @@ class MigrateTask extends Task
     {
         return match (true) {
             $op instanceof \Azera\Sync\CreateTable => "CREATE TABLE `{$op->table}` (" . count($op->columns) . " columns)",
-            $op instanceof \Azera\Sync\AddColumn   => "ADD COLUMN `{$op->column}` {$op->type} on `{$op->table}`",
-            $op instanceof \Azera\Sync\DropColumn  => "DROP COLUMN `{$op->column}` from `{$op->table}`",
+            $op instanceof \Azera\Sync\AddColumn => "ADD COLUMN `{$op->column}` {$op->type} on `{$op->table}`",
+            $op instanceof \Azera\Sync\DropColumn => "DROP COLUMN `{$op->column}` from `{$op->table}`",
             $op instanceof \Azera\Sync\AlterColumn => "ALTER COLUMN `{$op->column}` on `{$op->table}` ({$op->oldType} → {$op->newType})",
-            $op instanceof \Azera\Sync\DropIndex   => "DROP INDEX `{$op->index}`",
-            default                                => get_class($op)
+            $op instanceof \Azera\Sync\DropIndex => "DROP INDEX `{$op->index}`",
+            default => get_class($op)
         };
     }
 }

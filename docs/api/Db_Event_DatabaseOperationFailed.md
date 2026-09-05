@@ -9,7 +9,7 @@ Listeners can use this for error logging, alerting, or metrics. The
 exception may be re-thrown after processing; this event fires before
 that decision is made.
 
-The `$operation` identifies which database operation failed
+The `$operation` identifies which Database operation failed
 (e.g. `query`, `prepare`, `execute`, `beginTransaction`, `commit`,
 `rollback`). The `$sql` and `$params` are only populated
 when the failing operation had a SQL statement in scope.

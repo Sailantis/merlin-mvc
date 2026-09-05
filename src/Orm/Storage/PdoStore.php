@@ -26,9 +26,7 @@ final class PdoStore implements Store
         private DatabaseManager $dbm,
         private string $readRole = 'read',
         private string $writeRole = 'write',
-    )
-    {
-    }
+    ) {}
 
     public function insertOne(string $class, array $data): array
     {
@@ -108,12 +106,6 @@ final class PdoStore implements Store
         return (int) ($row['cnt'] ?? 0);
     }
 
-    public function select(string $sql, array $params = []): array
-    {
-        return $this->dbm->getOrDefault($this->readRole)
-            ->selectAll($sql, $params, \PDO::FETCH_ASSOC);
-    }
-
     public function begin(): void
     {
         $this->dbm->getOrDefault($this->writeRole)->begin();
@@ -168,7 +160,13 @@ final class PdoStore implements Store
         $nonPkNames = array_map(fn($c) => $c['name'], array_filter($meta['columns'], fn($c) => !$c['pk']));
         $missing    = array_diff($nonPkNames, array_keys(array_filter($data, fn($v) => $v !== null)));
 
-        return $missing === [] ? 'returning_id' : 'returning_all';
+        if ($missing !== []) {
+            return 'returning_all';
+        }
+
+        // Single PK: RETURNING id is enough. Composite PK: every part
+        // must backfill (RETURNING id would leave the other parts unset).
+        return \count($pkCols) === 1 ? 'returning_id' : 'returning_all';
     }
 
     private function pkColumn(array $meta): array
@@ -182,6 +180,16 @@ final class PdoStore implements Store
         throw new \RuntimeException("No PK column in metadata for {$meta['class']}");
     }
 
+    /**
+     * Schema-qualified quoted table name from metadata
+     * (#[Table(schema)] / schema() override — null schema yields the
+     * bare table).
+     */
+    private function table(Database $db, array $meta): string
+    {
+        return $db->quoteIdentifier($meta['schema'] ?? null, $meta['source']);
+    }
+
     private function insertSql(array $meta, array $set): array
     {
         $db   = $this->dbm->getOrDefault($this->writeRole);
@@ -189,7 +197,7 @@ final class PdoStore implements Store
         $bind = array_fill(0, \count($set), '?');
 
         return [
-            'INSERT INTO ' . $db->quoteIdentifier($meta['source'])
+            'INSERT INTO ' . $this->table($db, $meta)
             . ' (' . implode(', ', $cols) . ') VALUES (' . implode(', ', $bind) . ')',
             array_values($set),
         ];
@@ -215,7 +223,7 @@ final class PdoStore implements Store
         }
 
         return [
-            'UPDATE ' . $db->quoteIdentifier($meta['source'])
+            'UPDATE ' . $this->table($db, $meta)
             . ' SET ' . implode(', ', $sets)
             . ' WHERE ' . implode(' AND ', $wheres ?: ['1=0']),
             $bind,
@@ -236,7 +244,7 @@ final class PdoStore implements Store
         }
 
         return [
-            'DELETE FROM ' . $db->quoteIdentifier($meta['source'])
+            'DELETE FROM ' . $this->table($db, $meta)
             . ' WHERE ' . implode(' AND ', $wheres ?: ['1=0']),
             $bind,
         ];
@@ -254,7 +262,7 @@ final class PdoStore implements Store
             $bind[] = $value;
         }
 
-        $sql = 'SELECT * FROM ' . $db->quoteIdentifier($meta['source'])
+        $sql = 'SELECT * FROM ' . $this->table($db, $meta)
             . ($wheres === [] ? '' : ' WHERE ' . implode(' AND ', $wheres));
 
         return [$sql, $bind];
@@ -262,8 +270,6 @@ final class PdoStore implements Store
 
     private function countSql(array $meta, array $where): array
     {
-        $db = $this->dbm->getOrDefault($this->readRole);
-
         [$sql, $bind] = $this->selectSql($meta, $where);
         $sql = str_replace('SELECT *', 'SELECT COUNT(*) AS cnt', $sql);
 

@@ -165,7 +165,7 @@ Create [app/Models/User.php](../app/Models/User.php):
 <?php
 namespace App\Models;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 class User extends Model
 {

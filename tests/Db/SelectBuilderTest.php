@@ -8,7 +8,7 @@ use Azera\Db\Sql;
 use Azera\Db\Query;
 use Azera\AppContext;
 use Azera\Db\Condition;
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 use Azera\Db\Resolver\MappingResolver;
 use PHPUnit\Framework\TestCase;
 
@@ -74,7 +74,7 @@ class SelectBuilderTest extends TestCase
         $db = new TestPgDatabase();
         AppContext::instance()->dbManager()->set('default', $db);
         $sb = Query::new($db)->using(new MappingResolver(ModelMapping::fromArray([
-            'Order'    => ['source' => 'order', 'schema' => 'public'],
+            'Order' => ['source' => 'order', 'schema' => 'public'],
             'Customer' => ['source' => 'customer', 'schema' => 'public'],
         ])));
 
@@ -164,7 +164,7 @@ class SelectBuilderTest extends TestCase
 
         $first = Query::new($db)
             ->using(new MappingResolver(ModelMapping::fromArray([
-                'User'  => ['source' => 'users', 'schema' => null],
+                'User' => ['source' => 'users', 'schema' => null],
                 'Order' => ['source' => 'orders', 'schema' => null],
             ])))
             ->table('User')
@@ -179,7 +179,7 @@ class SelectBuilderTest extends TestCase
 
         $second = Query::new($db)
             ->using(new MappingResolver(ModelMapping::fromArray([
-                'User'  => ['source' => 'accounts', 'schema' => null],
+                'User' => ['source' => 'accounts', 'schema' => null],
                 'Order' => ['source' => 'purchases', 'schema' => null],
             ])))
             ->table('User')
@@ -245,7 +245,7 @@ class SelectBuilderTest extends TestCase
 
         $first = Query::new($db)
             ->using(new MappingResolver(ModelMapping::fromArray([
-                'User'  => ['source' => 'users', 'schema' => null],
+                'User' => ['source' => 'users', 'schema' => null],
                 'Order' => ['source' => 'orders', 'schema' => null],
             ])))
             ->table('User')
@@ -260,7 +260,7 @@ class SelectBuilderTest extends TestCase
 
         $second = Query::new($db)
             ->using(new MappingResolver(ModelMapping::fromArray([
-                'User'  => ['source' => 'accounts', 'schema' => null],
+                'User' => ['source' => 'accounts', 'schema' => null],
                 'Order' => ['source' => 'purchases', 'schema' => null],
             ])))
             ->table('User')

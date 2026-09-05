@@ -6,11 +6,11 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Azera\AppContext;
 use Azera\Db\Database;
 use Azera\Db\ResultSet;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 /**
  * Example: Using Model load methods
- * 
+ *
  * This example demonstrates convenience methods for loading models:
  * - find() - Load by primary key (single or composite)
  * - findOne() - Load one record by conditions
@@ -39,9 +39,7 @@ class User extends Model
     public string $email;
     public string $status;
 
-    public function test()
-    {
-    }
+    public function test() {}
 }
 
 class UserProduct extends Model
@@ -125,13 +123,8 @@ $cartItem = CartItem::find(
 );
 
 // Or using positional array
-$cartItem = CartItem::find([1, 25, 10]);  // Maps to [cart_id, product_id, user_id]
+$cartItem = CartItem::find([1, 25, 10]); // Maps to [cart_id, product_id, user_id]
 
-// ============================================================================
-// findOne() - Load Single Record by Conditions
-// ============================================================================
-
-// Load user by email
 $user = User::findOne(['email' => 'john@example.com']);
 if ($user !== null) {
     echo "Found user by email: {$user->username}\n";
@@ -159,7 +152,7 @@ if ($user === null) {
 $users = User::findAll(['status' => 'active']);
 echo "Found " . count($users) . " active users\n";
 
-while ($user = $users->nextModel()) {
+foreach ($users as $user) {
     echo "- {$user->username} ({$user->email})\n";
 
     // State is automatically saved for each model
@@ -252,24 +245,24 @@ if ($user !== null) {
 }
 
 // ============================================================================
-// Working with ResultSet from findAll()
+// Working with findAll() results
 // ============================================================================
 
 $users = User::findAll(['status' => 'active']);
 
-// Iterate over ResultSet
-while ($user = $users->nextModel()) {
+// findAll() returns a plain list of heap-tracked entities — iterate directly
+foreach ($users as $user) {
     // Process each user
 }
 
 // Get first
-$firstUser = $users->firstModel();
+$firstUser = $users[0] ?? null;
 
-// Convert to array
-$userArray = $users->allModels();
+// The list IS the array of models
+$userArray = $users;
 
 // Count
-$count = $users->count();
+count($users);
 
 // ============================================================================
 // Error Handling
@@ -277,7 +270,7 @@ $count = $users->count();
 
 try {
     // Load with wrong number of ID values for composite key
-    $userProduct = UserProduct::find([10]);  // Only 1 value, needs 2
+    $userProduct = UserProduct::find([10]); // Only 1 value, needs 2
 } catch (\Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     // "ID array count mismatch for UserProduct: expected 2, got 1"
@@ -290,8 +283,7 @@ try {
 // Old way: using selectBuilder
 $user = User::query()
     ->where('id', 10)
-    ->select()
-    ->firstModel();
+    ->firstEntity();
 
 // New way: using find()
 $user = User::find(10);
@@ -317,10 +309,9 @@ $count = User::query()
 $count = User::count(['status' => 'active']);
 
 // Note: For complex queries, you can still use the builder pattern
-$users = User::query()
+$user = User::query()
     ->where('status', 'active')
     ->where('created_at', '2024-01-01')
     ->orderBy('username ASC')
     ->limit(10)
-    ->select();
-$user = $users->firstModel();
+    ->firstEntity();

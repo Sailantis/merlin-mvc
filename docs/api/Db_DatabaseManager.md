@@ -2,9 +2,9 @@
 
 **Full name:** [Azera\Db\DatabaseManager](../../src/Db/DatabaseManager.php)
 
-Manages multiple database connections (roles) and their factories.
+Manages multiple SQL connections (roles) and their factories.
 
-This class allows the definition of multiple database connections (e.g. "default", "analytics", "logging") and retrieval of them by role. The first role defined will be used as the default when requesting the default connection, but it can be changed by calling setDefault(). Each role can be defined with either a Database instance or a factory callable that returns a Database instance. The factory will only be called once per role, and the resulting Database instance will be cached for future use.
+This class allows the definition of multiple SQL connections (e.g. "default", "analytics", "logging") and retrieval of them by role. The first role defined will be used as the default when requesting the default connection, but it can be changed by calling setDefault(). Each role can be defined with either a Database instance or a factory callable that returns a Database instance. The factory will only be called once per role, and the resulting Database instance will be cached for future use.
 
 ## 🚀 Public methods
 
@@ -12,7 +12,7 @@ This class allows the definition of multiple database connections (e.g. "default
 
 `public function set(string $role, Azera\Db\Database|callable $factory): static`
 
-Define a database connection for a specific role.
+Define a SQL connection for a specific role.
 
 **🧭 Parameters**
 
@@ -32,7 +32,7 @@ Define a database connection for a specific role.
 
 `public function setDefault(string $role): static`
 
-Set the default database role to use when requesting the default connection. By default, the first defined role will be used as the default.
+Set the default SQL role to use when requesting the default connection. By default, the first defined role will be used as the default.
 
 **🧭 Parameters**
 
@@ -55,7 +55,7 @@ Set the default database role to use when requesting the default connection. By 
 
 `public function has(string $role): bool`
 
-Check if a database role is defined.
+Check if a SQL role is defined.
 
 **🧭 Parameters**
 
@@ -114,7 +114,7 @@ Get the Database instance for a specific role, or the default if the role is not
 
 **⚠️ Throws**
 
-- RuntimeException  If no default database is configured
+- RuntimeException  If no default Database is configured
 
 
 ---
@@ -132,7 +132,7 @@ Get the default Database instance.
 
 **⚠️ Throws**
 
-- RuntimeException  If no default database is configured
+- RuntimeException  If no default Database is configured
 
 
 ---
@@ -141,7 +141,7 @@ Get the default Database instance.
 
 `public function roles(): array`
 
-Return the names of all registered database roles.
+Return the names of all registered SQL roles.
 
 **➡️ Return value**
 
@@ -155,7 +155,7 @@ Return the names of all registered database roles.
 
 `public function defaultRole(): string|null`
 
-Return the name of the default database role, or null if none is configured.
+Return the name of the default SQL role, or null if none is configured.
 
 **➡️ Return value**
 

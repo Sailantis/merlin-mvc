@@ -20,7 +20,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 use Azera\AppContext;
 use Azera\Db\Database;
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 
 // Use plural table names (e.g. 'users' instead of 'user').
 ModelMapping::usePluralTableNames(true);

@@ -4,7 +4,7 @@
 
 Resolves logical names as fully-qualified model class names.
 
-If the name is an existing class that extends [`Model`](Core_Model.md), the resolver
+If the name is an existing class that extends [`Model`](Orm_Model.md), the resolver
 instantiates it (cached per class) and returns the model's `source()`,
 `schema()`, read/write roles, and `idFields()`. This enables `FETCH_CLASS`
 hydration via the returned `modelClass`.

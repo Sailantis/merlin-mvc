@@ -41,9 +41,9 @@ class MakeTask extends Task
         }
 
         $className = $this->normalizeClassName($name, 'Controller');
-        $ns        = $this->resolveNamespace('Controllers');
-        $dir       = $this->resolveDirectory('Controllers');
-        $filePath  = $dir . DIRECTORY_SEPARATOR . $className . '.php';
+        $ns = $this->resolveNamespace('Controllers');
+        $dir = $this->resolveDirectory('Controllers');
+        $filePath = $dir . DIRECTORY_SEPARATOR . $className . '.php';
 
         $content = $this->renderStub($className, $ns, 'controller');
         $this->writeScaffold($filePath, $content, "Controller {$className}");
@@ -62,9 +62,9 @@ class MakeTask extends Task
         }
 
         $className = $this->normalizeClassName($name, '');
-        $ns        = $this->resolveNamespace('Models');
-        $dir       = $this->resolveDirectory('Models');
-        $filePath  = $dir . DIRECTORY_SEPARATOR . $className . '.php';
+        $ns = $this->resolveNamespace('Models');
+        $dir = $this->resolveDirectory('Models');
+        $filePath = $dir . DIRECTORY_SEPARATOR . $className . '.php';
         $tableName = $this->deriveTableName($className);
 
         $content = $this->renderModelStub($className, $ns, $tableName);
@@ -84,9 +84,9 @@ class MakeTask extends Task
         }
 
         $className = $this->normalizeClassName($name, 'Task');
-        $ns        = $this->resolveNamespace('Tasks');
-        $dir       = $this->resolveDirectory('Tasks');
-        $filePath  = $dir . DIRECTORY_SEPARATOR . $className . '.php';
+        $ns = $this->resolveNamespace('Tasks');
+        $dir = $this->resolveDirectory('Tasks');
+        $filePath = $dir . DIRECTORY_SEPARATOR . $className . '.php';
 
         $content = $this->renderStub($className, $ns, 'task');
         $this->writeScaffold($filePath, $content, "Task {$className}");
@@ -105,9 +105,9 @@ class MakeTask extends Task
         }
 
         $className = $this->normalizeClassName($name, '');
-        $ns        = $this->resolveNamespace('Middleware');
-        $dir       = $this->resolveDirectory('Middleware');
-        $filePath  = $dir . DIRECTORY_SEPARATOR . $className . '.php';
+        $ns = $this->resolveNamespace('Middleware');
+        $dir = $this->resolveDirectory('Middleware');
+        $filePath = $dir . DIRECTORY_SEPARATOR . $className . '.php';
 
         $content = $this->renderMiddlewareStub($className, $ns);
         $this->writeScaffold($filePath, $content, "Middleware {$className}");
@@ -134,7 +134,7 @@ class MakeTask extends Task
 
         // Convert dot notation to directory structure: "users.index" → "users/index.clarity.html"
         $relativePath = str_replace('.', DIRECTORY_SEPARATOR, $name) . '.clarity.html';
-        $filePath     = $dir . DIRECTORY_SEPARATOR . $relativePath;
+        $filePath = $dir . DIRECTORY_SEPARATOR . $relativePath;
 
         if (is_file($filePath) && !$this->option('force', false)) {
             $this->warn("File already exists: {$filePath}");
@@ -158,8 +158,8 @@ class MakeTask extends Task
     {
         $methods = match ($type) {
             'controller' => $this->controllerMethods(),
-            'task'       => $this->taskMethods(),
-            default      => ''
+            'task' => $this->taskMethods(),
+            default => ''
         };
 
         return <<<PHP
@@ -217,7 +217,7 @@ PHP;
 
         namespace {$namespace};
 
-        use Azera\Core\Model;
+        use Azera\Orm\Model;
 
         class {$className} extends Model
         {
@@ -292,7 +292,7 @@ PHP;
      */
     private function resolveDirectory(string $type): string
     {
-        $ns   = $this->resolveNamespace($type);
+        $ns = $this->resolveNamespace($type);
         $path = $this->console->resolvePsr4Path($ns);
         if ($path !== null && is_dir($path)) {
             return $path;

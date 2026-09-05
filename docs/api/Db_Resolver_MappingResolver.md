@@ -2,7 +2,7 @@
 
 **Full name:** [Azera\Db\Resolver\MappingResolver](../../src/Db/Resolver/MappingResolver.php)
 
-Resolves logical names via a [`ModelMapping`](Core_ModelMapping.md) configuration.
+Resolves logical names via a [`ModelMapping`](Db_ModelMapping.md) configuration.
 
 Each entry in the mapping provides a `source` (table name), optional
 `schema`, and optional connection roles (`connection` for both read+write,
@@ -13,13 +13,13 @@ or individual `read`/`write` overrides). No model hydration is available —
 
 ### __construct() · [source](../../src/Db/Resolver/MappingResolver.php#L19)
 
-`public function __construct(Azera\Core\ModelMapping $mapping): mixed`
+`public function __construct(Azera\Db\ModelMapping $mapping): mixed`
 
 **🧭 Parameters**
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$mapping` | [ModelMapping](Core_ModelMapping.md) | - |  |
+| `$mapping` | [ModelMapping](Db_ModelMapping.md) | - |  |
 
 **➡️ Return value**
 
@@ -28,7 +28,7 @@ or individual `read`/`write` overrides). No model hydration is available —
 
 ---
 
-### resolve() · [source](../../src/Db/Resolver/MappingResolver.php#L23)
+### resolve() · [source](../../src/Db/Resolver/MappingResolver.php#L25)
 
 `public function resolve(string $name): array`
 

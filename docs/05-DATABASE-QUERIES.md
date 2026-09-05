@@ -631,12 +631,12 @@ into a concrete source descriptor: table name, schema, connection roles, model c
 
 ### Built-in resolvers
 
-| Resolver | Used by | Behavior |
-|---|---|---|
-| `LiteralResolver` | `Query::raw()` | Treats the name as a literal table. Supports `schema.table` notation. No hydration. |
-| `ModelResolver` | `Query::new()` (fallback) | Resolves model class names via `source()`, `schema()`, `readRole()`, `writeRole()`, `idFields()`. Throws on unknown names (typo-safe). |
-| `MappingResolver` | Custom | Resolves logical names from a `ModelMapping` configuration. No hydration, but supports per-model `connection`/`read`/`write` roles. |
-| `ChainResolver` | AppContext default | Tries each resolver in order; throws if none match (strict). |
+| Resolver          | Used by                   | Behavior                                                                                                                               |
+| ----------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `LiteralResolver` | `Query::raw()`            | Treats the name as a literal table. Supports `schema.table` notation. No hydration.                                                    |
+| `ModelResolver`   | `Query::new()` (fallback) | Resolves model class names via `source()`, `schema()`, `readRole()`, `writeRole()`, `idFields()`. Throws on unknown names (typo-safe). |
+| `MappingResolver` | Custom                    | Resolves logical names from a `ModelMapping` configuration. No hydration, but supports per-model `connection`/`read`/`write` roles.    |
+| `ChainResolver`   | AppContext default        | Tries each resolver in order; throws if none match (strict).                                                                           |
 
 ### Query entry points
 
@@ -662,7 +662,7 @@ use Azera\Db\Resolver\ChainResolver;
 use Azera\Db\Resolver\ModelResolver;
 use Azera\Db\Resolver\MappingResolver;
 use Azera\Db\Resolver\TableResolver;
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
 
 $mapping = ModelMapping::fromArray([
     'User'    => 'users',
@@ -708,4 +708,3 @@ treated as a literal table. To use literal table names, use `Query::raw()` expli
 - [Models & ORM](04-MODELS-ORM.md)
 - [Cookbook](10-COOKBOOK.md)
 - [API Reference](api/README.md)
-

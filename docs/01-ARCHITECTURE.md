@@ -24,19 +24,19 @@ Central runtime context and service container – accessed as a singleton via `A
 
 Built-in lazy service accessors:
 
-| Method        | Returns                                                |
-| ------------- | ------------------------------------------------------ |
-| `request()`   | `Azera\Http\Request`                                  |
-| `view()`      | `Azera\Core\ViewEngine`                                |
-| `session()`   | `Azera\Http\Session\|null`                            |
-| `cookies()`   | `Azera\Http\Cookies`                                  |
-| `dbManager()` | `Azera\Db\DatabaseManager`                            |
-| `route()`     | `Azera\Core\ResolvedRoute\|null` – populated by Dispatcher |
-| `logger()`    | `Psr\Log\LoggerInterface` – `NullLogger` by default  |
+| Method        | Returns                                                                           |
+| ------------- | --------------------------------------------------------------------------------- |
+| `request()`   | `Azera\Http\Request`                                                              |
+| `view()`      | `Azera\Core\ViewEngine`                                                           |
+| `session()`   | `Azera\Http\Session\|null`                                                        |
+| `cookies()`   | `Azera\Http\Cookies`                                                              |
+| `dbManager()` | `Azera\Db\DatabaseManager`                                                        |
+| `route()`     | `Azera\Core\ResolvedRoute\|null` – populated by Dispatcher                        |
+| `logger()`    | `Psr\Log\LoggerInterface` – `NullLogger` by default                               |
 | `events()`    | `Psr\EventDispatcher\EventDispatcherInterface` – `NullEventDispatcher` by default |
-| `cache()`     | `Psr\SimpleCache\CacheInterface` – `NullCache` by default |
-| `queue()`     | `Azera\Queue\QueueInterface` – throws if unregistered |
-| `config()`    | `Azera\Config\Config` – lazily created               |
+| `cache()`     | `Psr\SimpleCache\CacheInterface` – `NullCache` by default                         |
+| `queue()`     | `Azera\Queue\QueueInterface` – throws if unregistered                             |
+| `config()`    | `Azera\Config\Config` – lazily created                                            |
 
 Custom services can be registered with `$ctx->set($id, new MyService())` or `$ctx->set($id, fn() => new MyService())` and retrieved with `$ctx->get($id)`. Registered callables are treated as zero-argument lazy factories and cached on first resolution. Auto-wiring is supported: unregistered class names are instantiated via reflection with their constructor dependencies resolved recursively from the container.
 
@@ -52,7 +52,7 @@ Custom services can be registered with `$ctx->set($id, new MyService())` or `$ct
 
 ### Data Layer
 
-- `Model` provides Active Record style methods (`find`, `findAll`, `create`, `save`, `delete`, …) and state tracking (`saveState`/`hasChanged`)
+- `Model` (Azera\Orm) provides Active Record style methods (`find`, `findAll`, `create`, `save`, `delete`, …) delegating to the `EntityManager` — identity-mapped reads, diff-based writes, heap-backed state tracking (`hasChanged`/`loadState`)
 - `Query` is the fluent SQL builder for select, write, count, and exists operations; terminal calls (`insert`, `upsert`, `update`, `delete`) finalize the query
 - `Database` wraps PDO with transaction helpers and lazy connection creation
 - `ResultSet` provides iterable, countable access to model or raw-row results
@@ -135,13 +135,13 @@ $ctx->dbManager()->set('default', new Database(...));
 
 Azera provides opt-in enterprise subsystems that use PSR interfaces directly (no adapters needed):
 
-| Subsystem | PSR | Accessor | Default |
-|-----------|-----|----------|---------|
-| Logging | PSR-3 | `logger()` | `NullLogger` |
-| Events | PSR-14 | `events()` | `NullEventDispatcher` |
-| Cache | PSR-16 | `cache()` | `NullCache` |
-| Queue | — | `queue()` | throws if unregistered |
-| Config | — | `config()` | empty `Config` |
+| Subsystem | PSR    | Accessor   | Default                |
+| --------- | ------ | ---------- | ---------------------- |
+| Logging   | PSR-3  | `logger()` | `NullLogger`           |
+| Events    | PSR-14 | `events()` | `NullEventDispatcher`  |
+| Cache     | PSR-16 | `cache()`  | `NullCache`            |
+| Queue     | —      | `queue()`  | throws if unregistered |
+| Config    | —      | `config()` | empty `Config`         |
 
 All subsystems are **zero-cost when unused** — each accessor lazily returns a no-op default that does nothing, so calling code can always invoke `$ctx->logger()->info(...)` or `$ctx->events()->dispatch(...)` without null-checks. Register real implementations via `$ctx->set(InterfaceClass::class, $factory)` to activate them.
 

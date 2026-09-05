@@ -12,7 +12,7 @@ Values passed through `->bind()` become real PDO named parameters and are never 
 User::query()
     ->where('email = :email')
     ->bind(['email' => $email])
-    ->firstModel();
+    ->first();
 ```
 
 ### Inline values
@@ -22,7 +22,7 @@ Values passed directly to `where()` as an array are escaped with PDO's quoting m
 ```php
 User::query()
     ->where('email = :email', ['email' => $email])
-    ->firstModel();
+    ->first();
 ```
 
 Use `->bind()` for all user-supplied input. Reserve inline values for internally constructed fragments where binding is not practical.
@@ -114,7 +114,8 @@ class CsrfMiddleware implements MiddlewareInterface
     }
 }
 ```
-```
+
+````
 
 Always use `hash_equals()` for token comparison to prevent timing attacks.
 
@@ -136,7 +137,7 @@ if (password_needs_rehash($storedHash, PASSWORD_DEFAULT)) {
     $storedHash = password_hash($plainPassword, PASSWORD_DEFAULT);
     // persist the new hash
 }
-```
+````
 
 Never store or log plain-text passwords.
 
@@ -154,7 +155,7 @@ class User extends Model
 User::create($request->post());
 ```
 
-`Model::forceCreate()` bypasses `$fillable` entirely. Use it only with data you fully control — never with raw request input.
+`Model::upsert()` writes values as provided (no `$fillable` concept — the model has no mass-assignment guard). Use it only with data you fully control — never with raw request input.
 
 ## Cookies and Encryption
 

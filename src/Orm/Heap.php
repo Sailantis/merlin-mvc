@@ -8,8 +8,8 @@ use Azera\Lifecycle\RequestScoped;
  * Identity map: ONE node per persisted entity, keyed by class + PK values.
  *
  * Purpose is CORRECTNESS, not caching: the same DB row loaded twice in one
- * request yields the same object, and the UnitOfWork diffs against the node
- * snapshot instead of scanning every constructed instance. The heap is
+ * request yields the same object, and the EntityManager diffs against the
+ * node snapshot instead of scanning every constructed instance. The heap is
  * request-scoped — {@see resetState()} wipes everything between requests in
  * persistent workers (non-negotiable; a leaking heap would return stale
  * entities for a new request / another tenant).
@@ -86,8 +86,8 @@ final class Heap implements RequestScoped
 
         $key = self::key($node->class, $node->id);
 
-        $this->nodes[$key]    = $node;
-        $this->oids[$oid]     = $node;
+        $this->nodes[$key] = $node;
+        $this->oids[$oid] = $node;
         $this->entities[$oid] = $entity;
     }
 
@@ -115,7 +115,7 @@ final class Heap implements RequestScoped
      */
     public function detach(object $entity): void
     {
-        $oid  = \spl_object_id($entity);
+        $oid = \spl_object_id($entity);
         $node = $this->oids[$oid] ?? null;
 
         if ($node !== null) {
@@ -179,8 +179,8 @@ final class Heap implements RequestScoped
      */
     public function resetState(): void
     {
-        $this->nodes    = [];
-        $this->oids     = [];
+        $this->nodes = [];
+        $this->oids = [];
         $this->entities = [];
     }
 }

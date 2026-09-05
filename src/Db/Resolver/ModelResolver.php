@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Azera\Db\Resolver;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 use Azera\Lifecycle\RequestScoped;
 
 /**
@@ -37,12 +37,12 @@ class ModelResolver implements TableResolver, RequestScoped
         $model = $this->cache[$name] ??= $this->instantiate($name);
 
         return [
-            'source'     => $model->source(),
-            'schema'     => $model->schema(),
-            'read'       => $model->readRole(),
-            'write'      => $model->writeRole(),
+            'source' => $model->source(),
+            'schema' => $model->schema(),
+            'read' => $model->readRole(),
+            'write' => $model->writeRole(),
             'modelClass' => $name,
-            'idFields'   => $model->idFields(),
+            'idFields' => $model->idFields(),
         ];
     }
 

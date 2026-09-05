@@ -5,14 +5,18 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 require_once __DIR__ . '/../Db/TestDatabase.php';
 
 use Azera\AppContext;
-use Azera\Db\Query;
-use Azera\Core\ModelMapping;
+use Azera\Db\ModelMapping;
+use Azera\Db\DatabaseManager;
+use Azera\Orm\FastHydrator;
+use Azera\Orm\Metadata;
+use Azera\Orm\Storage\PdoStore;
+use Azera\Orm\Storage\StoreManager;
 use Azera\Tests\Db\TestPgDatabase;
 use Azera\Tests\Db\TestMysqlDatabase;
 use Azera\Tests\Db\TestSqliteDatabase;
 use PHPUnit\Framework\TestCase;
 
-class DummyModel extends \Azera\Core\Model
+class DummyModel extends \Azera\Orm\Model
 {
     public $id;
     public $name;
@@ -24,7 +28,7 @@ class DummyModel extends \Azera\Core\Model
     }
 }
 
-class DummyDefaultedModel extends \Azera\Core\Model
+class DummyDefaultedModel extends \Azera\Orm\Model
 {
     public $id;
     public $name;
@@ -36,7 +40,7 @@ class DummyDefaultedModel extends \Azera\Core\Model
     }
 }
 
-class DummyCompositeModel extends \Azera\Core\Model
+class DummyCompositeModel extends \Azera\Orm\Model
 {
     public $tenant_id;
     public $id;
@@ -54,23 +58,43 @@ class ModelTest extends TestCase
     {
         AppContext::setInstance(new AppContext());
         ModelMapping::usePluralTableNames(false);
+        FastHydrator::clear();
+        Metadata::clear();
+        self::resetConnectionRoles();
+    }
+
+    protected function tearDown(): void
+    {
+        // The role maps are static on Model — reset so they never leak
+        // into later test files.
+        self::resetConnectionRoles();
+    }
+
+    /** Clear Model's static connection-role maps (protected statics). */
+    private static function resetConnectionRoles(): void
+    {
+        foreach (['__defaultReadRoles', '__defaultWriteRoles'] as $prop) {
+            $ref = new \ReflectionProperty(\Azera\Orm\Model::class, $prop);
+            $ref->setValue(null, []);
+        }
     }
 
     public function testStateSaveLoadAndHasChanged(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
+        $db->setMockResults([
+            [['id' => '1', 'name' => 'Alice']]
+        ]);
 
-        $m = new DummyModel();
-        $m->id        = null;
-        $m->name      = 'Alice';
-        $m->_internal = 'secret';
-
-        $m->saveState();
+        // Load through the EM: the heap node snapshot is the baseline.
+        $m = DummyModel::find(1);
+        $this->assertNotNull($m);
         $this->assertFalse($m->hasChanged());
 
         $m->name = 'Bob';
         $this->assertTrue($m->hasChanged());
+        $this->assertSame(['name' => 'Bob'], $m->changedData());
 
         $m->loadState();
         $this->assertEquals('Alice', $m->name);
@@ -80,54 +104,72 @@ class ModelTest extends TestCase
     public function testCreatePopulatesIdAndUpdatesState(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
-        // Simulate DB returning the inserted row
-        $db->setMockResults([
-            [
-                ['id' => 123, 'name' => 'Charlie']
-            ]
-        ]);
+        $this->wireStore($db);
+        // RETURNING "id" echoes the generated PK back
+        $db->setMockResults([[['id' => 123]]]);
 
         $m = new DummyModel();
         $m->name = 'Charlie';
 
-        $this->assertTrue($m->insert());
-        $this->assertEquals(123, $m->id);
+        $this->assertTrue($m->save());
+        $this->assertSame(123, $m->id);
 
-        $state = $m->getState();
-        $this->assertNotNull($state);
-        $this->assertEquals(123, $state->id);
-        $this->assertEquals('Charlie', $state->name);
+        // Post-save contract: hasChanged() = false (heap node synced).
+        $this->assertFalse($m->hasChanged());
+        $this->assertEquals('Charlie', $m->name);
     }
 
-    public function testUpdateExecutesAndClearsChanges(): void
+    public function testSaveOnTrackedModelWritesOnlyChangedColumns(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
-        // Create the model first so a state exists, then change and update
+        $this->wireStore($db);
+
+        // Load through the EM (heap-tracked), then mutate one field.
         $db->setMockResults([
-            [
-                ['id' => 5, 'name' => 'Delta']
-            ]
+            [['id' => '5', 'name' => 'Delta']]
         ]);
 
-        $m = new DummyModel();
-        $m->name = 'Delta';
-        $this->assertTrue($m->insert());
-
-        $m->name = 'Delta2';
+        $m = DummyModel::find(5);
+        $this->assertNotNull($m);
         $db->clearQueries();
 
-        $result = $m->update();
-        $this->assertTrue($result);
-        $this->assertNotEmpty($db->queries, 'Update should execute queries on the driver');
-        $this->assertFalse($m->hasChanged(), 'State should be updated after update()');
+        $m->name = 'Delta2';
+        $this->assertTrue($m->save());
+
+        // The facade save() flushes inside a transaction (BEGIN … COMMIT);
+        // assert on the data statements, not the raw log tail.
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $query = end($dataQueries);
+        $this->assertStringContainsString('UPDATE "dummy_model"', $query['sql']);
+        $this->assertStringContainsString('SET "name" = ?', $query['sql']);
+        $this->assertStringContainsString('WHERE "id" = ?', $query['sql']);
+        $this->assertFalse($m->hasChanged(), 'State should be updated after save()');
+    }
+
+    public function testCleanSaveEmitsNoSql(): void
+    {
+        $db = new TestPgDatabase();
+        $this->wireStore($db);
+
+        $db->setMockResults([
+            [['id' => '5', 'name' => 'Same']]
+        ]);
+
+        $m = DummyModel::find(5);
+        $db->clearQueries();
+
+        $this->assertFalse($m->save());
+        $this->assertSame([], $db->queries);
     }
 
     public function testInsertOmitsNullIdAndDefaultColumns(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
+        // RETURNING * (missing columns) echoes the DB defaults back
         $db->setMockResults([
             [
                 ['id' => 9, 'name' => 'Echo', 'created_at' => '2026-04-05 12:00:00']
@@ -135,19 +177,23 @@ class ModelTest extends TestCase
         ]);
 
         $model = new DummyDefaultedModel();
-        $model->id         = null;
-        $model->name       = 'Echo';
-        $model->created_at = null;
+        $model->name = 'Echo';
 
-        $this->assertTrue($model->insert());
+        $this->assertTrue($model->save());
 
-        $query = $db->getLastQuery();
+        // RETURNING * statement + tx wrapper: filter to data statements.
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $query = end($dataQueries);
         $this->assertNotNull($query);
         $this->assertStringContainsString('INSERT INTO "dummy_defaulted_model"', $query['sql']);
         $this->assertStringContainsString('"name"', $query['sql']);
         $this->assertStringNotContainsString('"id"', $query['sql']);
         $this->assertStringNotContainsString('"created_at"', $query['sql']);
-        $this->assertStringContainsString("'Echo'", $query['sql']);
+        // Values are BOUND parameters on the EM path (not inline-escaped).
+        $this->assertContains('Echo', array_values($query['params']));
         $this->assertSame(9, $model->id);
         $this->assertSame('2026-04-05 12:00:00', $model->created_at);
     }
@@ -155,7 +201,7 @@ class ModelTest extends TestCase
     public function testSaveForNewModelDoesNotUsePrimaryKeyUpsert(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
         $db->setMockResults([
             [
                 ['id' => 15, 'name' => 'Golf']
@@ -167,8 +213,14 @@ class ModelTest extends TestCase
 
         $this->assertTrue($model->save());
 
-        $query = $db->getLastQuery();
-        $this->assertNotNull($query);
+        // The facade save() flushes inside a transaction (BEGIN … COMMIT);
+        // assert on the data statements, not the raw log tail.
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $this->assertNotEmpty($dataQueries);
+        $query = end($dataQueries);
         $this->assertStringContainsString('INSERT INTO "dummy_model"', $query['sql']);
         $this->assertStringNotContainsString('ON CONFLICT', strtoupper($query['sql']));
         $this->assertSame(15, $model->id);
@@ -177,7 +229,7 @@ class ModelTest extends TestCase
     public function testWriteClosesReturningCursor(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
         $db->setMockResults([
             [
                 ['id' => 21, 'name' => 'Hotel']
@@ -186,7 +238,7 @@ class ModelTest extends TestCase
 
         $model = new DummyModel();
         $model->name = 'Hotel';
-        $this->assertTrue($model->insert());
+        $this->assertTrue($model->save());
         $this->assertSame(21, $model->id);
 
         // The RETURNING statement's cursor must be closed after the write so
@@ -199,12 +251,6 @@ class ModelTest extends TestCase
     public function testRefreshOnWriteResultSetThrows(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
-        $db->setMockResults([
-            [
-                ['id' => 22, 'name' => 'India']
-            ]
-        ]);
 
         // A write statement (isReadResultSet=false) produces a ResultSet, but
         // it must not be refreshable — refresh() would re-execute the write.
@@ -213,7 +259,6 @@ class ModelTest extends TestCase
             $db->query('INSERT INTO "dummy_model" ("name") VALUES (\'India\') RETURNING *'),
             'INSERT INTO "dummy_model" ("name") VALUES (\'India\') RETURNING *',
             [],
-            DummyModel::class,
             false
         );
 
@@ -224,19 +269,12 @@ class ModelTest extends TestCase
     public function testRefreshOnReadResultSetSucceeds(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
-        $db->setMockResults([
-            [
-                ['id' => 23, 'name' => 'Juliet']
-            ]
-        ]);
 
         $rs = new \Azera\Db\ResultSet(
             $db,
             $db->query('SELECT * FROM "dummy_model"'),
             'SELECT * FROM "dummy_model"',
             [],
-            DummyModel::class,
             true
         );
 
@@ -247,7 +285,7 @@ class ModelTest extends TestCase
     public function testFindHydratesModelInstance(): void
     {
         $db = new TestPgDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
         $db->setMockResults([
             [
                 ['id' => 5, 'name' => 'Foxtrot']
@@ -259,13 +297,29 @@ class ModelTest extends TestCase
         $this->assertInstanceOf(DummyModel::class, $model);
         $this->assertSame(5, $model->id);
         $this->assertSame('Foxtrot', $model->name);
-        $this->assertNotNull($model->getState());
+        // Loaded onto the heap: identity-mapped + dirty-state baseline ready.
+        $this->assertFalse($model->hasChanged());
+    }
+
+    public function testFindIsIdentityMappedAcrossCalls(): void
+    {
+        $db = new TestPgDatabase();
+        $this->wireStore($db);
+        $db->setMockResults([
+            [['id' => 5, 'name' => 'Foxtrot']],
+            [['id' => 5, 'name' => 'Foxtrot']]
+        ]);
+
+        $first  = DummyModel::find(5);
+        $second = DummyModel::find(5);
+
+        $this->assertSame($first, $second, 'EM identity map must return the same instance');
     }
 
     public function testCompositeKeyInsertBackfillsAllIdsViaReturningOnMysql(): void
     {
         $db = new TestMysqlDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
         $db->setMockResults([
             [
                 ['tenant_id' => 7, 'id' => 42, 'name' => 'Composite']
@@ -275,9 +329,13 @@ class ModelTest extends TestCase
         $model = new DummyCompositeModel();
         $model->name = 'Composite';
 
-        $this->assertTrue($model->insert());
+        $this->assertTrue($model->save());
 
-        $query = $db->getLastQuery();
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $query = end($dataQueries);
         $this->assertNotNull($query);
         $this->assertStringContainsString('RETURNING', strtoupper($query['sql']));
         $this->assertSame(7, $model->tenant_id);
@@ -287,7 +345,7 @@ class ModelTest extends TestCase
     public function testCompositeKeyInsertBackfillsAllIdsViaReturningOnSqlite(): void
     {
         $db = new TestSqliteDatabase();
-        AppContext::instance()->dbManager()->set('default', $db);
+        $this->wireStore($db);
         $db->setMockResults([
             [
                 ['tenant_id' => 3, 'id' => 99, 'name' => 'Composite']
@@ -297,12 +355,111 @@ class ModelTest extends TestCase
         $model = new DummyCompositeModel();
         $model->name = 'Composite';
 
-        $this->assertTrue($model->insert());
+        $this->assertTrue($model->save());
 
-        $query = $db->getLastQuery();
+        $dataQueries = array_values(array_filter(
+            $db->queries,
+            fn($q) => !in_array($q['sql'], ['BEGIN', 'COMMIT', 'ROLLBACK'], true)
+        ));
+        $query = end($dataQueries);
         $this->assertNotNull($query);
         $this->assertStringContainsString('RETURNING', strtoupper($query['sql']));
         $this->assertSame(3, $model->tenant_id);
         $this->assertSame(99, $model->id);
+    }
+
+    public function testCompositeKeyFindAcceptsOrderedAndAssocIdArrays(): void
+    {
+        $db = new TestPgDatabase();
+        $this->wireStore($db);
+        $db->setMockResults([
+            [['tenant_id' => 3, 'id' => 7, 'name' => 'Row']]
+        ]);
+
+        $model = DummyCompositeModel::find([3, 7]);
+        $this->assertInstanceOf(DummyCompositeModel::class, $model);
+
+        $sql = $db->getLastQuery()['sql'];
+        $this->assertStringContainsString('"tenant_id" = ?', $sql);
+        $this->assertStringContainsString('"id" = ?', $sql);
+    }
+
+    public function testCompositeKeyScalarIdThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        DummyCompositeModel::find(7);
+    }
+
+    public function testConnectionAttributePrecedence(): void
+    {
+        Metadata::clear();
+
+        // Fixture class with #[Connection(read: 'replica', write: 'primary')].
+        $m = new \Azera\Tests\Orm\Fixtures\InventoryItem();
+        $this->assertSame('replica', $m->readRole());
+        $this->assertSame('primary', $m->writeRole());
+
+        // Runtime setter on the CONCRETE class beats the attribute (dynamic
+        // > static) — the per-request tenancy escape hatch.
+        \Azera\Tests\Orm\Fixtures\InventoryItem::setDefaultReadRole('runtime-role');
+        $this->assertSame('runtime-role', $m->readRole());
+
+        // Base-model global override does NOT beat the attribute — the
+        // attribute sits ABOVE the base fallback in precedence.
+        \Azera\Orm\Model::setDefaultReadRole('global');
+        $this->assertSame('runtime-role', $m->readRole());
+    }
+
+    public function testConnectionRoleFallbackChain(): void
+    {
+        Metadata::clear();
+
+        // No attribute, no runtime override → type-name fallback.
+        $m = new DummyModel();
+        $this->assertSame('read', $m->readRole());
+        $this->assertSame('write', $m->writeRole());
+
+        // Base-model global override applies when nothing else is set.
+        \Azera\Orm\Model::setDefaultRole('shared');
+        $this->assertSame('shared', $m->readRole());
+        $this->assertSame('shared', $m->writeRole());
+    }
+
+    public function testMetadataBackedSourceSchemaIdFields(): void
+    {
+        Metadata::clear();
+
+        // #[Table(name: 'inventory_items', schema: 'warehouse')] +
+        // #[Column(pk: true)] composite key — all three accessors resolve
+        // from compiled metadata with no method overrides on the class.
+        $m = new \Azera\Tests\Orm\Fixtures\InventoryItem();
+        $this->assertSame('inventory_items', $m->source());
+        $this->assertSame('warehouse', $m->schema());
+        $this->assertSame(['tenant_id', 'item_id'], $m->idFields());
+
+        // Convention fallback unchanged for attribute-less models.
+        $plain = new DummyModel();
+        $this->assertSame('dummy_model', $plain->source());
+        $this->assertNull($plain->schema());
+        $this->assertSame(['id'], $plain->idFields());
+    }
+
+    /**
+     * Wire the EM's Store seam to the given test DB (same pattern as the
+     * EntityManagerTest bootstrap): StoreManager 'default' role over a
+     * PdoStore borrowing the DatabaseManager's default/read/write roles.
+     */
+    private function wireStore(TestPgDatabase|TestMysqlDatabase|TestSqliteDatabase $db): void
+    {
+        $dbm = new DatabaseManager();
+        $dbm->set('default', $db);
+        $dbm->set('read', $db);
+        $dbm->set('write', $db);
+        AppContext::instance()->set(DatabaseManager::class, $dbm);
+
+        $stores = new StoreManager();
+        $stores->set('sql', 'default', fn() => new PdoStore($dbm, 'read', 'write'));
+        $stores->setDefault('sql', 'default');
+        AppContext::instance()->set(StoreManager::class, $stores);
     }
 }

@@ -5,7 +5,8 @@ namespace Azera\Orm;
 /**
  * A single entity's bookkeeping entry in the {@see Heap}.
  *
- * Mirrors Cycle's Node concept, trimmed to what the UnitOfWork needs:
+ * Mirrors Cycle's Node concept, trimmed to what the EntityManager's write
+ * pipeline needs:
  * the entity reference, its identity (PK values), a data snapshot for
  * dirty diffing, and the persistence lifecycle state.
  *
@@ -38,9 +39,7 @@ final class Node
         public array $data,
         public int $state = self::NEW,
         public array $changedFields = [],
-    )
-    {
-    }
+    ) {}
 
     public function isScheduled(): bool
     {

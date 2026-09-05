@@ -2,11 +2,13 @@
 
 **Full name:** [Azera\Db\ResultSet](../../src/Db/ResultSet.php)
 
+Forward-only cursor over an executed statement. Provides various fetch methods to retrieve rows as associative arrays, objects, or single column values.
+
 ## 🚀 Public methods
 
 ### __construct() · [source](../../src/Db/ResultSet.php#L38)
 
-`public function __construct(Azera\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, string|null $modelClass = null): mixed`
+`public function __construct(Azera\Db\Database $connection, PDOStatement $statement, string|null $sqlStatement = null, array|null $boundParams = null, bool $isReadQuery = true): mixed`
 
 Create a new ResultSet wrapping a PDO statement result.
 
@@ -14,11 +16,11 @@ Create a new ResultSet wrapping a PDO statement result.
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `$connection` | [Database](Db_Database.md) | - | Database connection used to execute the query. |
+| `$connection` | [Database](Db_Database.md) | - | SQL connection used to execute the query. |
 | `$statement` | PDOStatement | - | The executed PDO statement. |
 | `$sqlStatement` | string\|null | `null` | The original SQL string (used by reexecute()). |
 | `$boundParams` | array\|null | `null` | Bound parameters (used by reexecute()). |
-| `$modelClass` | string\|null | `null` | Optional model class name used for hydration (sets the fetch class). |
+| `$isReadQuery` | bool | `true` | Whether the statement is a read-only SELECT. Defaults to true.<br>Set to false for write statements (e.g. INSERT/UPDATE/DELETE ... RETURNING),<br>which cannot be safely re-executed via `refresh()`. |
 
 **➡️ Return value**
 
@@ -27,7 +29,7 @@ Create a new ResultSet wrapping a PDO statement result.
 
 ---
 
-### fetch() · [source](../../src/Db/ResultSet.php#L59)
+### fetch() · [source](../../src/Db/ResultSet.php#L58)
 
 `public function fetch(): object|array|false`
 
@@ -41,7 +43,7 @@ Fetch next row as object or array depending on fetch mode.
 
 ---
 
-### fetchAssoc() · [source](../../src/Db/ResultSet.php#L69)
+### fetchAssoc() · [source](../../src/Db/ResultSet.php#L68)
 
 `public function fetchAssoc(): array|false`
 
@@ -55,7 +57,7 @@ Fetch next row as associative array.
 
 ---
 
-### fetchObject() · [source](../../src/Db/ResultSet.php#L79)
+### fetchObject() · [source](../../src/Db/ResultSet.php#L78)
 
 `public function fetchObject(): object|false`
 
@@ -69,7 +71,7 @@ Fetch next row as object.
 
 ---
 
-### fetchColumn() · [source](../../src/Db/ResultSet.php#L90)
+### fetchColumn() · [source](../../src/Db/ResultSet.php#L89)
 
 `public function fetchColumn(int $column = 0): mixed`
 
@@ -89,7 +91,7 @@ Fetch next row as a single column value.
 
 ---
 
-### fetchAllAssoc() · [source](../../src/Db/ResultSet.php#L100)
+### fetchAllAssoc() · [source](../../src/Db/ResultSet.php#L99)
 
 `public function fetchAllAssoc(): array`
 
@@ -103,7 +105,7 @@ Return all rows as associative array.
 
 ---
 
-### fetchAllObject() · [source](../../src/Db/ResultSet.php#L111)
+### fetchAllObject() · [source](../../src/Db/ResultSet.php#L110)
 
 `public function fetchAllObject(): array`
 
@@ -117,7 +119,7 @@ Return all rows as object.
 
 ---
 
-### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L123)
+### fetchAllColumn() · [source](../../src/Db/ResultSet.php#L122)
 
 `public function fetchAllColumn(int $column = 0): array`
 
@@ -137,7 +139,7 @@ Fetch all values from a single column.
 
 ---
 
-### fetchAll() · [source](../../src/Db/ResultSet.php#L135)
+### fetchAll() · [source](../../src/Db/ResultSet.php#L134)
 
 `public function fetchAll(int $fetchMode = 0): array`
 
@@ -157,7 +159,7 @@ Fetch all rows as objects or arrays depending on fetch mode.
 
 ---
 
-### setFetchMode() · [source](../../src/Db/ResultSet.php#L146)
+### setFetchMode() · [source](../../src/Db/ResultSet.php#L145)
 
 `public function setFetchMode(int $fetchMode): void`
 
@@ -176,52 +178,7 @@ Set the default fetch mode for this result set.
 
 ---
 
-### nextModel() · [source](../../src/Db/ResultSet.php#L155)
-
-`public function nextModel(): Azera\Core\Model|null`
-
-Get the next model from the result set, or false if there are no more models. This method will attempt to hydrate a model if a model class was provided when the ResultSet was created. If no model class was provided, it will return false.
-
-**➡️ Return value**
-
-- Type: [Model](Core_Model.md)|null
-- Description: The next model instance, or null if there are no more models.
-
-
----
-
-### firstModel() · [source](../../src/Db/ResultSet.php#L192)
-
-`public function firstModel(): Azera\Core\Model|null`
-
-Get first model or object from result set.
-
-**➡️ Return value**
-
-- Type: [Model](Core_Model.md)|null
-- Description: The first model instance, or null if there are no models or if the first row cannot be hydrated as a model.
-
-
----
-
-### allModels() · [source](../../src/Db/ResultSet.php#L218)
-
-`public function allModels(): array`
-
-Get all remaining rows hydrated as model instances.
-
-Calls `nextModel()` repeatedly until the result set is exhausted.
-Returns an empty array when no model class was provided at construction.
-
-**➡️ Return value**
-
-- Type: array
-- Description: An array of all remaining model instances, or an empty array if there are no more models.
-
-
----
-
-### getSql() · [source](../../src/Db/ResultSet.php#L236)
+### getSql() · [source](../../src/Db/ResultSet.php#L154)
 
 `public function getSql(): string|null`
 
@@ -235,7 +192,7 @@ Return the SQL statement that was executed to produce this result set, if availa
 
 ---
 
-### getBindings() · [source](../../src/Db/ResultSet.php#L245)
+### getBindings() · [source](../../src/Db/ResultSet.php#L163)
 
 `public function getBindings(): array|null`
 
@@ -249,16 +206,14 @@ Return the variables that were bound to the SQL statement, if available.
 
 ---
 
-### toArray() · [source](../../src/Db/ResultSet.php#L260)
+### toArray() · [source](../../src/Db/ResultSet.php#L176)
 
 `public function toArray(): array`
 
 Convert the result set to a plain array of rows.
 
-Each row is cast to an associative array (via castToArray on model
-instances, or fetched as assoc from PDO for plain rows).  This makes
-the result set compatible with template engines and serializers that
-expect array-like data (e.g. Clarity's castToArray).
+Makes the result set compatible with template engines and serializers
+that expect array-like data (e.g. Clarity's castToArray).
 
 **➡️ Return value**
 
@@ -268,20 +223,28 @@ expect array-like data (e.g. Clarity's castToArray).
 
 ---
 
-### refresh() · [source](../../src/Db/ResultSet.php#L285)
+### refresh() · [source](../../src/Db/ResultSet.php#L191)
 
 `public function refresh(): void`
 
 Execute the query again to repopulate the result set.
 
+Only read-only (SELECT) result sets can be safely refreshed. Refreshing a
+write statement (e.g. INSERT/UPDATE/DELETE ... RETURNING) would re-execute
+the write, so it is rejected.
+
 **➡️ Return value**
 
 - Type: void
 
+**⚠️ Throws**
+
+- Exception  If this result set does not originate from a SELECT statement.
+
 
 ---
 
-### rewind() · [source](../../src/Db/ResultSet.php#L308)
+### rewind() · [source](../../src/Db/ResultSet.php#L217)
 
 `public function rewind(): void`
 
@@ -299,7 +262,7 @@ row so that valid() returns true and PHP's foreach can begin.
 
 ---
 
-### current() · [source](../../src/Db/ResultSet.php#L317)
+### current() · [source](../../src/Db/ResultSet.php#L226)
 
 `public function current(): mixed`
 
@@ -312,7 +275,7 @@ Return the current row (fetched lazily on first access).
 
 ---
 
-### key() · [source](../../src/Db/ResultSet.php#L327)
+### key() · [source](../../src/Db/ResultSet.php#L236)
 
 `public function key(): int`
 
@@ -325,7 +288,7 @@ Return the zero-based position of the current row within this traversal.
 
 ---
 
-### next() · [source](../../src/Db/ResultSet.php#L333)
+### next() · [source](../../src/Db/ResultSet.php#L242)
 
 `public function next(): void`
 
@@ -338,7 +301,7 @@ Advance to the next row.
 
 ---
 
-### valid() · [source](../../src/Db/ResultSet.php#L340)
+### valid() · [source](../../src/Db/ResultSet.php#L249)
 
 `public function valid(): bool`
 
@@ -351,7 +314,7 @@ Return true while the current row is not false/null (i.e., while rows remain).
 
 ---
 
-### count() · [source](../../src/Db/ResultSet.php#L349)
+### count() · [source](../../src/Db/ResultSet.php#L258)
 
 `public function count(): int`
 
@@ -361,6 +324,39 @@ Return the number of rows affected/returned by the underlying statement.
 
 - Type: int
 - Description: Row count as reported by PDOStatement::rowCount().
+
+
+---
+
+### closeCursor() · [source](../../src/Db/ResultSet.php#L274)
+
+`public function closeCursor(): void`
+
+Close the cursor on the underlying PDO statement.
+
+This releases any locks the statement may still hold.  It is especially
+important for statements that only partially consumed their result set
+(e.g. [`Model::__performWrite()`](Orm_Model.md#__performwrite) fetching a single RETURNING row): on
+SQLite in WAL mode, an open cursor on a write statement keeps the write
+lock held on its connection, blocking writes from other connections.
+
+**➡️ Return value**
+
+- Type: void
+
+
+---
+
+### __destruct() · [source](../../src/Db/ResultSet.php#L283)
+
+`public function __destruct(): mixed`
+
+Ensure the underlying statement cursor is released when the result set
+goes out of scope, so that any Database locks it holds are freed.
+
+**➡️ Return value**
+
+- Type: mixed
 
 
 

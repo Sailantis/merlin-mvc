@@ -5,7 +5,7 @@
 Base class for all database events.
 
 All DB events are immutable value objects. They are dispatched through
-[`AppContext::events()`](AppContext.md#events) — the unified event system — rather
+[`AppContext::events()`](AppContext.md#events) â€” the unified event system â€” rather
 than the old string-based `Database::fire()` mechanism.
 
 Each event carries the `$database` instance so listeners can

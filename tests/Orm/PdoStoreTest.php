@@ -7,10 +7,12 @@ require_once __DIR__ . '/../Db/TestDatabase.php';
 require_once __DIR__ . '/Fixtures/Article.php';
 
 use Azera\AppContext;
+use Azera\Orm\Metadata;
 use Azera\Orm\Storage\PdoStore;
 use Azera\Orm\Storage\StoreManager;
 use Azera\Tests\Db\TestDatabase;
 use Azera\Tests\Orm\Fixtures\Article;
+use Azera\Tests\Orm\Fixtures\InventoryItem;
 use PHPUnit\Framework\TestCase;
 
 class PdoStoreTest extends TestCase
@@ -21,6 +23,7 @@ class PdoStoreTest extends TestCase
     protected function setUp(): void
     {
         AppContext::setInstance(new AppContext());
+        Metadata::clear();
         $this->db = new TestDatabase('pgsql');
         AppContext::instance()->dbManager()->set('read', $this->db);
         AppContext::instance()->dbManager()->set('write', $this->db);
@@ -55,6 +58,43 @@ class PdoStoreTest extends TestCase
 
         $this->assertSame([['id' => 1, 'title' => 'A']], $rows);
         $this->assertStringStartsWith('SELECT * FROM "article"', $this->lastDataSql());
+    }
+
+    public function testSchemaQualifiedTableInAllSql(): void
+    {
+        // #[Table(schema: 'warehouse', name: 'inventory_items')] — every
+        // statement targets "warehouse"."inventory_items".
+        $this->db->setMockResults([[['cnt' => 3]]]);
+
+        $this->store->count(InventoryItem::class, ['tenant_id' => 1]);
+
+        $sql = $this->lastDataSql();
+        $this->assertStringStartsWith(
+            'SELECT COUNT(*) AS cnt FROM "warehouse"."inventory_items"',
+            $sql
+        );
+
+        // INSERT / UPDATE / DELETE paths use the same qualification.
+        $this->db->clearQueries();
+        $this->store->insertOne(InventoryItem::class, ['tenant_id' => 1, 'item_id' => 2, 'name' => 'X']);
+        $this->assertStringStartsWith(
+            'INSERT INTO "warehouse"."inventory_items"',
+            $this->dataQueries()[0]['sql']
+        );
+
+        $this->db->clearQueries();
+        $this->store->updateOne(InventoryItem::class, ['name' => 'Y'], ['tenant_id' => 1, 'item_id' => 2]);
+        $this->assertStringStartsWith(
+            'UPDATE "warehouse"."inventory_items"',
+            $this->dataQueries()[0]['sql']
+        );
+
+        $this->db->clearQueries();
+        $this->store->deleteOne(InventoryItem::class, ['tenant_id' => 1, 'item_id' => 2]);
+        $this->assertStringStartsWith(
+            'DELETE FROM "warehouse"."inventory_items"',
+            $this->dataQueries()[0]['sql']
+        );
     }
 
     public function testCount(): void

@@ -56,37 +56,38 @@ class Paginator
     }
 
     /**
-     * Execute and return items as hydrated model instances.
+     * Execute and return items as heap-tracked model instances.
      *
      * Requires the query to have a model bound (e.g. via Item::query()).
-     * Each row is fetched as a model instance with saveState() called.
+     * Hydrates through the ORM (FastHydrator + request-scoped heap) — the
+     * same identity-mapped path as Model::find()/entities().
      *
      * @return list<T>
      */
-    public function models(): array
+    public function entities(): array
     {
-        return $this->run(fn(ResultSet $rs) => $rs->allModels());
+        return $this->run(fn(Query $q) => $q->entities());
     }
 
     /**
      * Execute and return items as plain stdClass objects.
      *
-     * No model hydration — rows are fetched directly via PDO::FETCH_OBJ.
+     * No entity hydration — rows are fetched directly via PDO::FETCH_OBJ.
      * Table resolution and relations still go through the model.
      */
     public function objects(): array
     {
-        return $this->run(fn(ResultSet $rs) => $rs->fetchAll(\PDO::FETCH_OBJ));
+        return $this->run(fn(Query $q) => $q->select()->fetchAll(\PDO::FETCH_OBJ));
     }
 
     /**
      * Execute and return items as associative arrays.
      *
-     * No model hydration — rows are fetched directly via PDO::FETCH_ASSOC.
+     * No entity hydration — rows are fetched directly via PDO::FETCH_ASSOC.
      */
     public function assoc(): array
     {
-        return $this->run(fn(ResultSet $rs) => $rs->fetchAll(\PDO::FETCH_ASSOC));
+        return $this->run(fn(Query $q) => $q->select()->fetchAll(\PDO::FETCH_ASSOC));
     }
 
     /**
@@ -96,15 +97,16 @@ class Paginator
      */
     public function fetch($fetchMode = \PDO::FETCH_DEFAULT): array
     {
-        return $this->run(fn(ResultSet $rs) => $rs->fetchAll($fetchMode));
+        return $this->run(fn(Query $q) => $q->select()->fetchAll($fetchMode));
     }
 
     /**
-     * Run the paginated query: COUNT + LIMIT/SELECT, then extract rows
-     * using the given callback.  Shared by models(), objects(), assoc(),
-     * and fetch().
+     * Run the paginated query: COUNT first, then LIMIT/OFFSET applied and
+     * rows extracted by the given callback (which executes the terminal —
+     * entities()/select() — exactly once). Shared by entities(), objects(),
+     * assoc(), and fetch().
      *
-     * @return list<T>
+     * @return array Shape matches the fetch closure (list<T> for entities()).
      */
     protected function run(\Closure $fetch): array
     {
@@ -131,11 +133,9 @@ class Paginator
         $this->items = [];
 
         if ($this->page <= $this->lastPage) {
-            $result = $this->builder
-                ->limit($queryLimit, $queryOffset)
-                ->select();
+            $query = $this->builder->limit($queryLimit, $queryOffset);
 
-            $this->items = $fetch($result);
+            $this->items = $fetch($query);
 
             if ($this->reverse) {
                 $this->items = \array_reverse($this->items);

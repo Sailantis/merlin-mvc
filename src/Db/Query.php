@@ -3,7 +3,7 @@
 namespace Azera\Db;
 
 use Azera\AppContext;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 use Azera\Db\Resolver\LiteralResolver;
 use Azera\Db\Resolver\ModelResolver;
 use Azera\Db\Resolver\TableResolver;
@@ -15,8 +15,10 @@ use PDOStatement;
  *
  * @template T of Model
  * @method static Query<T> new(?Database $db = null)
- * @method ResultSet<T> select(array|string|null $columns = null)
- * @method T|null first()
+ *
+ * first()/entities() carry their T-typed @return on the real methods
+ * below — real docblocks win over @method in every analyzer, so the
+ * types there are the single source of truth.
  *
  * @example
  * // SELECT (raw/literal table)
@@ -165,11 +167,12 @@ class Query extends Condition
      * the test/CLI escape hatch for entities()/firstEntity() without a
      * bootstrapped model stack. Production code uses Model::query().
      *
-     * @param class-string $modelClass
+     * @template TModel of Model
+     * @param class-string<TModel> $modelClass
      * @param Database|null $db
-     * @return static
+     * @return self<TModel>
      */
-    public static function modelFor(string $modelClass, ?Database $db = null): static
+    public static function modelFor(string $modelClass, ?Database $db = null): self
     {
         return (new static($db))
             ->using(AppContext::instance()->get(ModelResolver::class))
@@ -851,8 +854,10 @@ class Query extends Condition
             }
 
             if ($entry['joinOn'] !== null) {
+                $joinedMeta = \Azera\Orm\Metadata::for($entry['class']);
                 $joins[] = 'LEFT JOIN ' . $db->quoteIdentifier(
-                    \Azera\Orm\Metadata::for($entry['class'])['source']
+                    $joinedMeta['schema'] ?? null,
+                    $joinedMeta['source']
                 ) . ' ' . $db->quoteIdentifier($entry['alias'])
                     . ' ON ' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[0])
                     . '.' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[1])
@@ -869,7 +874,8 @@ class Query extends Condition
         $savedTable   = $this->table;
         try {
             $this->columns = [\Azera\Db\Sql::raw(implode(', ', $selects))];
-            $this->table   = $db->quoteIdentifier($this->resolvedSource['source'])
+            $rootMeta = \Azera\Orm\Metadata::for($this->resolvedSource['modelClass']);
+            $this->table = $db->quoteIdentifier($rootMeta['schema'] ?? null, $rootMeta['source'])
                 . ' ' . $db->quoteIdentifier($plan['entries'][0]['alias'])
                 . implode(' ', $joins);
             $sql = $this->compileSelect($db);
@@ -885,7 +891,7 @@ class Query extends Condition
             \PDO::FETCH_ASSOC
         );
 
-        return new \Azera\Orm\JoinedResultSet($rows, $plan, $modelClass, $db, $this->getBindings());
+        return new \Azera\Orm\JoinedResultSet($rows, $plan, $db);
     }
 
     /**
@@ -896,13 +902,13 @@ class Query extends Condition
      * tables (Query::raw) and FETCH_CLASS ResultSets (select()) also serves
      * identity-mapped entities here. All hydration runs on the request-
      * scoped heap (AppContext::heap()), so the same row read twice in one
-     * request yields the SAME object and the UnitOfWork sees it MANAGED.
+     * request yields the SAME object and the EntityManager sees it MANAGED.
      *
      * Requires model mode (resolved modelClass); raw-table queries throw.
      * Explicit columns() are honored: unknown names surface as SQL errors,
      * while known-but-aliased columns hydrate what they provide.
      *
-     * @return list&lt;object&gt;
+     * @return list<T>
      * @throws Exception|\LogicException
      */
     public function entities(): array
@@ -934,7 +940,7 @@ class Query extends Condition
      * offset cleared — same semantics as the criteria terminals, zero
      * extra terminal methods on the builder.
      *
-     * @return T|null|object
+     * @return T|null
      * @throws Exception|\LogicException
      */
     public function firstEntity(): ?object
@@ -1021,22 +1027,27 @@ class Query extends Condition
     }
 
     /**
-     * Execute SELECT query and return first model or null or return SQL string if returnSql is enabled
-     * @return T|null|string First model, or SQL string, or null if no results
+     * Execute SELECT query and return the first heap-tracked entity or null
+     * (or the SQL string when returnSql is enabled).
+     *
+     * Same hydration path as entities()/Model::find() — identity-mapped,
+     * metadata-mapped columns, bound parameters.
+     *
+     * @return T|null|string First entity, or SQL string, or null if no results
      * @throws Exception
      */
     public function first(): Model|null|string
     {
-        $result = $this->limit(1)->select();
+        $result = $this->select();
         if ($this->returnSql) {
             return $result;
         }
-        // Eager-load path returns a JoinedResultSet (no firstModel());
-        // pull its first root entity instead.
-        if ($result instanceof \Azera\Orm\JoinedResultSet) {
-            return $result->first();
+        if ($result instanceof ResultSet) {
+            return $this->firstEntity();
         }
-        return $result->firstModel();
+        // Eager-load path returns a JoinedResultSet — first() on it yields
+        // the first root entity (with relations attached).
+        return $result->first();
     }
 
     /**
@@ -1916,7 +1927,6 @@ class Query extends Condition
             $result,
             $query,
             $bindParams,
-            $this->resolvedSource['modelClass'] ?? null,
             $this->isReadQuery
         );
     }

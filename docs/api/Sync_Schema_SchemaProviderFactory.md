@@ -3,11 +3,11 @@
 **Full name:** [Azera\Sync\Schema\SchemaProviderFactory](../../src/Sync/Schema/SchemaProviderFactory.php)
 
 Factory for creating the correct [`SchemaProvider`](Sync_Schema_SchemaProvider.md) for a given
-database connection based on its driver name.
+SQL connection based on its driver name.
 
 Shared by the model-sync machinery ([`SyncRunner`](Sync_SyncRunner.md)) and
-the CLI database inspection task ([`DbTask`](Cli_Tasks_DbTask.md)) so
-that driver→provider mapping lives in exactly one place.
+the CLI Database inspection task ([`DbTask`](Cli_Tasks_DbTask.md)) so
+that driverâ†’provider mapping lives in exactly one place.
 
 ## 🚀 Public methods
 
@@ -15,7 +15,7 @@ that driver→provider mapping lives in exactly one place.
 
 `public static function create(Azera\Db\Database $db): Azera\Sync\Schema\SchemaProvider`
 
-Create a SchemaProvider for the given Database connection.
+Create a SchemaProvider for the given SQL connection.
 
 **🧭 Parameters**
 

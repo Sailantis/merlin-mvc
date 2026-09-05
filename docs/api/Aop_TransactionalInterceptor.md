@@ -31,7 +31,7 @@ The connection role can be specified via the attribute argument
 
 ---
 
-### intercept() · [source](../../src/Aop/TransactionalInterceptor.php#L27)
+### intercept() · [source](../../src/Aop/TransactionalInterceptor.php#L29)
 
 `public function intercept(object $target, ReflectionMethod $method, array $args, callable $next): mixed`
 

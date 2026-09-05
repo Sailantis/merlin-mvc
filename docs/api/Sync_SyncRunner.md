@@ -21,11 +21,11 @@
 
 ---
 
-### syncModel() · [source](../../src/Sync/SyncRunner.php#L34)
+### syncModel() · [source](../../src/Sync/SyncRunner.php#L33)
 
 `public function syncModel(string $filePath, bool $dryRun = false, string $dbRole = 'read', Azera\Sync\SyncOptions|null $options = null): Azera\Sync\SyncResult`
 
-Synchronise a single model file against the database schema.
+Synchronise a single model file against the Database schema.
 
 **🧭 Parameters**
 
@@ -33,7 +33,7 @@ Synchronise a single model file against the database schema.
 |---|---|---|---|
 | `$filePath` | string | - | Absolute path to the model PHP file |
 | `$dryRun` | bool | `false` | When true the file is NOT written; changes are only calculated |
-| `$dbRole` | string | `'read'` | Database role to introspect (falls back to default if not registered) |
+| `$dbRole` | string | `'read'` | SQL role to introspect (falls back to default if not registered) |
 | `$options` | [SyncOptions](Sync_SyncOptions.md)\|null | `null` |  |
 
 **➡️ Return value**
@@ -43,7 +43,7 @@ Synchronise a single model file against the database schema.
 
 ---
 
-### syncAll() · [source](../../src/Sync/SyncRunner.php#L100)
+### syncAll() · [source](../../src/Sync/SyncRunner.php#L99)
 
 `public function syncAll(array $modelFiles, bool $dryRun = false, string $dbRole = 'read', Azera\Sync\SyncOptions|null $options = null): array`
 
@@ -65,11 +65,11 @@ Synchronise multiple model files.
 
 ---
 
-### listDatabaseTables() · [source](../../src/Sync/SyncRunner.php#L119)
+### listDatabaseTables() · [source](../../src/Sync/SyncRunner.php#L118)
 
 `public function listDatabaseTables(string $dbRole = 'read', string|null $schema = null): array`
 
-Return all table names in the database for the given role and optional schema.
+Return all table names in the Database for the given role and optional schema.
 
 **🧭 Parameters**
 
@@ -85,7 +85,7 @@ Return all table names in the database for the given role and optional schema.
 
 ---
 
-### createModelFile() · [source](../../src/Sync/SyncRunner.php#L132)
+### createModelFile() · [source](../../src/Sync/SyncRunner.php#L131)
 
 `public function createModelFile(string $filePath, string $namespace, string $className, string $tableName, string|null $schema = null): void`
 
@@ -112,7 +112,7 @@ If $schema is given, a schema() override is also generated.
 
 ---
 
-### getModelTableName() · [source](../../src/Sync/SyncRunner.php#L174)
+### getModelTableName() · [source](../../src/Sync/SyncRunner.php#L172)
 
 `public function getModelTableName(string $filePath): string|null`
 
@@ -133,7 +133,7 @@ Returns null if the file cannot be parsed or the class is not a valid Model.
 
 ---
 
-### getModelInfo() · [source](../../src/Sync/SyncRunner.php#L192)
+### getModelInfo() · [source](../../src/Sync/SyncRunner.php#L190)
 
 `public function getModelInfo(string $filePath): array|null`
 

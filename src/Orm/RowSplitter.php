@@ -29,7 +29,7 @@ final class RowSplitter
     public function split(array $row, array $plan): array
     {
         $entries = $plan['entries'];
-        $root    = $entries[0];
+        $root = $entries[0];
 
         $rootEntity = $this->hydrateEntry($root, $row);
         if ($rootEntity === null) {
@@ -40,7 +40,7 @@ final class RowSplitter
 
         for ($i = 1, $n = \count($entries); $i < $n; $i++) {
             $entry = $entries[$i];
-            $obj   = $this->hydrateEntry($entry, $row);
+            $obj = $this->hydrateEntry($entry, $row);
             $related[$entry['relation']] = $obj;
         }
 
@@ -54,7 +54,7 @@ final class RowSplitter
     private function hydrateEntry(array $entry, array $row): ?object
     {
         $fields = $entry['fields'];
-        $pk     = $entry['pk'];
+        $pk = $entry['pk'];
 
         // Orphan guard: any PK column NULL -> no object (LEFT JOIN miss).
         $id = [];

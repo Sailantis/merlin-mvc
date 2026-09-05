@@ -14,8 +14,7 @@ class SyncRunner
 
     public function __construct(
         private DatabaseManager $dbManager
-    )
-    {
+    ) {
         $this->diff      = new ModelDiff();
         $this->generator = new CodeGenerator();
     }
@@ -135,8 +134,7 @@ class SyncRunner
         string $className,
         string $tableName,
         ?string $schema = null
-    ): void
-    {
+    ): void {
         if (file_exists($filePath)) {
             throw new RuntimeException("File already exists: {$filePath}");
         }
@@ -155,7 +153,7 @@ class SyncRunner
 
 namespace {$namespace};
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 class {$className} extends Model
 {
@@ -211,9 +209,9 @@ PHP;
         $ref      = new \ReflectionClass($className);
         $instance = $ref->newInstanceWithoutConstructor();
 
-        if (!$instance instanceof \Azera\Core\Model) {
+        if (!$instance instanceof \Azera\Orm\Model) {
             throw new RuntimeException(
-                "Class {$className} is not an instance of Azera\\Mvc\\Model"
+                "Class {$className} is not an instance of Azera\\Orm\\Model"
             );
         }
 
@@ -225,5 +223,3 @@ PHP;
         return SchemaProviderFactory::create($db);
     }
 }
-
-

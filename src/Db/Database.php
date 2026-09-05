@@ -3,7 +3,7 @@
 namespace Azera\Db;
 
 use Azera\AppContext;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 use Azera\Db\Event\DatabaseOperationFailed;
 use Azera\Db\Event\QueryExecuted;
 use Azera\Db\Event\ReconnectAborted;
@@ -669,8 +669,9 @@ class Database
 					$supportsReturning = true;
 					break;
 				case 'mysql':
-					// MariaDB connects through the PDO MySQL driver, so its version
-					// string (e.g. "10.4.28-MariaDB") must be detected separately.
+					// MariaDB connects through the PDO MySQL driver, so its
+					// version string (e.g. "10.4.28-MariaDB") must be
+					// detected separately.
 					$version = (string) $this->pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
 					if (stripos($version, 'mariadb') !== false) {
 						$supportsReturning = version_compare($version, '10.5.0', '>=');

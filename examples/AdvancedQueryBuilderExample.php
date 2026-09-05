@@ -6,7 +6,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use Azera\AppContext;
 use Azera\Db\Database;
 use Azera\Db\Sql;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 /**
  * Example: Advanced Query Building with Sql and Complex Queries

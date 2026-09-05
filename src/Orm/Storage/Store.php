@@ -5,7 +5,7 @@ namespace Azera\Orm\Storage;
 /**
  * Persistence-level seam between the ORM and any storage backend.
  *
- * Operations the UnitOfWork performs â€” NOT a query builder. SQL stores
+ * Operations the EntityManager's write pipeline performs — NOT a query builder. SQL stores
  * implement it over a {@see \Azera\Db\Database}; Mongo over the
  * mongodb library. The per-situation write strategies (RETURNING matrix)
  * live in each backend. A model belongs to exactly one store, declared in
@@ -59,14 +59,6 @@ interface Store
      * @param array $where field => value
      */
     public function count(string $class, array $where = []): int;
-
-    /**
-    * Execute a raw SELECT through the store (join reads).
-    * Raw rows only; event tracking via the underlying connection.
-    * @return list<array<string, mixed>>
-    Phase 5 joins route here (shape-cached SQL + HydrationMap aliases).
-    */
-    public function select(string $sql, array $params = []): array;
 
     /* --------------------------------------------------- transactions */
 

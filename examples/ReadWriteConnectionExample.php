@@ -5,7 +5,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Azera\AppContext;
 use Azera\Db\Database;
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 /**
  * Example: Setting up read/write database connections

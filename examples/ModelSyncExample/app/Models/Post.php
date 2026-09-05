@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Azera\Core\Model;
+use Azera\Orm\Model;
 
 /**
  * Sync by file path:   php console.php model-sync model app/Models/Post.php --apply
