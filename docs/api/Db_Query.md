@@ -641,13 +641,21 @@ Set IGNORE modifier for INSERT (MySQL/SQLite) or ON CONFLICT DO NOTHING (Postgre
 
 ---
 
-### updateValues() · [source](../../src/Db/Query.php#L707)
+### updateValues() · [source](../../src/Db/Query.php#L716)
 
 `public function updateValues(array $updateValues, bool $escape = true): static`
 
 Set values for ON CONFLICT/ON DUPLICATE KEY UPDATE clause. Can be either:
 - List array -> EXCLUDED/VALUES mode
 - Assoc array -> explicit values
+
+When omitted entirely, `compileInsert()` derives the SET clause
+from the INSERT columns ("col"=EXCLUDED."col" on sqlite/pgsql,
+col=VALUES(col) on mysql) with the conflict target excluded — the
+fast in-place-update shape. Passing the PK in explicit update values
+forces SQLite to compile the conflict action as an internal
+DELETE+INSERT (fsync-bound), so explicit PK assignments are the
+one thing to avoid.
 
 **🧭 Parameters**
 
@@ -663,7 +671,7 @@ Set values for ON CONFLICT/ON DUPLICATE KEY UPDATE clause. Can be either:
 
 ---
 
-### conflict() · [source](../../src/Db/Query.php#L738)
+### conflict() · [source](../../src/Db/Query.php#L747)
 
 `public function conflict(array|string $columnsOrConstraint): static`
 
@@ -684,7 +692,7 @@ Set conflict target for ON CONFLICT clause (PostgreSQL). Can be either:
 
 ---
 
-### returning() · [source](../../src/Db/Query.php#L750)
+### returning() · [source](../../src/Db/Query.php#L759)
 
 `public function returning(array|string|null $columns): static`
 
@@ -707,7 +715,7 @@ Set columns to return from an INSERT/UPDATE/DELETE query. Supported by PostgreSQ
 
 ---
 
-### with() · [source](../../src/Db/Query.php#L772)
+### with() · [source](../../src/Db/Query.php#L781)
 
 `public function with(string $relation): static`
 
@@ -729,7 +737,7 @@ stays a second query by parent IDs.
 
 ---
 
-### toSql() · [source](../../src/Db/Query.php#L789)
+### toSql() · [source](../../src/Db/Query.php#L798)
 
 `public function toSql(): string`
 
@@ -746,7 +754,7 @@ Compile and return the SQL string for this query without executing it
 
 ---
 
-### select() · [source](../../src/Db/Query.php#L803)
+### select() · [source](../../src/Db/Query.php#L812)
 
 `public function select(array|string|null $columns = null): Azera\Db\ResultSet|Azera\Orm\JoinedResultSet|string`
 
@@ -770,7 +778,7 @@ Execute SELECT query and return ResultSet or return SQL string if returnSql is e
 
 ---
 
-### entities() · [source](../../src/Db/Query.php#L914)
+### entities() · [source](../../src/Db/Query.php#L923)
 
 `public function entities(): array`
 
@@ -798,7 +806,7 @@ while known-but-aliased columns hydrate what they provide.
 
 ---
 
-### firstEntity() · [source](../../src/Db/Query.php#L946)
+### firstEntity() · [source](../../src/Db/Query.php#L955)
 
 `public function firstEntity(): object|null`
 
@@ -817,7 +825,7 @@ extra terminal methods on the builder.
 
 ---
 
-### first() · [source](../../src/Db/Query.php#L1039)
+### first() · [source](../../src/Db/Query.php#L1048)
 
 `public function first(): Azera\Orm\Model|string|null`
 
@@ -839,7 +847,7 @@ metadata-mapped columns, bound parameters.
 
 ---
 
-### insert() · [source](../../src/Db/Query.php#L1059)
+### insert() · [source](../../src/Db/Query.php#L1068)
 
 `public function insert(array|null $data = null): Azera\Db\ResultSet|array|string|bool`
 
@@ -863,7 +871,7 @@ Execute INSERT or UPSERT query or return SQL string if returnSql is enabled
 
 ---
 
-### upsert() · [source](../../src/Db/Query.php#L1070)
+### upsert() · [source](../../src/Db/Query.php#L1079)
 
 `public function upsert(array|null $data = null): Azera\Db\ResultSet|array|string|bool`
 
@@ -887,7 +895,7 @@ Execute UPSERT query (INSERT with ON CONFLICT/ON DUPLICATE KEY UPDATE) or return
 
 ---
 
-### update() · [source](../../src/Db/Query.php#L1109)
+### update() · [source](../../src/Db/Query.php#L1118)
 
 `public function update(array|null $data = null): Azera\Db\ResultSet|array|string|int`
 
@@ -911,7 +919,7 @@ Execute UPDATE query or return SQL string if returnSql is enabled
 
 ---
 
-### delete() · [source](../../src/Db/Query.php#L1139)
+### delete() · [source](../../src/Db/Query.php#L1148)
 
 `public function delete(): Azera\Db\ResultSet|array|string|int`
 
@@ -929,7 +937,7 @@ Execute DELETE query
 
 ---
 
-### truncate() · [source](../../src/Db/Query.php#L1164)
+### truncate() · [source](../../src/Db/Query.php#L1173)
 
 `public function truncate(): string|int`
 
@@ -947,7 +955,7 @@ Execute TRUNCATE query or return SQL string if returnSql is enabled
 
 ---
 
-### exists() · [source](../../src/Db/Query.php#L1185)
+### exists() · [source](../../src/Db/Query.php#L1194)
 
 `public function exists(): string|bool`
 
@@ -964,7 +972,7 @@ Check if any rows exist matching the query
 
 ---
 
-### count() · [source](../../src/Db/Query.php#L1212)
+### count() · [source](../../src/Db/Query.php#L1221)
 
 `public function count(): string|int`
 
@@ -982,7 +990,7 @@ Count rows matching the query
 
 ---
 
-### getBindings() · [source](../../src/Db/Query.php#L1887)
+### getBindings() · [source](../../src/Db/Query.php#L1975)
 
 `public function getBindings(): array`
 
@@ -995,7 +1003,7 @@ Get bind parameters
 
 ---
 
-### paginate() · [source](../../src/Db/Query.php#L1899)
+### paginate() · [source](../../src/Db/Query.php#L1987)
 
 `public function paginate(int $page = 1, int $pageSize = 30, bool $reverse = false): Azera\Db\Paginator`
 
@@ -1016,7 +1024,7 @@ Create a paginator for the current query
 
 ---
 
-### getRowCount() · [source](../../src/Db/Query.php#L1938)
+### getRowCount() · [source](../../src/Db/Query.php#L2026)
 
 `public function getRowCount(): int`
 

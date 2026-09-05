@@ -293,6 +293,27 @@ $deleted = User::query()
     ->delete();
 ```
 
+#### Upsert SET shape
+
+Without an explicit `updateValues()` call, the ON CONFLICT / ON DUPLICATE KEY
+UPDATE clause is **derived** from the INSERT columns: every non-conflict-target
+column becomes a reference to the attempted insert row — `"col"=EXCLUDED."col"`
+(sqlite/pgsql) or `col=VALUES(col)` (mysql). The conflict target (explicit
+`conflict()` columns, or the model's primary key) is never written in the SET
+clause.
+
+```php
+// SQLite: INSERT INTO "users" ("id","email") VALUES (1, 'john@example.com')
+//         ON CONFLICT DO UPDATE SET "email"=EXCLUDED."email"
+User::query()->upsert(['id' => 1, 'email' => 'john@example.com']);
+```
+
+> **Performance note (SQLite):** writing the primary key (or rebinding literal
+> values) into the SET clause forces SQLite to compile the conflict action as an
+> internal DELETE+INSERT, which is fsync-bound (~1.2–5.7 ms vs ~8 µs per
+> statement on WAL SQLite). The derived EXCLUDED shape compiles as an in-place
+> update — use explicit `updateValues()` only for custom expressions.
+
 ### Bulk INSERT
 
 Insert multiple rows in a single statement with `bulkValues()`:

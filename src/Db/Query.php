@@ -535,7 +535,7 @@ class Query extends Condition
 
         } elseif (
             \is_string($alias) &&
-            preg_match('/[=<>!]| LIKE | IN | IS | BETWEEN /i', $alias)
+                preg_match('/[=<>!]| LIKE | IN | IS | BETWEEN /i', $alias)
         ) {
             $conditions = $alias;
             $alias      = null;
@@ -700,6 +700,15 @@ class Query extends Condition
      * Set values for ON CONFLICT/ON DUPLICATE KEY UPDATE clause. Can be either:
      * - List array -> EXCLUDED/VALUES mode
      * - Assoc array -> explicit values
+     *
+     * When omitted entirely, {@see compileInsert()} derives the SET clause
+     * from the INSERT columns ("col"=EXCLUDED."col" on sqlite/pgsql,
+     * col=VALUES(col) on mysql) with the conflict target excluded — the
+     * fast in-place-update shape. Passing the PK in explicit update values
+     * forces SQLite to compile the conflict action as an internal
+     * DELETE+INSERT (fsync-bound), so explicit PK assignments are the
+     * one thing to avoid.
+     *
      * @param array $updateValues
      * @param bool $escape
      * @return $this
@@ -856,9 +865,9 @@ class Query extends Condition
             if ($entry['joinOn'] !== null) {
                 $joinedMeta = \Azera\Orm\Metadata::for($entry['class']);
                 $joins[] = 'LEFT JOIN ' . $db->quoteIdentifier(
-                    $joinedMeta['schema'] ?? null,
-                    $joinedMeta['source']
-                ) . ' ' . $db->quoteIdentifier($entry['alias'])
+                        $joinedMeta['schema'] ?? null,
+                        $joinedMeta['source']
+                    ) . ' ' . $db->quoteIdentifier($entry['alias'])
                     . ' ON ' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[0])
                     . '.' . $db->quoteIdentifier(explode('.', $entry['joinOn']['left'])[1])
                     . ' = ' . $db->quoteIdentifier(explode('.', $entry['joinOn']['right'])[0])
@@ -1482,27 +1491,78 @@ class Query extends Condition
                     }
                 }
             } elseif (!empty($this->manualBindings)) {
+                // Named-bind upsert: the same fast shape applies — the SET
+                // clause references EXCLUDED/VALUES per column instead of
+                // rebinding ":col" (which would compile as DELETE+INSERT
+                // on SQLite when it includes the PK).
+                $targetColumns = $this->upsertTargetColumns();
+
                 foreach ($columns as $column) {
-                    $statement .= $valSep;
-                    $statement .= $this->protectIdentifier($column);
-                    $statement .= '=:';
-                    $statement .= $column;
-                    $valSep = ',';
-                }
-            } else {
-                if (count($this->values) > 1) {
-                    throw new LogicException('Upsert with multiple value sets is not supported without explicit update values');
-                }
-                foreach ($this->values[0] as $column => $value) {
+                    if (in_array($column, $targetColumns, true)) {
+                        continue; // conflict target: identity, never reassigned
+                    }
                     $statement .= $valSep;
                     $statement .= $this->protectIdentifier($column);
                     $statement .= '=';
-                    if ($value instanceof Sql) {
-                        $statement .= $this->serializeScalar($value);
+                    if ($driver === 'mysql') {
+                        $statement .= 'VALUES(';
+                        $statement .= $this->protectIdentifier($column);
+                        $statement .= ')';
                     } else {
-                        $statement .= $value;
+                        $statement .= 'EXCLUDED.';
+                        $statement .= $this->protectIdentifier($column);
                     }
                     $valSep = ',';
+                }
+
+                if ($valSep === '') {
+                    throw new LogicException(
+                        'UPSERT has no columns to update: every INSERT column is part of the conflict target. '
+                            . 'Provide explicit updateValues() for the columns to write on conflict.'
+                    );
+                }
+            } else {
+                // No explicit update values: derive the SET clause from the
+                // INSERT columns — every non-conflict-target column becomes
+                // "col"=EXCLUDED."col" (col=VALUES(col) on mysql). Writing
+                // literal values (or the PK) into SET instead compiles as an
+                // internal DELETE+INSERT on SQLite — fsync-bound (~1.2-5.7ms
+                // vs ~8µs per statement on WAL SQLite). EXCLUDED refs keep
+                // the statement literal-stable AND compile as an in-place
+                // update, mirroring PdoStore::upsertSql (the EM path).
+                // pgsql/sqlite: target = explicit conflict(), else the
+                // resolved source's idFields (model mode). Raw mode without
+                // a conflict() call falls back to the first INSERT column —
+                // the conventional PK — so the SET never contains it.
+                $targetColumns = $this->upsertTargetColumns();
+
+                if (count($this->values) > 1) {
+                    throw new LogicException('Upsert with multiple value sets is not supported without explicit update values');
+                }
+
+                foreach ($columns as $column) {
+                    if (in_array($column, $targetColumns, true)) {
+                        continue; // conflict target: identity, never reassigned
+                    }
+                    $statement .= $valSep;
+                    $statement .= $this->protectIdentifier($column);
+                    $statement .= '=';
+                    if ($driver === 'mysql') {
+                        $statement .= 'VALUES(';
+                        $statement .= $this->protectIdentifier($column);
+                        $statement .= ')';
+                    } else {
+                        $statement .= 'EXCLUDED.';
+                        $statement .= $this->protectIdentifier($column);
+                    }
+                    $valSep = ',';
+                }
+
+                if ($valSep === '') {
+                    throw new LogicException(
+                        'UPSERT has no columns to update: every INSERT column is part of the conflict target. '
+                            . 'Provide explicit updateValues() for the columns to write on conflict.'
+                    );
                 }
             }
         } elseif (!empty($conflictClause)) {
@@ -1516,6 +1576,27 @@ class Query extends Condition
         }
 
         return $statement;
+    }
+
+    /**
+     * Resolve the effective conflict-target COLUMNS for a derived-shape
+     * upsert SET clause (explicit updateValues() bypasses this entirely).
+     *
+     * @return list<string> Column names forming the conflict target
+     */
+    private function upsertTargetColumns(): array
+    {
+        if (is_array($this->conflictTarget) && $this->conflictTarget !== []) {
+            return $this->conflictTarget;
+        }
+
+        $idFields = $this->resolvedSource['idFields'] ?? null;
+        if (!empty($idFields)) {
+            return $idFields;
+        }
+
+        $columns = array_keys($this->values[0] ?? []);
+        return $columns === [] ? [] : [$columns[0]];
     }
 
     /**

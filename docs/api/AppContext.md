@@ -458,7 +458,7 @@ Safe to call repeatedly; a no-op when no request has been processed yet.
 
 ---
 
-### set() · [source](../../src/AppContext.php#L532)
+### set() · [source](../../src/AppContext.php#L540)
 
 `public function set(string $id, callable|object|null $service = null): void`
 
@@ -481,7 +481,7 @@ first resolution and their returned object is cached for subsequent lookups.
 
 ---
 
-### has() · [source](../../src/AppContext.php#L551)
+### has() · [source](../../src/AppContext.php#L559)
 
 `public function has(string $id): bool`
 
@@ -501,7 +501,7 @@ Check if a service is registered in the context.
 
 ---
 
-### get() · [source](../../src/AppContext.php#L569)
+### get() · [source](../../src/AppContext.php#L577)
 
 `public function get(string $id): object`
 
@@ -530,7 +530,7 @@ auto-wire and instantiate it.
 
 ---
 
-### tryGet() · [source](../../src/AppContext.php#L600)
+### tryGet() · [source](../../src/AppContext.php#L608)
 
 `public function tryGet(string $id): object|null`
 
@@ -556,7 +556,7 @@ or if a registered factory currently resolves to null.
 
 ---
 
-### getOrNull() · [source](../../src/AppContext.php#L629)
+### getOrNull() · [source](../../src/AppContext.php#L637)
 
 `public function getOrNull(string $id): object|null`
 
