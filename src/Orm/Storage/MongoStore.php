@@ -55,11 +55,33 @@ final class MongoStore implements Store
 
     /**
      * @param Client|callable(string): MongoCollection $clientOrResolver
+     *
+     * Optional-dependency boundary: mongodb/mongodb is a `suggest` (not
+     * `require`). The `use MongoDB\...` imports here are lazy aliases —
+     * loading this class never fatals — and the resolver seam (test
+     * fakes) needs no package at all. The failure shape that can actually
+     * occur without the package: a real Client instance CANNOT be passed
+     * (its class doesn't exist, so it can't be constructed anywhere), so
+     * a non-callable argument can only be a mistake — most likely a DSN
+     * string in the Client-ctor shape. Convert the cryptic union
+     * TypeError into the actionable install hint.
      */
     public function __construct(
         Client|callable $clientOrResolver,
         private string $database = 'azera',
     ) {
+        if (!$clientOrResolver instanceof Client && !\is_callable($clientOrResolver)) {
+            $hint = \class_exists(\MongoDB\Client::class)
+                ? 'Pass a MongoDB\Client instance or a collection resolver fn(string $name): MongoCollection.'
+                : 'Pass a collection resolver fn(string $name): MongoCollection, or install the'
+                    . ' mongodb/mongodb composer package + ext-mongodb PHP extension to use a real'
+                    . ' MongoDB\Client: composer require mongodb/mongodb.';
+            throw new \RuntimeException(
+                'MongoStore expects MongoDB\Client or a collection resolver, '
+                    . \get_debug_type($clientOrResolver) . ' given. ' . $hint
+            );
+        }
+
         if ($clientOrResolver instanceof Client) {
             $this->client   = $clientOrResolver;
             $this->resolver = null;
