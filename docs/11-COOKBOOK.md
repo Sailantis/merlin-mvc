@@ -14,7 +14,7 @@ $paginator = User::query()
     ->orderBy('created_at DESC')
     ->paginate(page: 2, pageSize: 20);
 
-$paginator->execute();
+$users = $paginator->entities(); // identity-mapped User instances for page 2
 
 $meta = [
     'currentPage' => $paginator->currentPage(),
@@ -26,8 +26,6 @@ $meta = [
     'firstItem' => $paginator->firstItem(),
     'lastItem' => $paginator->lastItem(),
 ];
-
-$users = $paginator->get(); // array of User models for page 2
 ```
 
 ## 2) Find or Create

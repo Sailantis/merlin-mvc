@@ -1,6 +1,6 @@
 # Models & ORM
 
-**Work with database records as objects** - Discover Azera's Active Record implementation for elegant database interactions. Learn about model configuration, static query helpers, CRUD operations, state tracking, and read/write connections.
+**Work with database records as objects** - Discover Azera's Active Record implementation for elegant database interactions. Learn about model configuration, static query helpers, CRUD operations, relations with eager loading, state tracking, and read/write connections.
 
 Azera models use an Active Record style API backed by the
 `Azera\Orm\EntityManager` (identity map + write pipeline).
@@ -139,10 +139,11 @@ class Article extends Document
     public $tags;             // arrays pass through raw — BSON owns encoding
 }
 
-// bootstrap: register the mongo store for the role
+// bootstrap: register the mongo store under its (type, role) tuple
 $client = new Client('mongodb://localhost:27017');
-$stores->setMongo('mongo', new MongoStore($client, database: 'myapp'));
-$stores->setMongoDefault('mongo');
+$stores = new StoreManager();
+$stores->set('mongo', 'mongo', new MongoStore($client, database: 'myapp'));
+$stores->setDefault('mongo', 'mongo');
 
 $article = new Article();
 $article->title = 'Hello';
@@ -163,8 +164,9 @@ $found->delete();                 // deleteOne by _id
 | Values          | arrays/dates pass through raw; the driver maps BSON                                     |
 | Transactions    | begin/commit/rollback are no-ops (multi-doc ACID needs replica-set sessions — deferred) |
 
-Store roles are split **per store type** (`setMongo()`/`getMongo()`), so a
-document can never resolve the SQL `PdoStore` and vice versa. Documents in a
+Store roles are split **per store type** (`set('mongo', $role, …)` /
+`get('mongo', $role)`), so a document can never resolve the SQL `PdoStore`
+and vice versa. Documents in a
 context without a registered mongo store throw loudly instead of silently
 writing a SQL table.
 
@@ -292,6 +294,74 @@ backfilled automatically from the database where the server supports `RETURNING`
 (PostgreSQL, MySQL 8.0.27+, MariaDB 10.5.0+, SQLite 3.35+). On older MySQL/MariaDB/SQLite
 servers, only a single auto-increment ID field can be backfilled via `lastInsertId()`;
 the remaining composite key fields must be set manually before saving.
+
+---
+
+## Relations & Eager Loading
+
+Relations are declared as attributes on typed properties. The property name
+is the relation name used with `with()`:
+
+```php
+use Azera\Orm\Attribute\BelongsTo;
+use Azera\Orm\Attribute\HasMany;
+use Azera\Orm\Attribute\HasOne;
+
+class Article extends Model
+{
+    public int $id;
+    public string $title;
+
+    #[BelongsTo(target: User::class)]          // FK on THIS table: author_id
+    public ?User $author;
+
+    #[HasOne(target: ArticleMeta::class)]      // FK on TARGET table: article_id
+    public ?ArticleMeta $meta;
+
+    #[HasMany(target: Comment::class)]         // FK on TARGET table: article_id
+    public array $comments;
+}
+```
+
+| Attribute   | FK location        | Defaults                                                                |
+| ----------- | ------------------ | ----------------------------------------------------------------------- |
+| `BelongsTo` | this model's table | `foreignKey` = property name + `_id`, `ownerKey` = target's primary key |
+| `HasOne`    | target table       | `foreignKey` = `<source>_id`, `ownerKey` = `id`                         |
+| `HasMany`   | target table       | same as `HasOne`                                                        |
+
+All three accept explicit `foreignKey:` / `ownerKey:` parameters to override
+the conventions.
+
+### Eager loading — `with()`
+
+```php
+// One SQL for root + to-one joins, one extra query per HasMany
+$articles = Article::with('author', 'comments')
+    ->where('status', 'published')
+    ->orderBy('id DESC')
+    ->limit(10)
+    ->entities();
+
+$articles[0]->author->name;   // User instance — hydrated from the LEFT JOIN
+$articles[0]->comments;       // list<Comment> — batched second query
+```
+
+| Relation               | Strategy        | How it loads                                                                                              |
+| ---------------------- | --------------- | --------------------------------------------------------------------------------------------------------- |
+| `BelongsTo` / `HasOne` | SQL `LEFT JOIN` | One query — joined columns are aliased `{alias}__{column}` and split back into entities per row           |
+| `HasMany`              | second query    | One batched `WHERE fk IN (root ids)` per relation — joining would duplicate parent rows, so it never does |
+
+The joined query honors all builder clauses (WHERE / ORDER BY / LIMIT /
+GROUP BY): criteria apply to the root table, never to the joined rows.
+
+Identity: every entity — root and related — hydrates onto the request-scoped
+heap, so joined entities share instances with `find()` / `save()`. A `User`
+joined as `author` and later loaded via `User::find()` is the SAME object.
+
+> **Note:** there is no lazy loading. Relation properties are populated only
+> when eager-loaded via `with()`; on entities loaded without it the property
+> stays unset. `find()` / `findOne()` never carry relations — use
+> `query()->with(...)->firstEntity()` when you need them.
 
 ---
 
@@ -590,5 +660,5 @@ When `read`/`write` are set, they take precedence over `connection`.
 ## Related
 
 - [Database Queries](05-DATABASE-QUERIES.md)
-- [Cookbook](10-COOKBOOK.md)
+- [Cookbook](11-COOKBOOK.md)
 - [API Reference](api/README.md)

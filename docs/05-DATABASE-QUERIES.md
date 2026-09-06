@@ -408,7 +408,7 @@ $paginator = User::query()
     ->orderBy('created_at DESC')
     ->paginate(page: 2, pageSize: 20);
 
-$paginator->execute();
+$users = $paginator->entities(); // identity-mapped User instances for page 2
 
 $meta = [
     'currentPage' => $paginator->currentPage(),
@@ -420,9 +420,16 @@ $meta = [
     'firstItem' => $paginator->firstItem(),
     'lastItem' => $paginator->lastItem(),
 ];
-
-$users = $paginator->get(); // array of User models for page 2
 ```
+
+Fetch terminals (each executes the page query exactly once, after the COUNT):
+
+| Terminal       | Returns                                                                                |
+| -------------- | -------------------------------------------------------------------------------------- |
+| `entities()`   | Identity-mapped model instances (ORM hydration — see [Models & ORM](04-MODELS-ORM.md)) |
+| `objects()`    | Plain `stdClass` rows                                                                  |
+| `assoc()`      | Associative arrays                                                                     |
+| `fetch($mode)` | Raw rows with a custom PDO fetch mode                                                  |
 
 You can enable reverse pagination using the third argument. It does not change your original ORDER BY. It only flips how pages are calculated, so page 1 returns the last items instead of the first ones.
 
@@ -432,7 +439,7 @@ $messages = Query::raw()->table('messages')
     ->where('room_id', 15)
     ->orderBy('id ASC')
     ->paginate(page: 1, pageSize: 3, reverse: true)
-    ->execute();
+    ->objects();
 // Returns the LAST 3 messages, not the first 3.
 ```
 
@@ -727,5 +734,5 @@ treated as a literal table. To use literal table names, use `Query::raw()` expli
 ## See Also
 
 - [Models & ORM](04-MODELS-ORM.md)
-- [Cookbook](10-COOKBOOK.md)
+- [Cookbook](11-COOKBOOK.md)
 - [API Reference](api/README.md)
