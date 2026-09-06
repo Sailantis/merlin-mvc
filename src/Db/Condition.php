@@ -40,6 +40,13 @@ class Condition
 	protected ?Database $db;
 
 	/**
+	 * Cached resolved Database for getDb() when $db is null.
+	 * Resolved lazily once per instance; AppContext::dbManager()->getDefault()
+	 * is memoized on the manager, so caching the result is safe.
+	 */
+	protected ?Database $resolvedDb = null;
+
+	/**
 	 * @var string
 	 */
 	protected string $condition = '';
@@ -100,7 +107,7 @@ class Condition
 	 */
 	protected function getDb(): Database
 	{
-		return $this->db ?? AppContext::instance()->dbManager()->getDefault();
+		return $this->db ?? $this->resolvedDb ??= AppContext::instance()->dbManager()->getDefault();
 	}
 
 	/**
@@ -245,7 +252,7 @@ class Condition
 	{
 		if (
 			\is_string($condition) && \is_string($value)
-			&& preg_match(self::OP_TOKENS, $value)
+				&& preg_match(self::OP_TOKENS, $value)
 		) {
 			$condition = $this->validateConditionField($condition);
 			return $this->addWhereOp($condition, \strtoupper($value), $connector, $prefix, $escape);
@@ -263,7 +270,7 @@ class Condition
 			}
 			// merge bind parameters from sub conditions into current builder
 			$this->subQueryBindings = $condition->getBindings() + $this->subQueryBindings;
-			$escape = false;
+			$escape    = false;
 			$condition = $condition->toSql();
 		} elseif (\is_array($value)) {
 			// phalcon style
@@ -274,7 +281,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value = '(' . $value->toSql() . ')';
+				$value  = '(' . $value->toSql() . ')';
 			} elseif ($value instanceof Condition) {
 				// sub conditions - inject model resolver if available
 				if ($this instanceof Query) {
@@ -285,7 +292,7 @@ class Condition
 				// merge bind parameters from sub conditions into current builder
 				$this->subQueryBindings = $value->getBindings() + $this->subQueryBindings;
 				$escape = false;
-				$value = '(' . $value->toSql() . ')';
+				$value  = '(' . $value->toSql() . ')';
 			}
 			// ci style - protect identifier
 			$condition = $this->protectIdentifier($condition);
@@ -875,8 +882,8 @@ class Condition
 			// special array with value + escape flag
 			$isSpecialArray =
 				count($value) === 2 &&
-				isset($value['value']) &&
-				isset($value['escape']);
+					isset($value['value']) &&
+					isset($value['escape']);
 
 			if ($isSpecialArray) {
 				return $value['escape']
@@ -885,7 +892,7 @@ class Condition
 			}
 
 			$result = "";
-			$sep = "";
+			$sep    = "";
 			foreach ($value as $v) {
 				$result .= $sep;
 				$sep = ",";
@@ -980,6 +987,17 @@ class Condition
 	protected const PI_TABLE = 2;
 
 	/**
+	 * Memoization cache for protectIdentifier() results (PI_DEFAULT mode only).
+	 * Real queries repeat the same table-qualified columns over and over, so this
+	 * collapses the full preg_replace/alias-split/quote pipeline into a hash hit.
+	 * Per-instance (never static): builders are request-scoped, and Query's
+	 * model resolution stays dynamic via getFullTableName().
+	 *
+	 * @var array<string,string>
+	 */
+	private array $identifierMemo = [];
+
+	/**
 	 * Protect identifier (field or table name)
 	 * @param string $item
 	 * @param int $type
@@ -987,6 +1005,22 @@ class Condition
 	 * @return string
 	 */
 	protected function protectIdentifier(
+		string $item,
+		int $type = self::PI_DEFAULT,
+		?string $alias = null
+	): string {
+		// Memoize the common default-mode, no-alias calls: deterministic and
+		// repeated heavily within one query build.
+		if ($type === self::PI_DEFAULT && $alias === null) {
+			return $this->identifierMemo[$item] ??= $this->doProtectIdentifier($item);
+		}
+		return $this->doProtectIdentifier($item, $type, $alias);
+	}
+
+	/**
+	 * Core identifier protection pipeline (no memoization).
+	 */
+	private function doProtectIdentifier(
 		string $item,
 		int $type = self::PI_DEFAULT,
 		?string $alias = null
@@ -999,10 +1033,10 @@ class Condition
 		if (!isset($alias)) {
 			if ($offset = strripos($item, ' AS ')) {
 				$alias = substr($item, $offset + 4);
-				$item = substr($item, 0, $offset);
+				$item  = substr($item, 0, $offset);
 			} elseif ($offset = strrpos($item, ' ')) {
 				$alias = substr($item, $offset + 1);
-				$item = substr($item, 0, $offset);
+				$item  = substr($item, 0, $offset);
 			}
 		}
 
@@ -1018,7 +1052,7 @@ class Condition
 			$index = strpos($item, '.');
 			if ($index > 0) {
 				$table = $this->getTableName(substr($item, 0, $index));
-				$item = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
+				$item  = $table . '.' . $this->quoteIdentifier(substr($item, $index + 1));
 			} else {
 				$item = $this->quoteIdentifier($item);
 			}
@@ -1088,11 +1122,11 @@ class Condition
 			// Protect RHS if it looks like an identifier (not a literal, not empty for IS NULL)
 			if (
 				!empty($rhs) &&
-				!is_numeric($rhs) &&
-				$rhs[0] !== "'" &&
-				$rhs[0] !== '"' &&
-				$rhs[0] !== '(' &&
-				strpos($rhs, ':') === false
+					!is_numeric($rhs) &&
+					$rhs[0] !== "'" &&
+					$rhs[0] !== '"' &&
+					$rhs[0] !== '(' &&
+					strpos($rhs, ':') === false
 			) {
 				$rhs = $this->protectIdentifier($rhs);
 			}
@@ -1111,11 +1145,11 @@ class Condition
 	protected function splitConditionOnLogicalOperators(string $condition): array
 	{
 		$parts = [];
-		$len = strlen($condition);
+		$len   = strlen($condition);
 		$upper = strtoupper($condition); // single uppercase copy for comparisons
 		$depth = 0;
 		$start = 0;
-		$i = 0;
+		$i     = 0;
 
 		while ($i < $len) {
 			$ch = $condition[$i];

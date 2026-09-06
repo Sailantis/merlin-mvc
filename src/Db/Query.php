@@ -96,6 +96,9 @@ class Query extends Condition
 
     protected bool $returnSql = false;
 
+    /** @var array<string, Database> Per-role connection cache (see getDb()). */
+    protected array $roleDbs = [];
+
     /* -------------------------------------------------------------
      *  SELECT-SPECIFIC PROPERTIES
      * ------------------------------------------------------------- */
@@ -218,17 +221,21 @@ class Query extends Condition
             return $this->db;
         }
 
+        // Cache per role: isReadQuery flips between terminals (select vs
+        // update), so the key must be the role string, not read/write.
+        // DatabaseManager::getOrDefault() is already instance-memoized on
+        // the manager — this only skips the repeated AppContext walk.
         if ($this->resolvedSource !== null) {
             $role = $this->isReadQuery
                 ? ($this->resolvedSource['read'] ?? null)
                 : ($this->resolvedSource['write'] ?? null);
             if ($role !== null) {
-                return AppContext::instance()->dbManager()->getOrDefault($role);
+                return $this->roleDbs[$role] ??= AppContext::instance()->dbManager()->getOrDefault($role);
             }
         }
 
         $role = $this->isReadQuery ? 'read' : 'write';
-        return AppContext::instance()->dbManager()->getOrDefault($role);
+        return $this->roleDbs[$role] ??= AppContext::instance()->dbManager()->getOrDefault($role);
     }
 
     /* -------------------------------------------------------------
