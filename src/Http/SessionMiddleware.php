@@ -34,7 +34,11 @@ class SessionMiddleware implements MiddlewareInterface
             $started = false;
         }
 
-        $context->setSession(new Session($_SESSION ?? []));
+        if (!isset($_SESSION) || !is_array($_SESSION)) {
+            $_SESSION = [];
+        }
+
+        $context->setSession(new Session($_SESSION));
 
         $response = $next();
 
