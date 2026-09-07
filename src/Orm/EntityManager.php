@@ -67,15 +67,35 @@ final class EntityManager implements RequestScoped
      * Load one entity by PK values: heap probe first, Store read on miss,
      * hydration onto the shared heap.
      *
+     * $fresh=false (default): a heap hit returns the tracked instance
+     * WITHOUT touching the store — the identity-map behavior.
+     *
+     * $fresh=true: the row is RE-READ from the Store and applied onto the
+     * tracked instance in place ({@see refresh()}) — same object, current
+     * values. Use this for stale-read-sensitive work (polling tasks,
+     * cross-request workers between resetState() boundaries). Entities
+     * with scheduled (unflushed) writes must NOT be fresh-read — refresh()
+     * throws instead of silently discarding pending work.
+     *
      * @param class-string         $class
      * @param array<string, mixed> $id PK field => value
      */
-    public function find(string $class, array $id): ?object
+    public function find(string $class, array $id, bool $fresh = false): ?object
     {
         // Identity hit: the exact same object this request already loaded.
         $node = $this->heap->findById($class, $id);
         if ($node !== null) {
-            return $this->heap->entityFor($node);
+            if (!$fresh) {
+                return $this->heap->entityFor($node);
+            }
+
+            // Fresh hit: same instance, refreshed from the store.
+            $entity = $this->heap->entityFor($node);
+            if ($entity === null) {
+                return null;
+            }
+
+            return $this->refresh($entity);
         }
 
         // Miss: one SELECT via the Store seam, hydrate into the heap.
@@ -92,15 +112,64 @@ final class EntityManager implements RequestScoped
     /**
      * Load all entities matching field => value conditions.
      *
+     * $fresh=true refreshes already-tracked entities in place from the
+     * fresh rows (same instances, current values); entities with pending
+     * scheduled writes keep their in-request state.
+     *
      * @param class-string         $class
      * @param array<string, mixed> $where
      * @return list<object>
      */
-    public function findBy(string $class, array $where): array
+    public function findBy(string $class, array $where, bool $fresh = false): array
     {
         $rows = $this->storeFor($class)->findBy($class, $where);
 
-        return $this->hydrateRows($class, $rows);
+        return $this->hydrateRows($class, $rows, $fresh);
+    }
+
+    /**
+     * Re-read an entity's row from the Store and refresh the tracked
+     * instance IN PLACE: current row values onto the entity, node snapshot
+     * synced as the new diff baseline. Identity is preserved — the caller
+     * keeps its reference, the data is current. The escape hatch that
+     * keeps the identity-map's correctness (one row = one object, no lost
+     * in-request writes) while serving freshness-sensitive reads
+     * (polling, long-lived workers between request boundaries).
+     *
+     * Returns the entity when refreshed. Returns NULL when the row is
+     * GONE in storage — the entity is detached (the identity map mirrors
+     * the store; a tracked ghost would keep coming back on heap-hit
+     * reads). Guards: untracked entities throw (nothing to refresh
+     * against — find()/track() first); entities with scheduled unflushed
+     * writes throw (a re-read would clobber queued work — flush() first).
+     */
+    public function refresh(object $entity): ?object
+    {
+        $node = $this->heap->find($entity);
+
+        if ($node === null) {
+            throw new \LogicException(
+                'refresh() requires a tracked entity — load it through find()/findBy()/entities(), or track() it first'
+            );
+        }
+
+        if ($node->isScheduled()) {
+            throw new \LogicException(
+                'refresh() on an entity with scheduled (unflushed) writes would discard pending work — flush() first'
+            );
+        }
+
+        $row = $this->storeFor($entity::class)->findByPk($entity::class, $node->id);
+        if ($row === null) {
+            // Row gone: the store is authoritative about the identity.
+            // Detach so later heap-hit reads cannot resurrect the ghost.
+            $this->heap->detach($entity);
+            return null;
+        }
+
+        FastHydrator::for($entity::class)->apply($entity, $node, $row);
+
+        return $entity;
     }
 
     /* --------------------------------------------------------------- writes */
@@ -793,12 +862,12 @@ final class EntityManager implements RequestScoped
      * @param list<array<string, mixed>> $rows
      * @return list<object>
      */
-    private function hydrateRows(string $class, array $rows): array
+    private function hydrateRows(string $class, array $rows, bool $fresh = false): array
     {
         $hydrator = FastHydrator::for($class);
         $out      = [];
         foreach ($rows as $row) {
-            [$entity] = $hydrator->hydrate($this->heap, $row);
+            [$entity] = $hydrator->hydrate($this->heap, $row, $fresh);
             if ($entity !== null) {
                 $out[] = $entity;
             }
@@ -839,7 +908,7 @@ final class EntityManager implements RequestScoped
         if (($meta['store'] ?? 'sql') === 'mongo') {
             throw new \RuntimeException(
                 "Mongo document {$class} needs a StoreManager with a mongo " .
-                'store registered for role ' . "'{$role}'"
+                    'store registered for role ' . "'{$role}'"
             );
         }
 

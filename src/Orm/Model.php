@@ -119,6 +119,17 @@ abstract class Model
         return $query;
     }
 
+    /**
+     * Start a fresh-read query: identity-map hits come back refreshed in
+     * place (same instance, current values) instead of stale.
+     *
+     * @return Query<static>
+     */
+    public static function fresh(): Query
+    {
+        return static::query()->fresh();
+    }
+
     /* -------------------------------------------------------------
      *  CREATE
      * ------------------------------------------------------------- */
@@ -217,16 +228,20 @@ abstract class Model
      * returned instance is identity-mapped — the same row read twice in
      * one request yields the same object.
      *
+     * $fresh=true re-reads the row and refreshes the tracked instance IN
+     * PLACE (same object, current values) — the polling-safe variant.
+     * Throws when the entity carries scheduled unflushed writes.
+     *
      * @param mixed $id Single ID value, or array of ID values (numeric list
      *                  matching idFields order, or field => value map for
      *                  composite keys)
      */
-    public static function find(mixed $id): ?static
+    public static function find(mixed $id, bool $fresh = false): ?static
     {
         $idFields = (new static())->idFields();
         $idMap    = self::mapId($id, $idFields);
 
-        $found = AppContext::instance()->entityManager()->find(static::class, $idMap);
+        $found = AppContext::instance()->entityManager()->find(static::class, $idMap, $fresh);
 
         return $found instanceof static ? $found : null;
     }
@@ -234,11 +249,12 @@ abstract class Model
     /**
      * Finds a model by its ID(s) or throws an exception if not found
      * @param mixed $id Single ID value or array of ID values (for composite keys)
+     * @param bool $fresh Re-read the row and refresh the tracked instance in place
      * @throws \RuntimeException if the model is not found
      */
-    public static function findOrFail(mixed $id): static
+    public static function findOrFail(mixed $id, bool $fresh = false): static
     {
-        $model = static::find($id);
+        $model = static::find($id, $fresh);
         if (!$model) {
             throw new \RuntimeException(static::class . " not found");
         }
@@ -250,11 +266,14 @@ abstract class Model
      * EntityManager (bound parameters, metadata-mapped columns,
      * heap-tracked result), or null when nothing matches.
      *
+     * $fresh=true refreshes already-tracked hits in place (same instance,
+     * current values).
+     *
      * @param array $conditions Associative array of field conditions to find the model
      */
-    public static function findOne(array $conditions): ?static
+    public static function findOne(array $conditions, bool $fresh = false): ?static
     {
-        $rows = AppContext::instance()->entityManager()->findBy(static::class, $conditions);
+        $rows = AppContext::instance()->entityManager()->findBy(static::class, $conditions, $fresh);
 
         $first = $rows[0] ?? null;
         return $first instanceof static ? $first : null;
@@ -268,13 +287,13 @@ abstract class Model
      * @param array $conditions Associative array of field conditions to find the models
      * @return list<static> The found model instances
      */
-    public static function findAll(array $conditions = []): array
+    public static function findAll(array $conditions = [], bool $fresh = false): array
     {
         $query = static::query();
         foreach ($conditions as $field => $value) {
             $query->where($field, '=', $value);
         }
-        return $query->entities();
+        return $query->fresh($fresh)->entities();
     }
 
     /**
@@ -420,6 +439,20 @@ abstract class Model
         $em->remove($this)->flush();
 
         return true;
+    }
+
+    /**
+         * Re-read this model's row from storage and refresh the instance IN
+         * PLACE: current values onto $this, heap snapshot synced as the new
+         * diff baseline. Returns $this, or NULL when the row is gone in
+         * storage (detached from the identity map). Throws for untracked
+    n     * models and models with scheduled unflushed writes.
+    */
+    public function refresh(): ?static
+    {
+        $found = AppContext::instance()->entityManager()->refresh($this);
+
+        return $found instanceof static ? $found : null;
     }
 
     /* -------------------------------------------------------------

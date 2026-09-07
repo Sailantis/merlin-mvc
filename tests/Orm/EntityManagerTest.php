@@ -659,4 +659,178 @@ class EntityManagerTest extends TestCase
         $this->assertSame([], $fakes->for('docs')->docs); // deleted
         $this->assertFalse($this->em->contains($doc));
     }
+
+    /* ============================================ fresh reads + refresh
+     *
+     * The identity map is a correctness feature (one row = one object),
+     * but heap hits are stale by design. Fresh reads re-read the store
+     * and refresh tracked entities IN PLACE — same instance, current
+     * values — so polling tasks see the DB without breaking identity. */
+
+    public function testFindWithoutFreshKeepsStaleHeapValues(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        // Row changed in storage; stale find() must NOT re-read (heap hit).
+        $this->db->clearQueries();
+        $this->db->setMockResults([[$this->articleRow(7, 'Changed')]]);
+
+        $again = $this->em->find(Article::class, ['id' => 7]);
+
+        $this->assertSame($a, $again);
+        $this->assertSame('Seven', $a->title);
+        $this->assertSame([], $this->db->queries); // no SQL — identity hit
+    }
+
+    public function testFindFreshReReadsAndRefreshesInPlace(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+        $this->assertSame('Seven', $a->title);
+
+        // The row changed in storage since the load.
+        $this->db->setMockResults([[$this->articleRow(7, 'Updated')]]);
+
+        $again = $this->em->find(Article::class, ['id' => 7], fresh: true);
+
+        $this->assertSame($a, $again);              // identity preserved
+        $this->assertSame('Updated', $a->title);    // value refreshed
+        $this->assertFalse($this->em->isDirty($a)); // snapshot synced
+    }
+
+    public function testFindFreshStillHitsStoreEveryTime(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $this->em->find(Article::class, ['id' => 7]);
+        $this->db->clearQueries();
+
+        $this->db->setMockResults([[$this->articleRow(7, 'Poll')]]);
+        $this->em->find(Article::class, ['id' => 7], fresh: true);
+
+        $q = $this->dataQueries();
+        $this->assertCount(1, $q); // the poll SELECT actually ran
+        $this->assertStringContainsString('SELECT', $q[0]['sql']);
+    }
+
+    public function testFindByFreshRefreshesTrackedHits(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $this->db->setMockResults([[$this->articleRow(7, 'Batch')]]);
+
+        $rows = $this->em->findBy(Article::class, ['id' => 7], fresh: true);
+
+        $this->assertSame($a, $rows[0]);
+        $this->assertSame('Batch', $a->title);
+    }
+
+    public function testFindByFreshKeepsScheduledEntityState(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $a->title = 'Pending local edit';
+        $this->em->persist($a); // scheduled, not flushed
+
+        $this->db->setMockResults([[$this->articleRow(7, 'Batch')]]);
+        $rows = $this->em->findBy(Article::class, ['id' => 7], fresh: true);
+
+        $this->assertSame($a, $rows[0]);
+        $this->assertSame('Pending local edit', $a->title); // pending work intact
+    }
+
+    public function testRefreshReReadsAndSyncsSnapshot(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $this->db->setMockResults([[$this->articleRow(7, 'Polled')]]);
+
+        $this->assertSame($a, $this->em->refresh($a));
+        $this->assertSame('Polled', $a->title);
+        $this->assertFalse($this->em->isDirty($a));
+    }
+
+    public function testRefreshReturnsNullAndDetachesWhenRowGone(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Doomed')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $this->db->setMockResults([[]]); // row deleted in storage
+
+        $this->assertNull($this->em->refresh($a));
+        $this->assertFalse($this->em->contains($a));
+    }
+
+    public function testRefreshThrowsOnUntrackedEntity(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->em->refresh(new Article());
+    }
+
+    public function testRefreshThrowsOnScheduledEntity(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $a->title = 'Unflushed';
+        $this->em->persist($a);
+
+        $this->expectException(\LogicException::class);
+        $this->em->refresh($a);
+    }
+
+    public function testFindFreshThrowsOnScheduledEntity(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+
+        $a->title = 'Unflushed';
+        $this->em->persist($a);
+
+        $this->expectException(\LogicException::class);
+        $this->em->find(Article::class, ['id' => 7], fresh: true);
+    }
+
+    public function testQueryFreshTerminalRefreshesTrackedEntities(): void
+    {
+        $row = $this->articleRow(9, 'Shared');
+        $this->db->setMockResults([[$row]]);
+        $viaEm = $this->em->find(Article::class, ['id' => 9]);
+        $this->assertNotNull($viaEm);
+
+        // The row changed in storage; a fresh() criteria read refreshes
+        // the tracked instance in place (same object, current values).
+        $this->db->clearQueries();
+        $this->db->setMockResults([[$this->articleRow(9, 'Fresh')]]);
+
+        $viaQuery = \Azera\Db\Query::modelFor(Article::class, $this->db)
+            ->where('id', '=', 9)
+            ->fresh()
+            ->firstEntity();
+
+        $this->assertSame($viaEm, $viaQuery);
+        $this->assertSame('Fresh', $viaEm->title);
+    }
+
+    public function testModelFacadeFindFreshAndRefresh(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $article = Article::find(7);
+        $this->assertNotNull($article);
+
+        $this->db->setMockResults([[$this->articleRow(7, 'Facade')]]);
+
+        $same = Article::find(7, fresh: true);
+
+        $this->assertSame($article, $same);
+        $this->assertSame('Facade', $article->title);
+
+        // Instance refresh() re-reads too.
+        $this->db->setMockResults([[$this->articleRow(7, 'Again')]]);
+        $this->assertSame($article, $article->refresh());
+        $this->assertSame('Again', $article->title);
+    }
 }

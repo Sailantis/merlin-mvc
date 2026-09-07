@@ -86,13 +86,18 @@ final class FastHydrator
      * A hit returns the existing instance untouched — the heap snapshot
      * stays authoritative and in-request mutations are not clobbered.
      *
+     * $fresh=true inverts the hit behavior for STALE-READ-SENSITIVE reads:
+     * the tracked instance is refreshed IN PLACE from the row ({@see apply()})
+     * — same object, current values. Entities with scheduled (unflushed)
+     * writes keep their pending state; the DB never clobbers queued work.
+     *
      * Cold path: build id + entity + snapshot in three tight list loops,
      * attach once.
      *
      * @param array<string, mixed> $row raw assoc row keyed by COLUMN name
      * @return array{0: ?object, 1: array, 2: array}
      */
-    public function hydrate(Heap $heap, array $row): array
+    public function hydrate(Heap $heap, array $row, bool $fresh = false): array
     {
         // PK identity from a list loop (scalar col names, no map walk).
         $pkCols = $this->pkColumns;
@@ -111,6 +116,13 @@ final class FastHydrator
         if ($existing !== null) {
             $entity = $heap->entityFor($existing);
             if ($entity !== null) {
+                // Fresh read: refresh the tracked instance IN PLACE from
+                // the row — identity preserved, data current. Scheduled
+                // (unflushed) writes are authoritative until flush();
+                // never clobber them.
+                if ($fresh && !$existing->isScheduled()) {
+                    $this->apply($entity, $existing, $row);
+                }
                 return [$entity, $id, $existing->data];
             }
         }
@@ -156,6 +168,49 @@ final class FastHydrator
         $this->attach($heap, $entity, $id, $data);
 
         return [$entity, $id, $data];
+    }
+
+    /**
+     * Refresh an EXISTING tracked entity in place from a fresh store row.
+     *
+     * Where the identity-map contract (one row = one object) meets the
+     * freshness requirement: instead of materializing a second instance,
+     * the row values are applied onto the live entity and the node
+     * snapshot is updated to match — the new diff baseline. Coded columns
+     * decode() onto the entity and encode(decode(raw)) into the snapshot,
+     * exactly like the cold hydration path.
+     *
+     * Only columns present in $row are touched; entity and snapshot keep
+     * their previous values for the rest (partial rows — explicit
+     * columns() — stay consistent). Node state is NOT touched: callers
+     * guarantee the entity is not scheduled.
+     */
+    public function apply(object $entity, Node $node, array $row): void
+    {
+        $fields = $this->fields;
+        $cols   = $this->columns;
+
+        if ($this->decoders === []) {
+            for ($j = 0, $n = \count($fields); $j < $n; $j++) {
+                $col = $cols[$j];
+                if (array_key_exists($col, $row)) {
+                    $entity->{$fields[$j]} = $row[$col];
+                    $node->data[$col] = $row[$col];
+                }
+            }
+            return;
+        }
+
+        for ($j = 0, $n = \count($fields); $j < $n; $j++) {
+            $col = $cols[$j];
+            if (!array_key_exists($col, $row)) {
+                continue;
+            }
+            $value = $row[$col];
+            $cast  = $this->decoders[$j] ?? null;
+            $entity->{$fields[$j]} = $cast === null ? $value : $cast->decode($value);
+            $node->data[$col] = $cast === null ? $value : $cast->encode($cast->decode($value));
+        }
     }
 
     /**

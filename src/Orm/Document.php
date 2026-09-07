@@ -108,5 +108,16 @@ abstract class Document
         AppContext::instance()->entityManager()->revert($this);
         return $this;
     }
+    /**
+     * Re-read this document's row from storage and refresh the instance
+     * IN PLACE (current values + synced snapshot). Returns $this, or NULL
+     * when the row is gone in storage (detached). Throws for untracked
+     * documents and documents with scheduled unflushed writes.
+     */
+    public function refresh(): ?static
+    {
+        $found = AppContext::instance()->entityManager()->refresh($this);
 
+        return $found instanceof static ? $found : null;
+    }
 }

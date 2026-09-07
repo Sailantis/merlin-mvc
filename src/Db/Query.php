@@ -125,6 +125,14 @@ class Query extends Condition
 
     protected bool $updateValuesIsList = false;
 
+    /**
+     * Fresh-read mode for ORM hydration terminals (entities()/firstEntity()):
+     * identity-map hits are refreshed IN PLACE from the fresh rows instead
+     * of returned stale. One row = still one object; the data is current.
+     * Scheduled (unflushed) entities keep their pending state.
+     */
+    protected bool $freshRead = false;
+
     protected array|string $conflictTarget = '';
 
     protected array|string|null $returning = null;
@@ -948,7 +956,7 @@ class Query extends Condition
         $query = $this->compileSelect($db);
         $rows  = $db->selectAll($query, $this->getBindings(), \PDO::FETCH_ASSOC);
 
-        return $this->hydrateRows($rows, $modelClass);
+        return $this->hydrateRows($rows, $modelClass, $this->freshRead);
     }
 
     /**
@@ -972,18 +980,37 @@ class Query extends Condition
     }
 
     /**
+     * Fresh-read mode for the ORM hydration terminals.
+     *
+     * The identity map's staleness escape: with fresh() enabled,
+     * entities()/firstEntity() re-read rows and refresh identity-map hits
+     * IN PLACE — the same objects, current values (no stale repeats, no
+     * duplicate instances). Scheduled (unflushed) entities keep their
+     * pending state until flush(). For PK reads prefer
+     * {@see \Azera\Orm\EntityManager::find($class, $id, fresh: true)} /
+     * Model::find($id, fresh: true); fresh() serves criteria reads.
+     *
+     * @return static
+     */
+    public function fresh(bool $fresh = true): static
+    {
+        $this->freshRead = $fresh;
+        return $this;
+    }
+
+    /**
      * Hydrate raw rows into heap-tracked entities (FastHydrator plan).
      *
      * @param list\<array\<string,mixed\>> $rows
      * @return list\<object>
      */
-    protected function hydrateRows(array $rows, string $modelClass): array
+    protected function hydrateRows(array $rows, string $modelClass, bool $fresh = false): array
     {
         $hydrator = \Azera\Orm\FastHydrator::for($modelClass);
         $heap     = \Azera\AppContext::instance()->heap();
         $out      = [];
         foreach ($rows as $row) {
-            [$entity] = $hydrator->hydrate($heap, $row);
+            [$entity] = $hydrator->hydrate($heap, $row, $fresh);
             if ($entity !== null) {
                 $out[] = $entity;
             }
