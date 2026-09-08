@@ -34,7 +34,7 @@ $user->save(); // Auto-populates $user->id
 echo "Created user with ID: {$user->id}\n";
 
 $user->email = 'newemail@example.com';
-$user->update(); // WHERE (id = ?)
+$user->save(); // WHERE (id = ?)
 
 class UserProduct extends Model
 {
@@ -60,7 +60,7 @@ $up->save();
 
 // Update
 $up->quantity = 10;
-$up->update(); // WHERE (user_id = 10) AND (product_id = 25)
+$up->save(); // WHERE (user_id = 10) AND (product_id = 25)
 
 $up->delete(); // WHERE (user_id = 10) AND (product_id = 25)
 
@@ -141,16 +141,12 @@ class Product extends Model
 }
 
 // Automatically uses correct connection
-$products = Product::query()
+$product = Product::query()
     ->where('stock >', 0)
-    ->select();
+    ->firstEntity();
 
-/**
- * @var Product $product
- */
-$product = $products->firstEntity();
 $product->stock -= 1;
-$product->update(); // Uses writeConnection()
+$product->save(); // Uses writeConnection()
 
 class Order extends Model
 {
@@ -170,7 +166,7 @@ $order->status = 'shipped';
 $order->total  = 150.00;
 
 // Only sends changed fields to database
-$order->update(); // UPDATE orders SET status = ?, total = ? WHERE id = ?
+$order->save(); // UPDATE orders SET status = ?, total = ? WHERE id = ?
 
 if ($order->hasChanged()) {
     echo "Order has unsaved changes\n";
@@ -244,7 +240,7 @@ try {
     $item = new UserProduct();
     $item->user_id = 10;
     // product_id not set
-    $item->update();
+    $item->save();
 } catch (\Azera\Db\Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     // Output: ID field(s) UserProduct->{'product_id'} not set

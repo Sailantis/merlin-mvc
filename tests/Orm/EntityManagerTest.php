@@ -300,6 +300,37 @@ class EntityManagerTest extends TestCase
         $this->assertStringStartsWith('INSERT INTO "comment"', $q[1]['sql']);
     }
 
+    /**
+     * Regression: two auto-increment INSERTs scheduled in one flush used to
+     * collapse (both nodes keyed identically while their PKs were unset),
+     * silently dropping the first INSERT. Each scheduled PK-less entity
+     * must produce its own INSERT and its own id backfill.
+     */
+    public function testBatchedAutoIncrementInsertsAllExecuteAndBackfill(): void
+    {
+        $this->db->setMockResults([
+            [['id' => '1']], // first insert RETURNING id
+            [['id' => '2']], // second insert RETURNING id
+        ]);
+
+        $a = new Article();
+        $a->title = 'First';
+
+        $b = new Article();
+        $b->title = 'Second';
+
+        $this->em->persist($a);
+        $this->em->persist($b);
+        $this->em->flush();
+
+        $q = $this->dataQueries();
+        $this->assertCount(2, $q);
+        $this->assertSame('First', $q[0]['params'][0] ?? null);
+        $this->assertSame('Second', $q[1]['params'][0] ?? null);
+        $this->assertSame('1', $a->id);
+        $this->assertSame('2', $b->id);
+    }
+
     public function testPersistFlushInsertsThroughStore(): void
     {
         $a = new Article();
@@ -832,5 +863,103 @@ class EntityManagerTest extends TestCase
         $this->db->setMockResults([[$this->articleRow(7, 'Again')]]);
         $this->assertSame($article, $article->refresh());
         $this->assertSame('Again', $article->title);
+    }
+
+    /* ================================================== identity guard
+     *
+     * The PK is the entity's storage identity: diff() excludes PK columns
+     * from UPDATE SET and executeUpdate() targets the identity captured
+     * at schedule time. A mutated PK on a tracked entity used to be
+     * dropped SILENTLY (and kept reporting dirty forever via the
+     * dirty-state API) — now scheduleUpdate() throws.
+     */
+
+    /**
+     * Mutating the PK of a tracked entity must throw at persist() time —
+     * loud instead of silently dropped. After the refused attempt the
+     * entity stays tracked under its ORIGINAL identity and remains fully
+     * usable: a legit non-PK mutation still flushes as a diff UPDATE
+     * against the original row.
+     */
+    public function testPkMutationOnTrackedEntityThrowsAndEntityStaysUsable(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+        $this->assertNotNull($a);
+        $this->db->clearQueries();
+
+        $a->id = 8; // identity mutation — must not go through silently
+        try {
+            $this->em->persist($a);
+            $this->fail('Expected LogicException for PK mutation on a tracked entity');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString("PK field 'id'", $e->getMessage());
+        }
+
+        // Nothing scheduled, nothing written, identity unchanged.
+        $this->assertFalse($this->em->isScheduled($a));
+        $this->assertSame([], $this->db->queries);
+        $this->assertSame($a, $this->em->find(Article::class, ['id' => 7]));
+
+        // The guard keeps tripping while the mutated value sits on the
+        // property — persist() never "heals" a changed identity.
+        try {
+            $this->em->persist($a);
+            $this->fail('Expected the identity guard to keep tripping');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString("PK field 'id'", $e->getMessage());
+        }
+
+        // Restore the identity property and the entity is fully usable
+        // again: a title diff flushes as a diff UPDATE, WHERE pinned to
+        // the ORIGINAL id 7.
+        $a->id    = 7;
+        $a->title = 'Renamed';
+        $this->em->persist($a);
+        $this->em->flush();
+
+        $q = $this->dataQueries();
+        $this->assertCount(1, $q);
+        $this->assertStringStartsWith('UPDATE "article"', $q[0]['sql']);
+        $this->assertStringContainsString('SET "title" = ?', $q[0]['sql']);
+        $this->assertStringContainsString('WHERE "id" = ?', $q[0]['sql']);
+        $this->assertSame('7', $q[0]['params'][1] ?? null);
+    }
+
+    /**
+     * Untracked entities keep the "everything set counts" semantic —
+     * INCLUDING the PK (legitimate pending INSERT data).
+     */
+    public function testDirtyDataOnUntrackedEntityIncludesPk(): void
+    {
+        $a = new Article();
+        $a->id    = 42;
+        $a->title = 'New';
+
+        $this->assertSame(
+            ['id' => 42, 'title' => 'New'],
+            $this->em->dirtyData($a)
+        );
+        $this->assertTrue($this->em->isDirty($a));
+    }
+
+    /**
+     * Tracked entity: the dirty-state API must match what flush() would
+     * actually write — PK columns are identity, not data, so mutating the
+     * PK alone must NOT report dirty (that's the identity guard's job).
+     */
+    public function testDirtyDataOnTrackedEntityExcludesPk(): void
+    {
+        $this->db->setMockResults([[$this->articleRow(7, 'Seven')]]);
+        $a = $this->em->find(Article::class, ['id' => 7]);
+        $this->assertNotNull($a);
+
+        $a->id = 8; // PK-only mutation: never data
+        $this->assertSame([], $this->em->dirtyData($a));
+        $this->assertFalse($this->em->isDirty($a));
+
+        // A real data change still reports — field-keyed, PK excluded.
+        $a->title = 'Mutated';
+        $this->assertSame(['title' => 'Mutated'], $this->em->dirtyData($a));
     }
 }

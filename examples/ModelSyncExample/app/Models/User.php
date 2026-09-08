@@ -5,9 +5,9 @@ namespace App\Models;
 use Azera\Orm\Model;
 
 /**
- * Sync by file path:   php console.php model-sync model app/Models/User.php --apply
- * Sync by class name:  php console.php model-sync model User --apply
- * With accessors:      php console.php model-sync model User --apply --generate-accessors --field-visibility=protected
+ * Sync by file path:   php console.php model sync app/Models/User.php --apply
+ * Sync by class name:  php console.php model sync User --apply
+ * With accessors:      php console.php model sync User --apply --generate-accessors --field-visibility=protected
  */
 class User extends Model
 {

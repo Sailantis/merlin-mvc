@@ -19,11 +19,26 @@ use Azera\Lifecycle\RequestScoped;
  */
 final class Heap implements RequestScoped
 {
+    /** Prefix for synthetic slot keys holding PK-less (unflushed) nodes. */
+    private const SLOT_PREFIX = "\0slot\0";
+
     /** @var array<string, Node> identityKey => node */
     private array $nodes = [];
 
     /** @var array<int, Node> spl_object_id(entity) => node */
     private array $oids = [];
+
+    /**
+     * Slots for nodes whose identity is INCOMPLETE (PK fields unset — a
+     * scheduled INSERT whose PK the database will generate). They cannot
+     * share the identity index (every PK-less node of a class would
+     * collapse to the same key — persisting two of them silently kept
+     * only the last). Each such node gets a unique synthetic slot key;
+     * the slot is released when backfill/applyRow replaces the node.
+     *
+     * @var array<int, string> spl_object_id(entity) => slot key
+     */
+    private array $slots = [];
 
     /**
      * Retains the entity itself so its spl_object_id cannot be recycled by
@@ -87,20 +102,61 @@ final class Heap implements RequestScoped
     {
         $oid = \spl_object_id($entity);
 
-        // If this entity object was previously attached under another key,
-        // drop the stale oid mapping so it cannot leak across identities.
-        // Single isset() instead of null-coalesce: no node allocation on hit.
+        // If this entity object was previously attached, drop its stale
+        // registration (identity slot or synthetic slot) so it cannot
+        // leak across identities.
         if (isset($this->oids[$oid]) && $this->oids[$oid] !== $node) {
             $stale = $this->oids[$oid];
-            unset($this->nodes[self::key($stale->class, $stale->id)], $this->nodeOids[spl_object_id($stale)]);
+            $this->dropNode($stale, $oid);
         }
 
-        $key = self::key($node->class, $node->id);
+        if ($this->hasCompleteIdentity($node->id)) {
+            $key = self::key($node->class, $node->id);
+        } else {
+            // Incomplete identity: unique synthetic slot per entity object.
+            // The scheduled INSERT's real identity arrives via backfill().
+            $key = $this->slots[$oid] ??= self::SLOT_PREFIX . $node->class . '|' . $oid;
+        }
 
         $this->nodes[$key]                    = $node;
         $this->oids[$oid]                     = $node;
         $this->entities[$oid]                 = $entity;
         $this->nodeOids[spl_object_id($node)] = $oid;
+    }
+
+    /**
+     * Whether every PK value is non-null (a usable identity-map key).
+     *
+     * @param array<string, mixed> $id PK field => value
+     */
+    private function hasCompleteIdentity(array $id): bool
+    {
+        foreach ($id as $value) {
+            if ($value === null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Remove a node from the identity index (and its synthetic slot
+     * registration when it occupied one).
+     */
+    private function dropNode(Node $node, int $oid): void
+    {
+        $key = self::key($node->class, $node->id);
+        if (isset($this->nodes[$key]) && $this->nodes[$key] === $node) {
+            unset($this->nodes[$key]);
+        }
+        // Also clear a synthetic slot that pointed at this node.
+        if (
+            ($this->slots[$oid] ?? null) !== null
+                && ($this->nodes[$this->slots[$oid]] ?? null) === $node
+        ) {
+            unset($this->nodes[$this->slots[$oid]]);
+        }
+        unset($this->slots[$oid], $this->nodeOids[spl_object_id($node)]);
     }
 
     /**
@@ -130,9 +186,21 @@ final class Heap implements RequestScoped
         $oid  = \spl_object_id($entity);
         $node = $this->oids[$oid] ?? null;
 
-        if ($node !== null) {
-            unset($this->nodes[self::key($node->class, $node->id)], $this->oids[$oid], $this->entities[$oid], $this->nodeOids[spl_object_id($node)]);
+        if ($node === null) {
+            return;
         }
+
+        $key = self::key($node->class, $node->id);
+        if (isset($this->nodes[$key]) && $this->nodes[$key] === $node) {
+            unset($this->nodes[$key]);
+        }
+        if (
+            ($this->slots[$oid] ?? null) !== null
+                && ($this->nodes[$this->slots[$oid]] ?? null) === $node
+        ) {
+            unset($this->nodes[$this->slots[$oid]]);
+        }
+        unset($this->slots[$oid], $this->oids[$oid], $this->entities[$oid], $this->nodeOids[spl_object_id($node)]);
     }
 
     /**
@@ -190,5 +258,6 @@ final class Heap implements RequestScoped
         $this->oids     = [];
         $this->entities = [];
         $this->nodeOids = [];
+        $this->slots    = [];
     }
 }

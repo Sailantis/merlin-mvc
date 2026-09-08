@@ -5,6 +5,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Azera\AppContext;
 use Azera\Db\Database;
+use Azera\Db\ModelMapping;
 use Azera\Db\ResultSet;
 use Azera\Orm\Model;
 
@@ -17,16 +18,51 @@ use Azera\Orm\Model;
  * - findAll() - Load multiple records by conditions
  * - exists() - Check if record exists
  * - count() - Count matching records
+ *
+ * Runs self-contained on SQLite (no server required):
+ *   php examples/ModelLoadMethodsExample.php
  */
 
-// Setup database connection
-$db = new Database(
-    'mysql:host=localhost;dbname=myapp',
-    'root',
-    'secret'
-);
+ModelMapping::usePluralTableNames(true);
 
-AppContext::instance()->dbManager()->set('default', $db);
+// Setup database connection (SQLite; swap for your MySQL/pgsql DSN in real apps)
+$dbFile = sys_get_temp_dir() . '/azera_load_example_' . getmypid() . '.sqlite';
+@unlink($dbFile);
+
+$pdo = new \PDO('sqlite:' . $dbFile);
+$pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+$pdo->exec('CREATE TABLE users (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL,
+    email    TEXT NOT NULL,
+    status   TEXT DEFAULT "active"
+)');
+$pdo->exec('CREATE TABLE user_products (
+    user_id    INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity   INTEGER DEFAULT 0,
+    created_at TEXT,
+    PRIMARY KEY (user_id, product_id)
+)');
+$pdo->exec('CREATE TABLE cart_items (
+    cart_id    INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    user_id    INTEGER NOT NULL,
+    quantity   INTEGER DEFAULT 0,
+    PRIMARY KEY (cart_id, product_id, user_id)
+)');
+
+AppContext::instance()->dbManager()->set('default', new Database('sqlite:' . $dbFile, '', ''));
+
+// Seed some data so the load methods have something to find:
+\Azera\Db\Query::raw()->table('users')->bulkValues([
+    ['username' => 'john', 'email' => 'john@example.com', 'status' => 'active'],
+    ['username' => 'alice', 'email' => 'alice@example.com', 'status' => 'active'],
+    ['username' => 'bob', 'email' => 'bob@example.com', 'status' => 'inactive'],
+])->insert();
+\Azera\Db\Query::raw()->table('user_products')->bulkValues([
+    ['user_id' => 10, 'product_id' => 25, 'quantity' => 2, 'created_at' => date('Y-m-d H:i:s')],
+])->insert();
 
 // ============================================================================
 // Model Definitions
@@ -225,7 +261,7 @@ if ($user !== null) {
     $user->email  = 'updated@example.com';
     $user->status = 'active';
 
-    if ($user->update()) {
+    if ($user->save()) {
         echo "User updated successfully\n";
     }
 

@@ -55,7 +55,8 @@ final class StoreManager implements RequestScoped
      */
     public function get(string $type, string $role): Store
     {
-        return $this->resolve($type, $role, fallBackToDefault: false);
+        return $this->resolve($type, $role, fallBackToDefault: false)
+            ?? throw new \RuntimeException("Store role '{$role}' not configured for type '{$type}'");
     }
 
     /**
@@ -63,6 +64,29 @@ final class StoreManager implements RequestScoped
      * role, else an exception.
      */
     public function getOrDefault(string $type, string $role): Store
+    {
+        return $this->resolve($type, $role, fallBackToDefault: true)
+            ?? throw new \RuntimeException("Store role '{$role}' not configured for type '{$type}'");
+    }
+
+    /**
+     * Lenient NON-throwing resolution: exact (type, role) entry, else the
+     * type's default role, else NULL. For hot paths that treat "nothing
+     * registered" as ordinary control flow (a fallback resolution) instead
+     * of an error — a miss costs one array probe, not an exception.
+     */
+    public function tryGet(string $type, string $role): ?Store
+    {
+        return $this->resolve($type, $role, fallBackToDefault: false);
+    }
+
+    /**
+     * Lenient NON-throwing resolution: exact (type, role) entry, else the
+     * type's default role, else NULL. For hot paths that treat "nothing
+     * registered" as ordinary control flow (a fallback resolution) instead
+     * of an error — a miss costs one array probe, not an exception.
+     */
+    public function tryGetOrDefault(string $type, string $role): ?Store
     {
         return $this->resolve($type, $role, fallBackToDefault: true);
     }
@@ -88,10 +112,12 @@ final class StoreManager implements RequestScoped
 
     /**
      * Shared resolution: map lookup, optional default fallback, factory
-     * expansion. The type is validated before any map access, so the two
+     * expansion. Returns NULL when nothing resolves — callers decide
+     * whether absence is an error (get*() throw) or a fallback signal
+     * (tryGet()). The type is validated before any map access, so the two
      * maps can never mix.
      */
-    private function resolve(string $type, string $role, bool $fallBackToDefault): Store
+    private function resolve(string $type, string $role, bool $fallBackToDefault): ?Store
     {
         $map   = $this->stores[$type] ?? [];
         $entry = $map[$role] ?? null;
@@ -104,9 +130,7 @@ final class StoreManager implements RequestScoped
         }
 
         if ($entry === null) {
-            throw new \RuntimeException(
-                "Store role '{$role}' not configured for type '{$type}'"
-            );
+            return null;
         }
 
         if ($entry instanceof Store) {

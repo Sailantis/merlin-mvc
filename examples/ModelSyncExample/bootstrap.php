@@ -5,9 +5,9 @@
  * Edit the database settings below to match your environment,
  * then run the console:
  *
- *   php console.php model-sync all app/Models --apply
- *   php console.php model-sync model app/Models/User.php --apply
- *   php console.php model-sync model User --apply
+ *   php console.php model sync-all app/Models --apply
+ *   php console.php model sync app/Models/User.php --apply
+ *   php console.php model sync User --apply
  *
  * To set up the database, run one of the SQL files in the sql/ directory:
  *

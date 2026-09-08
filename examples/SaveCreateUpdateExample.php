@@ -5,28 +5,60 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Azera\AppContext;
 use Azera\Db\Database;
+use Azera\Db\ModelMapping;
 use Azera\Orm\Model;
 
 /**
  * Example: Using Model save(), create(), update(), delete() methods
- * 
+ *
  * This example demonstrates how to work with model persistence:
  * - create() - Insert a new record
  * - update() - Update changed fields only
  * - save() - Insert or update intelligently
  * - delete() - Remove a record
  * - hasChanged() - Check if model has unsaved changes
+ *
+ * Runs self-contained on SQLite (no server required):
+ *   php examples/SaveCreateUpdateExample.php
  */
 
-// Setup database connection
-$db = new Database(
-    'mysql:host=localhost;dbname=myapp',
-    'root',
-    'secret'
-);
+ModelMapping::usePluralTableNames(true); // User → users, Post → posts
 
-AppContext::instance()->dbManager()->set('default', $db);
+$dbFile = sys_get_temp_dir() . '/azera_save_example_' . getmypid() . '.sqlite';
+@unlink($dbFile);
 
+$pdo = new \PDO('sqlite:' . $dbFile);
+$pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+$pdo->exec('CREATE TABLE users (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    username    TEXT NOT NULL,
+    email       TEXT NOT NULL,
+    status      TEXT DEFAULT "active",
+    bio         TEXT,
+    posts_count INTEGER DEFAULT 0,
+    created_at  TEXT,
+    updated_at  TEXT
+)');
+$pdo->exec('CREATE TABLE posts (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL,
+    title        TEXT NOT NULL,
+    content      TEXT,
+    view_count   INTEGER DEFAULT 0,
+    status       TEXT DEFAULT "draft",
+    published_at TEXT,
+    created_at   TEXT
+)');
+$pdo->exec('CREATE TABLE products (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL,
+    price       REAL DEFAULT 0,
+    stock       INTEGER DEFAULT 0,
+    sku         TEXT NOT NULL,
+    description TEXT
+)');
+
+AppContext::instance()->dbManager()->set('default', new Database('sqlite:' . $dbFile, '', ''));
 
 // ============================================================================
 // Model Definitions
@@ -66,7 +98,6 @@ class Product extends Model
     public ?string $description = null;
 }
 
-
 // ============================================================================
 // CREATE - Insert a new record
 // ============================================================================
@@ -75,9 +106,9 @@ echo "=== CREATE - Insert New Records ===\n\n";
 
 // 1. Create a simple user
 $user = new User();
-$user->username = 'alice';
-$user->email = 'alice@example.com';
-$user->status = 'active';
+$user->username   = 'alice';
+$user->email      = 'alice@example.com';
+$user->status     = 'active';
 $user->created_at = date('Y-m-d H:i:s');
 $user->updated_at = date('Y-m-d H:i:s');
 
@@ -96,11 +127,11 @@ echo "\n";
 
 // 2. Create with partial data
 $post = new Post();
-$post->user_id = $user->id;
-$post->title = 'My First Post';
-$post->content = 'This is the content of my first post.';
-$post->status = 'draft';
-$post->created_at = date('Y-m-d H:i:s');
+$post->user_id      = $user->id;
+$post->title        = 'My First Post';
+$post->content      = 'This is the content of my first post.';
+$post->status       = 'draft';
+$post->created_at   = date('Y-m-d H:i:s');
 $post->published_at = date('Y-m-d H:i:s');
 
 $post->save();
@@ -117,10 +148,10 @@ $products = [
 
 foreach ($products as $data) {
     $product = new Product();
-    $product->name = $data['name'];
+    $product->name  = $data['name'];
     $product->price = $data['price'];
     $product->stock = $data['stock'];
-    $product->sku = $data['sku'];
+    $product->sku   = $data['sku'];
     $product->save();
     echo "Product created: {$product->name} (ID: {$product->id})\n";
 }
@@ -144,7 +175,7 @@ echo "\nAfter changing email:\n";
 echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n";
 
 // Only the changed fields are updated
-if ($user->update()) {
+if ($user->save()) {
     echo "User updated successfully!\n";
     echo "Has changes: " . ($user->hasChanged() ? 'yes' : 'no') . "\n";
 }
@@ -156,26 +187,26 @@ $post = Post::find($post->id);
 echo "Original post status: {$post->status}\n";
 
 // Make multiple changes
-$post->title = 'My First Post - Updated';
-$post->content = 'Updated content for my first post.';
-$post->status = 'published';
+$post->title        = 'My First Post - Updated';
+$post->content      = 'Updated content for my first post.';
+$post->status       = 'published';
 $post->published_at = date('Y-m-d H:i:s');
 
-$post->update();
+$post->save();
 echo "Post updated: {$post->title} (status: {$post->status})\n";
 
 echo "\n";
 
 // 3. Increment counters
 $post->view_count = ($post->view_count ?? 0) + 5;
-$post->update();
+$post->save();
 echo "Post view count: {$post->view_count}\n";
 
 echo "\n";
 
 // 4. Conditional update - only update if changes exist
 $user->bio = 'I am a developer.';
-if ($user->update()) {
+if ($user->save()) {
     echo "User bio updated: {$user->bio}\n";
 } else {
     echo "No changes to update.\n";
@@ -199,8 +230,8 @@ echo "\n";
 
 // 2. Create and save new user
 $newUser = new User();
-$newUser->username = 'bob';
-$newUser->email = 'bob@example.com';
+$newUser->username   = 'bob';
+$newUser->email      = 'bob@example.com';
 $newUser->created_at = date('Y-m-d H:i:s');
 $newUser->updated_at = date('Y-m-d H:i:s');
 
@@ -255,10 +286,10 @@ echo "=== CHANGE TRACKING - Track Modifications ===\n\n";
 
 // 1. Fresh instance has changes (not loaded)
 $newProduct = new Product();
-$newProduct->name = 'Monitor';
+$newProduct->name  = 'Monitor';
 $newProduct->price = 299.99;
 $newProduct->stock = 20;
-$newProduct->sku = 'MON-001';
+$newProduct->sku   = 'MON-001';
 
 echo "New product has changes: " . ($newProduct->hasChanged() ? 'yes' : 'no') . "\n";
 
@@ -278,7 +309,7 @@ $user = User::find($user->id);
 
 // Only update if something changed
 if ($user->hasChanged()) {
-    $user->update();
+    $user->save();
     echo "User had changes and was updated.\n";
 } else {
     echo "User has no changes, skipping update.\n";
@@ -308,7 +339,7 @@ $existingProduct = Product::findOne(['sku' => 'LAP-001']);
 if ($existingProduct) {
     echo "   Found existing product: {$existingProduct->name}\n";
     $existingProduct->stock = 12;
-    $existingProduct->update();
+    $existingProduct->save();
     echo "   Stock updated to: {$existingProduct->stock}\n";
 }
 
@@ -319,10 +350,10 @@ echo "2. Create if Not Exists Pattern:\n";
 $product = Product::findOne(['sku' => 'SPC-001']);
 if (!$product) {
     $product = new Product();
-    $product->name = 'Speaker';
+    $product->name  = 'Speaker';
     $product->price = 149.99;
     $product->stock = 30;
-    $product->sku = 'SPC-001';
+    $product->sku   = 'SPC-001';
     $product->save();
     echo "   Created new product: {$product->name}\n";
 } else {
@@ -335,7 +366,7 @@ echo "\n";
 echo "3. Load, Modify, Save Pattern:\n";
 $user = User::find($user->id);
 $user->posts_count = ($user->posts_count ?? 0) + 1;
-$user->updated_at = date('Y-m-d H:i:s');
+$user->updated_at  = date('Y-m-d H:i:s');
 if ($user->save()) {
     echo "   User updated successfully.\n";
 }
@@ -370,29 +401,27 @@ echo "\n\n";
 
 echo "=== ERROR HANDLING ===\n\n";
 
-use Azera\Db\Exception;
-
-try {
-    // Try to update without ID
-    $orphanUser = new User();
-    $orphanUser->username = 'orphan';
-    $orphanUser->email = 'orphan@example.com';
-    $orphanUser->update();  // Error: no ID set
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
-}
+// 1. save() WITHOUT an ID is an INSERT, not an error: with no identity to
+//    adopt, the EntityManager schedules an INSERT and backfills the
+//    auto-generated PK afterwards.
+$newUser = new User();
+$newUser->username   = 'orphan';
+$newUser->email      = 'orphan@example.com';
+$newUser->created_at = date('Y-m-d H:i:s');
+$newUser->updated_at = date('Y-m-d H:i:s');
+$newUser->save();
+echo "Save without ID inserted the row; backfilled id: {$newUser->id}\n";
 
 echo "\n";
 
 try {
-    // Try to delete without ID
+    // 2. delete() without an ID throws — there is no identity to target.
     $orphanPost = new Post();
     $orphanPost->user_id = 1;
-    $orphanPost->title = 'Orphan Post';
-    $orphanPost->delete();  // Error: no ID set
-} catch (Exception $e) {
+    $orphanPost->title   = 'Orphan Post';
+    $orphanPost->delete(); // RuntimeException: ID field 'id' not set
+} catch (\RuntimeException $e) {
     echo "Error: " . $e->getMessage() . "\n";
 }
 
 echo "\n\nExample completed.\n";
-

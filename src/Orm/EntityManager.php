@@ -51,6 +51,12 @@ final class EntityManager implements RequestScoped
         private ?object $db = null,
     ) {}
 
+    /**
+     * Memoized SQL fallback store (the StoreManager-less path) — built
+     * once per EntityManager, see storeFor()/buildFallbackStore().
+     */
+    private ?PdoStore $fallbackStore = null;
+
     /* ------------------------------------------------------------ accessors */
 
     /**
@@ -403,7 +409,11 @@ final class EntityManager implements RequestScoped
      * Untracked entity: every metadata column with a set value counts as
      * changed (the same "everything set is pending" semantic the old
      * no-snapshot Stateful path had). Tracked entity: current values vs
-     * the node snapshot, field-name-keyed.
+     * the node snapshot, field-name-keyed — PK columns EXCLUDED there:
+     * identity, not data (the pipeline never puts a PK into an UPDATE
+     * SET, so isDirty()/hasChanged() must match what flush() would
+     * actually write; a mutated PK on a tracked entity is the identity
+     * guard's problem, not a data diff).
      *
      * @return array<string, mixed> field name => current value
      */
@@ -412,20 +422,37 @@ final class EntityManager implements RequestScoped
         $meta = Metadata::for($entity::class);
         $node = $this->heap->find($entity);
 
-        $byCol = [];
+        $byCol  = [];
+        $pkCols = [];
         foreach ($meta['columns'] as $field => $col) {
             $byCol[$col['name']] = $field;
+            if ($col['pk']) {
+                $pkCols[$col['name']] = true;
+            }
         }
 
         if ($node === null) {
             $data = $this->extractData($entity, $meta);
-            // Mirror Stateful's no-snapshot semantic: all set fields changed.
-            return array_filter($data, fn($v) => $v !== null);
+            // Mirror Stateful's no-snapshot semantic: all set fields
+            // changed. extractData is COLUMN-keyed — remap to field names
+            // so the untracked branch is field-name-keyed like the
+            // tracked branch (the documented contract of this method).
+            $out = [];
+            foreach (array_filter($data, fn($v) => $v !== null) as $col => $value) {
+                $out[$byCol[$col] ?? $col] = $value;
+            }
+
+            return $out;
         }
 
         $current = $this->extractData($entity, $meta);
+
         $changed = [];
         foreach ($current as $col => $value) {
+            // Skip PK columns as they are identity, not data
+            if (isset($pkCols[$col])) {
+                continue;
+            }
             if ($value !== ($node->data[$col] ?? null)) {
                 $changed[$byCol[$col] ?? $col] = $value;
             }
@@ -483,11 +510,15 @@ final class EntityManager implements RequestScoped
 
     /**
      * Request-scoped hook: wipe the identity map + any scheduled writes
-     * between requests in persistent workers.
+     * between requests in persistent workers. Also drops the memoized
+     * fallback store — a worker re-pointing DatabaseManager roles (tenant
+     * swap) must not keep a stale-borrowed store; the next storeFor()
+     * rebuilds it from the then-current manager.
      */
     public function resetState(): void
     {
         $this->heap->resetState();
+        $this->fallbackStore = null;
     }
 
     /* ------------------------------------------------------- scheduling */
@@ -513,7 +544,8 @@ final class EntityManager implements RequestScoped
     }
 
     /**
-     * MANAGED entity: diff against the node snapshot; schedule UPDATE if dirty.
+     * MANAGED entity: guard the identity, then diff against the node
+     * snapshot; schedule UPDATE if dirty.
      */
     private function scheduleUpdate(object $entity): void
     {
@@ -523,6 +555,20 @@ final class EntityManager implements RequestScoped
         }
 
         $meta = Metadata::for($entity::class);
+
+        // Identity guard.
+        foreach ($this->currentIdentity($entity, $meta) as $field => $value) {
+            $snapshot = $node->id[$field] ?? null;
+            $cast     = Casts::for($meta['columns'][$field]['type']);
+            if ($value !== ($cast === null ? $snapshot : $cast->decode($snapshot))) {
+                throw new \LogicException(
+                    "Cannot mutate the identity (PK field '{$field}') of a tracked {$node->class}: "
+                        . 'the pipeline updates rows BY their PK, so a changed PK would be dropped or target the wrong row. '
+                        . 'detach() the entity and persist() it as a new one (delete+insert semantics), or use the query builder for PK rewrites.'
+                );
+            }
+        }
+
         $diff = $this->diff($entity, $node, $meta);
         if ($diff === []) {
             return; // clean: the pipeline does NOT write unchanged entities
@@ -539,7 +585,9 @@ final class EntityManager implements RequestScoped
      * Entity vs node snapshot diff, restricted to metadata columns.
      * Scalar-only comparison (the heap stores scalar row values).
      * PK columns are identity — never part of an UPDATE SET (changing a
-     * PK is delete+insert semantics, and legacy saves never wrote them).
+     * PK is delete+insert semantics, and legacy saves never wrote them;
+     * PK mutations on tracked entities throw in scheduleUpdate()'s
+     * identity guard, so they never reach here as data).
      */
     private function diff(object $entity, Node $node, array $meta): array
     {
@@ -770,6 +818,30 @@ final class EntityManager implements RequestScoped
         return $data;
     }
 
+    /**
+     * The entity's CURRENT PK values, decoded to the PHP representation
+     * hydration puts on the entity (cast decode applied) — so the
+     * identity guard compares like with like even when the node snapshot
+     * captured driver-stringified numerics (entity holds int 7, snapshot
+     * '7').
+     *
+     * @return array<string, mixed> PK field => decoded value (null when unset)
+     */
+    private function currentIdentity(object $entity, array $meta): array
+    {
+        $id = [];
+        foreach ($meta['columns'] as $field => $col) {
+            if (!$col['pk']) {
+                continue;
+            }
+            $value = isset($entity->{$field}) ? $entity->{$field} : null;
+            $cast  = Casts::for($col['type']);
+            $id[$field] = $cast === null ? $value : $cast->decode($value);
+        }
+
+        return $id;
+    }
+
     /* ---------------------------------------------------------- helpers */
 
     /**
@@ -879,16 +951,23 @@ final class EntityManager implements RequestScoped
 
     /**
      * Resolve the Store for a class, keyed by metadata `store` type:
-     * StoreManager::getOrDefault(storeType, storeRole). The type comes from
-     * metadata ('sql' | 'mongo') — the hard routing guarantee: #[Document]
-     * classes can not fall into the SQL PdoStore regardless of what roles
-     * are registered, because the two maps never mix and getOrDefault never
-     * crosses types. Fallback (direct construction — tests, scripts,
-     * StoreManager-less contexts): a PdoStore on the injected Database, or
-     * the DatabaseManager's default connection when none was injected. Mongo
-     * classes in a StoreManager-less context throw — a SQL fallback would
-     * silently write a table. The db param keeps positional compatibility
-     * with pre-seam callers.
+     * StoreManager::tryGet(storeType, storeRole) — a NULL-returning lookup,
+     * so an unregistered role costs an array probe, not an exception. The
+     * type comes from metadata ('sql' | 'mongo') — the hard routing
+     * guarantee: #[Document] classes can not fall into the SQL PdoStore
+     * regardless of what roles are registered, because the two maps never
+     * mix and tryGet never crosses types.
+     *
+     * Fallback (direct construction — tests, scripts, StoreManager-less
+     * contexts): ONE PdoStore per EntityManager, memoized. Safe to cache
+     * because PdoStore owns NO connections — it resolves the live Database
+     * from its DatabaseManager per operation. Without an injected Database
+     * it shares the context's DatabaseManager directly (getOrDefault on the
+     * read/write roles falls back to the manager's default role, so role
+     * re-registrations — tenant swaps in workers — are picked up like
+     * Model::readConnection()). Mongo classes in a StoreManager-less
+     * context throw — a SQL fallback would silently write a table. The db
+     * param keeps positional compatibility with pre-seam callers.
      */
     private function storeFor(string $class): Store
     {
@@ -898,22 +977,46 @@ final class EntityManager implements RequestScoped
 
         $ctx = AppContext::instance();
         if ($ctx->has(StoreManager::class)) {
-            $stores = $ctx->get(StoreManager::class);
-            try {
-                return $stores->getOrDefault($type, $role);
-            } catch (\RuntimeException) {}
+            $store = $ctx->get(StoreManager::class)->tryGetOrDefault($type, $role);
+            if ($store !== null) {
+                return $store;
+            }
         }
 
-        // No usable StoreManager: borrow a default connection directly.
-        if (($meta['store'] ?? 'sql') === 'mongo') {
+        // No store registered for this (type, role): mongo has no SQL
+        // fallback — a SQL store would silently write a table.
+        if ($type === 'mongo') {
             throw new \RuntimeException(
                 "Mongo document {$class} needs a StoreManager with a mongo " .
                     'store registered for role ' . "'{$role}'"
             );
         }
 
+        return $this->fallbackStore ??= $this->buildFallbackStore($ctx);
+    }
+
+    /**
+     * Build the (single) SQL fallback store. The wrapped-connection case
+     * covers explicitly injected Databases; otherwise the context's
+     * DatabaseManager is shared, not copied.
+     */
+    private function buildFallbackStore(AppContext $ctx): PdoStore
+    {
+        if ($this->db !== null) {
+            // Explicitly injected Database: map the default role onto it;
+            // getOrDefault('read'/'write') falls back to it.
+            $dbm = new \Azera\Db\DatabaseManager();
+            $dbm->set('default', $this->db);
+
+            return new PdoStore($dbm, 'read', 'write');
+        }
+
+        $dbm = $ctx->dbManager();
         try {
-            $db = $this->db ?? $ctx->dbManager()->getOrDefault('default');
+            // Fail fast with the actionable message BEFORE any flush write
+            // runs (flush() resolves stores up front for exactly this),
+            // not mid-flush on the first query.
+            $dbm->getOrDefault('default');
         } catch (\RuntimeException $e) {
             throw new \RuntimeException(
                 'EntityManager has no Database and no StoreManager registered',
@@ -921,21 +1024,7 @@ final class EntityManager implements RequestScoped
                 $e
             );
         }
-        $dbm = new \Azera\Db\DatabaseManager();
-        $dbm->set('default', $db);
-        $dbm->set('read', $db);
-        $dbm->set('write', $db);
 
         return new PdoStore($dbm, 'read', 'write');
-    }
-
-    /**
-     * Legacy classless resolution — now only reachable via storeFor('')
-     * (metadata-less context → SQL default). Kept for any residual
-     * internal callers; flush() no longer uses it.
-     */
-    private function store(): Store
-    {
-        return $this->storeFor('');
     }
 }

@@ -5,9 +5,9 @@ namespace App\Models;
 use Azera\Orm\Model;
 
 /**
- * Sync by file path:   php console.php model-sync model app/Models/Comment.php --apply
- * Sync by class name:  php console.php model-sync model Comment --apply
- * With accessors:      php console.php model-sync model Comment --apply --generate-accessors --field-visibility=protected
+ * Sync by file path:   php console.php model sync app/Models/Comment.php --apply
+ * Sync by class name:  php console.php model sync Comment --apply
+ * With accessors:      php console.php model sync Comment --apply --generate-accessors --field-visibility=protected
  */
 class Comment extends Model
 {

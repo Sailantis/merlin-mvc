@@ -92,6 +92,69 @@ class HeapTest extends TestCase
         $this->assertSame(0, $heap->count());
     }
 
+    /**
+     * PK-less nodes (scheduled INSERTs whose PK the DB will generate) each
+     * get their own synthetic slot: they must NOT share the identity index,
+     * where every null-PK node of a class would collapse to the same key
+     * and persisting two of them would silently keep only the last.
+     */
+    public function testPkLessNodesDoNotCollapseIntoOneSlot(): void
+    {
+        $heap = new Heap();
+
+        $a  = new stdClass();
+        $b  = new stdClass();
+        $na = new Node(Article::class, ['id' => null], ['title' => 'A'], Node::SCHEDULED_INSERT);
+        $nb = new Node(Article::class, ['id' => null], ['title' => 'B'], Node::SCHEDULED_INSERT);
+
+        $heap->attach($a, $na);
+        $heap->attach($b, $nb);
+
+        $this->assertSame(2, $heap->count());
+        $this->assertSame(['A', 'B'], array_map(fn($n) => $n->data['title'], $heap->scheduled()));
+
+        // Both entities resolve to their OWN node.
+        $this->assertSame($na, $heap->find($a));
+        $this->assertSame($nb, $heap->find($b));
+    }
+
+    /**
+     * Re-attaching an entity whose node was replaced by the EM's backfill
+     * (null-PK -> real PK) releases the synthetic slot: no ghost entries.
+     */
+    public function testReattachAfterBackfillReplacesSyntheticSlot(): void
+    {
+        $heap   = new Heap();
+        $entity = new stdClass();
+
+        $heap->attach($entity, new Node(Article::class, ['id' => null], ['title' => 'T'], Node::SCHEDULED_INSERT));
+        $this->assertSame(1, $heap->count());
+
+        // EM backfill: MANAGED node with the real PK replaces the scheduled one.
+        $managed = new Node(Article::class, ['id' => 5], ['title' => 'T'], Node::MANAGED);
+        $heap->attach($entity, $managed);
+
+        $this->assertSame(1, $heap->count()); // slot + identity never both live
+        $this->assertSame($managed, $heap->find($entity));
+        $this->assertSame($managed, $heap->findById(Article::class, ['id' => 5]));
+
+        // The stale scheduled node resolves to nothing.
+        $this->assertSame([], $heap->scheduled());
+    }
+
+    public function testDetachPkLessScheduledNodeCleansSlot(): void
+    {
+        $heap   = new Heap();
+        $entity = new stdClass();
+
+        $heap->attach($entity, new Node(Article::class, ['id' => null], [], Node::SCHEDULED_INSERT));
+        $heap->detach($entity);
+
+        $this->assertSame(0, $heap->count());
+        $this->assertSame([], $heap->scheduled());
+        $this->assertNull($heap->find($entity));
+    }
+
     public function testResetStateWipesEverything(): void
     {
         $heap = new Heap();

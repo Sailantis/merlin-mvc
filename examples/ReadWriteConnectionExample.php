@@ -9,18 +9,25 @@ use Azera\Orm\Model;
 
 /**
  * Example: Setting up read/write database connections
- * 
+ *
  * This example demonstrates how to configure separate read and write database connections.
  * This is useful for read-replica setups where you want to route read queries to replica servers
  * and write queries to the primary server.
+ *
+ * The MySQL sections below are DOCUMENTATION (they need real servers) and are
+ * kept as comment blocks; a runnable SQLite demo lives at the bottom.
  */
+
+use Azera\Db\ModelMapping;
+
+ModelMapping::usePluralTableNames(true);
 
 // ============================================================================
 // Basic Setup: Single Database Connection
 // ============================================================================
 $dbManager = AppContext::instance()->dbManager();
 
-// For simple setups, just create a single connection - it will be used for both reads and writes
+/* For simple setups, just create a single connection - it will be used for both reads and writes
 $dbManager->set('default', fn() => new Database(
     'mysql:host=localhost;dbname=myapp',
     'root',
@@ -29,7 +36,6 @@ $dbManager->set('default', fn() => new Database(
 
 // This connection is automatically set as the default instance
 // All queries will use this connection
-
 
 // ============================================================================
 // Advanced Setup: Read Replica Configuration
@@ -52,7 +58,7 @@ $dbManager->set('read', fn() => new Database(
 // Now queries are automatically routed:
 // - SELECT queries → read replica
 // - INSERT/UPDATE/DELETE → primary database
-
+*/
 
 // ============================================================================
 // Usage Examples with Model
@@ -66,28 +72,23 @@ class User extends Model
     public string $status;
 }
 
+/*
 // All load methods automatically use the read connection
-$user = User::find(123);                           // → read replica
-$user = User::findOne(['email' => 'john@example.com']); // → read replica
-$users = User::findAll(['status' => 'active']);         // → read replica
-$exists = User::exists(['username' => 'alice']);        // → read replica
-$count = User::count(['status' => 'active']);           // → read replica
+$user   = User::find(123);                                // → read replica
+$user   = User::findOne(['email' => 'john@example.com']); // → read replica
+$users  = User::findAll(['status' => 'active']);          // → read replica
+$exists = User::exists(['username' => 'alice']);          // → read replica
+$count  = User::count(['status' => 'active']);            // → read replica
 
-// Write operations automatically use the write connection
 $user = new User();
 $user->username = 'bob';
-$user->email = 'bob@example.com';
-$user->save();  // → primary database
+$user->email    = 'bob@example.com';
+$user->save(); // → primary database
 
 $user->status = 'inactive';
-$user->update();  // → primary database
+$user->save(); // → primary database
 
-$user->delete();  // → primary database
-
-
-// ============================================================================
-// Per-Model Connection Configuration
-// ============================================================================
+$user->delete(); // → primary database
 
 class AnalyticsEvent extends Model
 {
@@ -102,17 +103,11 @@ AnalyticsEvent::setDefaultRole('analytics');
 //AnalyticsEvent::setDefaultWriteRole('analytics_write');
 
 // This model now uses its own database connections
-$event = AnalyticsEvent::find(456);  // → analytics replica
-$event->save();                         // → analytics primary
+$event = AnalyticsEvent::find(456); // → analytics replica
+$event->save();                     // → analytics primary
 
-// Other models still use global Database connections
-$user = User::find(123);  // → global read connection
-$user->update();               // → global write connection
-
-
-// ============================================================================
-// Advanced: Override Connection Methods for Dynamic Logic
-// ============================================================================
+$user = User::find(123); // → global read connection
+$user->save();           // → global write connection
 
 class TenantData extends Model
 {
@@ -122,7 +117,7 @@ class TenantData extends Model
 
     /**
      * Override for complex connection logic (e.g., tenant-based routing)
-     */
+     *
     public function readConnection(): Database
     {
         // Example: Route based on tenant_id if set
@@ -143,3 +138,39 @@ class TenantData extends Model
         return parent::readConnection();
     }
 }
+*/
+
+// ============================================================================
+// Runnable demo: read/write role routing (SQLite, no server required)
+// ============================================================================
+
+$primaryFile = sys_get_temp_dir() . '/azera_rw_primary_' . getmypid() . '.sqlite';
+@unlink($primaryFile);
+$primary = new \PDO('sqlite:' . $primaryFile);
+$primary->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+$primary->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT NOT NULL, email TEXT NOT NULL, status TEXT)');
+
+// Two roles: writes go to the primary, reads would go to a replica.
+// (Here both point at the same file — with real infrastructure the
+// replica DSN points at a different host.)
+$dbManager->set('write', new Database('sqlite:' . $primaryFile, '', ''));
+$dbManager->set('read', $dbManager->get('write'));
+
+// The EM's PdoStore borrows the read/write roles through the StoreManager:
+$stores = AppContext::instance()->tryGet(\Azera\Orm\Storage\StoreManager::class);
+$stores?->set('sql', 'default', fn() => new \Azera\Orm\Storage\PdoStore($dbManager, 'read', 'write'));
+$stores?->setDefault('sql', 'default');
+
+$u = new User();
+$u->username = 'bob';
+$u->email    = 'bob@example.com';
+$u->status   = 'active';
+$u->save(); // → write role
+
+$found  = User::find($u->id);                            // → read role
+$byMail = User::findOne(['email' => 'bob@example.com']); // → read role
+
+echo "Write went to the write role; reads came back from the read role: "
+    . var_export($found !== null && $found->email === 'bob@example.com', true) . "\n";
+
+echo "\nExample completed.\n";
